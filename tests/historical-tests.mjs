@@ -1,0 +1,6 @@
+import assert from 'node:assert/strict';
+import {ingestHistoricalRows,rollingSeasonFolds} from '../src/data/historical.js';
+import {runRollingBacktest,aggregateBacktest} from '../src/model/season-backtest.js';
+const rows=[{season:2023,week:1,playerId:'p1',position:'QB',projection:20,actual:22},{season:2023,week:2,playerId:'p2',position:'WR',projection:12,actual:10},{season:2024,week:1,playerId:'p1',position:'QB',projection:21,actual:19},{season:2024,week:1,playerId:'p2',position:'WR',projection:13,actual:14},{season:2025,week:1,playerId:'p1',position:'QB',projection:22,actual:24},{season:2025,week:1,playerId:'p2',position:'WR',projection:14,actual:11}];
+const ing=ingestHistoricalRows([...rows,{season:2025,week:99,playerId:'bad',position:'QB',projection:1,actual:1}]);assert.equal(ing.accepted.length,6);assert.equal(ing.rejected.length,1);const folds=rollingSeasonFolds(ing.accepted);assert.deepEqual(folds.map(f=>f.testSeason),[2024,2025]);assert.ok(folds[1].train.every(r=>r.season<2025));
+const bt=runRollingBacktest(rows,{variants:['baseline','volatility'],draws:50,seed:9});assert.equal(bt.folds.length,2);const agg=aggregateBacktest(bt);assert.equal(agg.length,2);assert.ok(agg.every(x=>Number.isFinite(x.rmse)&&x.n===4));console.log('historical-tests: all checks passed');
