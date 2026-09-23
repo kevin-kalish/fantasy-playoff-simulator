@@ -1,0 +1,13 @@
+const BASE='https://api.fantasypros.com/v2/json/nfl';
+const POSITIONS=new Set(['QB','RB','WR','TE','K','DST']);
+export function fantasyProsUrl(path,params={}){const u=new URL(`${BASE}${path}`);for(const [k,v] of Object.entries(params))if(v!==undefined&&v!==null&&v!=='')u.searchParams.set(k,String(v));return u.toString()}
+export class FantasyProsClient{
+ constructor({apiKey,fetchImpl=globalThis.fetch}={}){if(!apiKey)throw new Error('FantasyPros API key required');if(!fetchImpl)throw new Error('fetch implementation required');this.apiKey=apiKey;this.fetchImpl=fetchImpl}
+ async get(path,params={}){const res=await this.fetchImpl(fantasyProsUrl(path,params),{headers:{'x-api-key':this.apiKey,'accept':'application/json'}});if(!res.ok)throw new Error(`FantasyPros ${res.status}: ${await res.text()}`);return res.json()}
+ players(params={}){return this.get('/players',params)}
+ projections({season,week,position,positions='QB:RB:WR:TE:K:DST',scoring='HALF',players,filters}={}){if(!season)throw new Error('season required');return this.get(`/${season}/projections`,{week,position,positions,scoring,players,filters})}
+ playerPoints({season,start,end,position='ALL',scoring='PPR'}={}){if(!season)throw new Error('season required');return this.get(`/${season}/player-points`,{start,end,position,scoring})}
+}
+export function normalizeFantasyProsProjection(player,{season,week,source='fantasypros'}={}){const pos=String(player.position_id||player.position||'').toUpperCase(),stats=player.stats||{};if(!POSITIONS.has(pos))return null;return{season:Number(season),week:Number(week),playerId:String(player.fpid??player.player_id??''),fantasyProsId:String(player.fpid??player.player_id??''),name:player.name||player.player_name||null,position:pos,nflTeam:player.team_id||player.player_team_id||null,projection:Number(stats.points_half??stats.points??player.points??0),projectionStats:{...stats},source,status:'ACTIVE'}}
+export function normalizeFantasyProsProjections(payload,{season,week}={}){const rows=payload.players||payload.player||[];return rows.map(p=>normalizeFantasyProsProjection(p,{season:season??payload.season,week:week??payload.week})).filter(Boolean)}
+export function inspectFantasyProsResponse(payload){const rows=payload?.players||payload?.player||[];return{season:payload?.season??null,week:payload?.week??null,reportedCount:Number(payload?.count??rows.length),returnedCount:rows.length,truncated:Number(payload?.count??rows.length)>rows.length,positions:payload?.positions??payload?.position??null,scoring:payload?.scoring??null,statFields:[...new Set(rows.flatMap(r=>Object.keys(r.stats||{})))].sort()}}
