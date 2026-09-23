@@ -17,3 +17,4 @@ jobs:
       - run: npm run validate:scoring
       - run: npm run validate:special-teams
       - run: npm run validate:dst-pbp
+      - run: npm run validate:dst-reconcile
