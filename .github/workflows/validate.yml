@@ -15,3 +15,5 @@ jobs:
       - run: npm test
       - run: npm run smoke:nflverse
       - run: npm run validate:scoring
+      - run: npm run validate:special-teams
+      - run: npm run validate:dst-pbp
