@@ -4,9 +4,12 @@ import {evaluatePointForecasts,evaluateProbabilityForecasts,compareModels} from 
 import {forecastPlayerMean,runHistoricalExperiment} from '../src/model/experiment.js';
 import {getModelVariant} from '../src/model/model-variants.js';
 import {simulatePlayer} from '../src/simulator.js';
+import {ingestHistoricalRows,rollingSeasonFolds} from '../src/data/historical.js';
+import {runRollingBacktest,aggregateBacktest} from '../src/model/season-backtest.js';
 const points=[{predicted:10,actual:12},{predicted:20,actual:18}];assert.equal(mae(points),2);assert.equal(rmse(points),2);assert.deepEqual(evaluatePointForecasts(points),{n:2,mae:2,rmse:2});
 const probs=[{probability:.9,outcome:1},{probability:.8,outcome:1},{probability:.2,outcome:0},{probability:.1,outcome:0}];assert.ok(brier(probs)<.03);const ev=evaluateProbabilityForecasts(probs,{bins:5});assert.equal(ev.n,4);assert.ok(ev.logLoss<.2);assert.ok(expectedCalibrationError(probs,5)<.2);assert.equal(calibrationBins(probs,5).reduce((s,b)=>s+b.n,0),4);
-const cmp=compareModels({weak:[{predicted:0,actual:10}],strong:[{predicted:9,actual:10}]});assert.equal(cmp[0].model,'strong');
-const baseline=getModelVariant('baseline');assert.equal(simulatePlayer(15,'WR',()=>.01,null,{variant:baseline}),15);const fm=forecastPlayerMean({projection:15,actual:14,position:'WR'},{variant:'baseline',draws:20});assert.equal(fm,15);
+const cmp=compareModels({weak:[{predicted:0,actual:10}],strong:[{predicted:9,actual:10}]});assert.equal(cmp[0].model,'strong');const baseline=getModelVariant('baseline');assert.equal(simulatePlayer(15,'WR',()=>.01,null,{variant:baseline}),15);assert.equal(forecastPlayerMean({projection:15,actual:14,position:'WR'},{variant:'baseline',draws:20}),15);
+const raw=[{season:2024,week:1,playerId:'1',position:'QB',projection:20,actual:21},{season:2025,week:1,playerId:'1',position:'QB',projection:22,actual:20},{season:2026,week:1,playerId:'2',position:'WR',projection:15,actual:16},{season:2026,week:99,playerId:'bad',position:'WR',projection:1,actual:1}],ing=ingestHistoricalRows(raw);assert.equal(ing.summary.accepted,3);assert.equal(ing.summary.rejected,1);assert.equal(rollingSeasonFolds(ing.accepted).length,2);
+const bt=runRollingBacktest(raw,{variants:['baseline','volatility'],draws:50,seed:7}),agg=aggregateBacktest(bt);assert.equal(bt.folds.length,2);assert.equal(agg.length,2);assert.ok(agg.every(x=>Number.isFinite(x.rmse)));assert.ok(agg.every(x=>x.rmseImprovementVsBaseline!=null));
 const exp=runHistoricalExperiment([{projection:10,actual:11,position:'QB'},{projection:20,actual:18,position:'WR'}],{variants:['baseline','volatility'],draws:100,seed:5});assert.equal(exp.length,2);assert.ok(exp.every(x=>Number.isFinite(x.rmse)));
 console.log('backtest-tests: all checks passed');
