@@ -1,0 +1,27 @@
+name: FantasyPros Diagnostic
+on:
+  workflow_dispatch:
+    inputs:
+      season:
+        description: NFL season to request
+        required: true
+        default: '2025'
+      week:
+        description: NFL week to request
+        required: true
+        default: '1'
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run FantasyPros diagnostic
+        env:
+          FANTASYPROS_API_KEY: ${{ secrets.FANTASYPROS_API_KEY }}
+        run: npm run diagnose:fantasypros -- '${{ inputs.season }}' '${{ inputs.week }}'
