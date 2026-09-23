@@ -1,1 +1,1 @@
-{"name":"fantasy-playoff-simulator","version":"0.1.0","private":true,"type":"module","scripts":{"test":"node tests/model-tests.mjs && node tests/engine-tests.mjs && node tests/backtest-tests.mjs && node tests/historical-tests.mjs"}}
+{"name":"fantasy-playoff-simulator","version":"0.1.0","private":true,"type":"module","scripts":{"test":"node tests/model-tests.mjs && node tests/engine-tests.mjs && node tests/backtest-tests.mjs && node tests/historical-tests.mjs && node tests/importer-tests.mjs"}}
