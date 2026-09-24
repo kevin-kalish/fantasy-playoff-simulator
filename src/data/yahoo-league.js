@@ -1,51 +1,22 @@
 import {buildYahooSnapshot,yahooCollection,yahooPlayer,yahooStanding,yahooProperties,yahooValue} from './yahoo-normalize.js';
 import {validateLeagueSnapshot} from './league-snapshot.js';
-
-const props=node=>yahooProperties(node);
-const val=node=>yahooValue(node);
-const num=(v,fallback=0)=>{const n=Number(val(v));return Number.isFinite(n)?n:fallback};
-
-function findObject(node,key){
- if(!node||typeof node!=='object')return null;
- if(Array.isArray(node)){for(const x of node){const r=findObject(x,key);if(r)return r}return null}
- if(node[key])return Array.isArray(node[key])?props(node[key]):node[key];
- for(const x of Object.values(node)){const r=findObject(x,key);if(r)return r}
- return null;
-}
+const props=node=>yahooProperties(node),val=node=>yahooValue(node);const num=(v,fallback=0)=>{const n=Number(val(v));return Number.isFinite(n)?n:fallback};
+function findObject(node,key){if(!node||typeof node!=='object')return null;if(Array.isArray(node)){for(const x of node){const r=findObject(x,key);if(r)return r}return null}if(node[key])return Array.isArray(node[key])?props(node[key]):node[key];for(const x of Object.values(node)){const r=findObject(x,key);if(r)return r}return null}
 function teamsFrom(json){const league=findObject(json?.fantasy_content,'league');return yahooCollection(league?.teams,'team')}
 function playersFromRoster(json){const roster=findObject(json?.fantasy_content,'roster');return yahooCollection(roster?.players,'player').map(p=>yahooPlayer(Object.entries(p).map(([k,v])=>({[k]:v}))))}
 function starters(players){return players.filter(p=>!['BN','IR','IL','NA'].includes(String(p.lineupSlot||'').toUpperCase()))}
 function teamKey(t){return String(val(t.team_key)||val(t.team_id)||'')}
 function matchupTeams(matchup){return yahooCollection(matchup?.teams,'team').map(teamKey).filter(Boolean)}
-function scheduleFrom(json){
- const league=findObject(json?.fantasy_content,'league'),weeks=new Map();
- const matchups=yahooCollection(league?.scoreboard?.matchups,'matchup');
- for(const m of matchups){const week=num(m.week);if(!week)continue;const ids=matchupTeams(m);if(ids.length<2)continue;if(!weeks.has(week))weeks.set(week,[]);weeks.get(week).push(ids.slice(0,2))}
- return [...weeks].sort((a,b)=>a[0]-b[0]).map(([week,matchups])=>({week,matchups}));
-}
+function scheduleFrom(json){const league=findObject(json?.fantasy_content,'league'),weeks=new Map();const matchups=yahooCollection(league?.scoreboard?.matchups,'matchup');for(const m of matchups){const week=num(m.week);if(!week)continue;const ids=matchupTeams(m);if(ids.length<2)continue;if(!weeks.has(week))weeks.set(week,[]);weeks.get(week).push(ids.slice(0,2))}return[...weeks].sort((a,b)=>a[0]-b[0]).map(([week,matchups])=>({week,matchups}))}
 function playoffStart(settings){return num(settings.playoff_start_week||settings.playoff_start,0)}
 function regularSeasonEnd(settings,currentWeek){const start=playoffStart(settings);return start>1?start-1:Math.max(Number(currentWeek)||1,14)}
+function normalizeYahooSlot(position){const p=String(val(position)||'').toUpperCase().replace(/\s+/g,'');if(p==='W/R/T'||p==='W/R/T/Q')return p==='W/R/T/Q'?'SUPERFLEX':'RB/WR/TE';if(p==='W/T')return'WR/TE';if(p==='W/R')return'RB/WR';if(p==='Q/W/R/T')return'SUPERFLEX';if(p==='DEF'||p==='D/ST')return'DEF';return p}
+function lineupSlots(settings){const raw=settings.roster_positions;if(!raw)return[];const rows=[];const visit=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){for(const x of node)visit(x);return}if('position' in node){const slot=normalizeYahooSlot(node.position),count=Math.max(1,num(node.count,1));if(!['BN','IR','IL','NA'].includes(slot))for(let i=0;i<count;i++)rows.push(slot);return}for(const x of Object.values(node))visit(x)};visit(raw);return rows}
 
 export async function loadYahooLeagueSnapshot(get,{leagueKey,season,week,includeWeeklyLineups=true}={}){
- if(!leagueKey)throw new Error('Yahoo leagueKey is required.');
- const currentWeek=Number(week)||1;
- const [settingsJson,teamsJson]=await Promise.all([get(`league/${leagueKey}/settings`),get(`league/${leagueKey}/teams`)]);
- const league=findObject(settingsJson?.fantasy_content,'league')||{},settings=league.settings||{};
- const rawTeams=teamsFrom(teamsJson),endWeek=regularSeasonEnd(settings,currentWeek),remainingWeeks=[];
- for(let w=currentWeek;w<=endWeek;w++)remainingWeeks.push(w);
- const scoreboardRows=await Promise.all(remainingWeeks.map(async w=>({week:w,json:await get(`league/${leagueKey}/scoreboard;week=${w}`)})));
- const schedule=scoreboardRows.flatMap(x=>scheduleFrom(x.json)).filter(x=>x.week>=currentWeek&&x.week<=endWeek);
- const teams=await Promise.all(rawTeams.map(async t=>{
-  const id=teamKey(t);
-  const rosterJson=await get(`team/${id}/roster;week=${currentWeek}`),roster=playersFromRoster(rosterJson),lineup=starters(roster),weeklyLineups={};
-  if(includeWeeklyLineups){
-   const rows=await Promise.all(remainingWeeks.map(async w=>({week:w,json:w===currentWeek?rosterJson:await get(`team/${id}/roster;week=${w}`)})));
-   for(const row of rows)weeklyLineups[row.week]=starters(playersFromRoster(row.json));
-  }
-  return {id,name:String(val(t.name)||id),...yahooStanding(t),lineup,roster,...(includeWeeklyLineups?{weeklyLineups}:{})};
- }));
- const snapshot=buildYahooSnapshot({source:{leagueId:leagueKey,season:num(league.season,Number(season)||0)},teams,schedule,playoffSpots:num(settings.num_playoff_teams,0),playoffWeeks:playoffStart(settings)?[playoffStart(settings),playoffStart(settings)+1,playoffStart(settings)+2]:undefined,reseed:String(val(settings.uses_playoff_reseeding)||'1')!=='0'});
- const validation=validateLeagueSnapshot(snapshot);
- if(!validation.valid)throw new Error(`Yahoo snapshot validation failed:\n- ${validation.errors.join('\n- ')}`);
- return validation.league;
+ if(!leagueKey)throw new Error('Yahoo leagueKey is required.');const currentWeek=Number(week)||1;
+ const[settingsJson,teamsJson]=await Promise.all([get(`league/${leagueKey}/settings`),get(`league/${leagueKey}/teams`)]);const league=findObject(settingsJson?.fantasy_content,'league')||{},settings=league.settings||{},slots=lineupSlots(settings);const rawTeams=teamsFrom(teamsJson),endWeek=regularSeasonEnd(settings,currentWeek),remainingWeeks=[];for(let w=currentWeek;w<=endWeek;w++)remainingWeeks.push(w);
+ const scoreboardRows=await Promise.all(remainingWeeks.map(async w=>({week:w,json:await get(`league/${leagueKey}/scoreboard;week=${w}`)})));const schedule=scoreboardRows.flatMap(x=>scheduleFrom(x.json)).filter(x=>x.week>=currentWeek&&x.week<=endWeek);
+ const teams=await Promise.all(rawTeams.map(async t=>{const id=teamKey(t);const rosterJson=await get(`team/${id}/roster;week=${currentWeek}`),roster=playersFromRoster(rosterJson),lineup=starters(roster),weeklyLineups={};if(includeWeeklyLineups){const rows=await Promise.all(remainingWeeks.map(async w=>({week:w,json:w===currentWeek?rosterJson:await get(`team/${id}/roster;week=${w}`)})));for(const row of rows)weeklyLineups[row.week]=starters(playersFromRoster(row.json))}return{id,name:String(val(t.name)||id),...yahooStanding(t),lineup,roster,...(includeWeeklyLineups?{weeklyLineups}:{})}}));
+ const snapshot=buildYahooSnapshot({source:{leagueId:leagueKey,season:num(league.season,Number(season)||0)},teams,schedule,playoffSpots:num(settings.num_playoff_teams,0),playoffWeeks:playoffStart(settings)?[playoffStart(settings),playoffStart(settings)+1,playoffStart(settings)+2]:undefined,reseed:String(val(settings.uses_playoff_reseeding)||'1')!=='0',...(slots.length?{lineupSlots:slots}:{})});const validation=validateLeagueSnapshot(snapshot);if(!validation.valid)throw new Error(`Yahoo snapshot validation failed:\n- ${validation.errors.join('\n- ')}`);return validation.league;
 }
