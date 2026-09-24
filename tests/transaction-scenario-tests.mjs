@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {applyAddDropScenario} from '../src/model/transaction-scenarios.js';
+const p=(id,position,projection)=>({id,name:id,position,nflTeam:'BUF',projection});
+const base={lineupSlots:['QB','RB'],teams:[{id:'A',roster:[p('QB1','QB',20),p('RB1','RB',10),p('RB2','RB',8)],weeklyLineups:{2:[p('QB1','QB',20),p('RB1','RB',10)]}}],schedule:[{week:2,matchups:[]}],playoffWeeks:[3]};
+const rows=[{week:2,playerId:'QB1',projection:20},{week:2,playerId:'RB2',projection:8},{week:2,playerId:'RB3',projection:16},{week:3,playerId:'QB1',projection:21},{week:3,playerId:'RB2',projection:9},{week:3,playerId:'RB3',projection:17}];
+const changed=applyAddDropScenario(base,{teamId:'A',addPlayer:p('RB3','RB',0),dropPlayerId:'RB1',projectionRows:rows});
+assert.deepEqual(changed.teams[0].roster.map(x=>x.id),['QB1','RB2','RB3']);
+assert.equal(base.teams[0].roster[1].id,'RB1');
+assert.ok(changed.teams[0].weeklyLineups[2].some(x=>x.id==='RB3'));
+assert.ok(changed.teams[0].weeklyLineups[3].some(x=>x.id==='RB3'));
+assert.throws(()=>applyAddDropScenario(base,{teamId:'A',addPlayer:p('RB3','RB',10),dropPlayerId:'NOPE',projectionRows:rows}),/Drop player not found/);
+console.log('transaction-scenario-tests: all checks passed');
