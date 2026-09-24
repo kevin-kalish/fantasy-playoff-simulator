@@ -15,12 +15,14 @@ function normalizePlayer(raw,index,teamId){
   ...(Number.isFinite(Number(raw.cv))?{cv:Number(raw.cv)}:{}),
   ...(raw.status?{status:text(raw.status).toUpperCase()}:{}),
   ...(raw.byeWeek!=null?{byeWeek:num(raw.byeWeek,null)}:{}),
+  ...(raw.lineupSlot?{lineupSlot:text(raw.lineupSlot).toUpperCase()}:{}),
  };
 }
 
 function normalizeTeam(raw,index){
  const id=text(raw.id||raw.teamId||raw.team_id)||`T${index+1}`;
  const lineup=(raw.lineup||raw.starters||[]).map((p,i)=>normalizePlayer(p,i,id));
+ const roster=(raw.roster||raw.players||[]).map((p,i)=>normalizePlayer(p,i,id));
  const weeklyLineups={};
  for(const [week,players] of Object.entries(raw.weeklyLineups||{})) weeklyLineups[week]=(players||[]).map((p,i)=>normalizePlayer(p,i,id));
  return {
@@ -29,6 +31,7 @@ function normalizeTeam(raw,index){
   wins:num(raw.wins),losses:num(raw.losses),ties:num(raw.ties),
   points:num(raw.points??raw.pointsFor??raw.points_for),
   lineup,
+  ...(roster.length?{roster}:{}),
   ...(Object.keys(weeklyLineups).length?{weeklyLineups}:{}),
  };
 }
@@ -68,8 +71,8 @@ export function validateLeagueSnapshot(input){
  for(const team of league.teams){
   if(ids.has(team.id)) errors.push(`Duplicate team id: ${team.id}`);ids.add(team.id);
   if(team.wins<0||team.losses<0||team.ties<0) errors.push(`Team ${team.id} has a negative record value.`);
-  const all=[...team.lineup,...Object.values(team.weeklyLineups||{}).flat()];
-  if(!team.lineup.length&&!Object.keys(team.weeklyLineups||{}).length) warnings.push(`Team ${team.id} has no lineup data.`);
+  const all=[...team.lineup,...(team.roster||[]),...Object.values(team.weeklyLineups||{}).flat()];
+  if(!team.lineup.length&&!team.roster?.length&&!Object.keys(team.weeklyLineups||{}).length) warnings.push(`Team ${team.id} has no lineup data.`);
   for(const p of all){if(!POSITIONS.has(p.position)) errors.push(`Player ${p.id} on ${team.id} has unsupported position '${p.position}'.`);if(p.projection<0) errors.push(`Player ${p.id} on ${team.id} has a negative projection.`)}
  }
  const seenWeeks=new Set();
