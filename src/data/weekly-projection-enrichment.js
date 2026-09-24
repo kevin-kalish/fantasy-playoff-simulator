@@ -27,12 +27,18 @@ export function enrichWeeklyProjections(snapshot,projectionRows,{weeks=null,seas
  const targetWeeks=weeks||[...new Set([...(snapshot.schedule||[]).map(x=>Number(x.week)),...(snapshot.playoffWeeks||[]).map(Number)])].filter(Number.isInteger).sort((a,b)=>a-b);
  const index=indexRows(projectionRows);let matched=0,missing=0,bye=0,total=0;
  const teams=(snapshot.teams||[]).map(team=>{
-  const weeklyLineups={};
+  const weeklyRosters={},weeklyLineups={};
   for(const week of targetWeeks){
-   const base=team.weeklyLineups?.[week]||team.lineup||[];
-   weeklyLineups[week]=base.map(p=>{total++;const row=find(index,p,season,week);const out=apply(p,row,week);if(out.projectionStatus==='matched')matched++;else if(out.projectionStatus==='bye')bye++;else{missing++;if(strict)throw new Error(`No projection match for ${p.name} (${p.position}, ${p.nflTeam}) in week ${week}.`)}return out});
+   const base=team.roster?.length?team.roster:(team.weeklyLineups?.[week]||team.lineup||[]);
+   const enriched=base.map(p=>{total++;const row=find(index,p,season,week);const out=apply(p,row,week);if(out.projectionStatus==='matched')matched++;else if(out.projectionStatus==='bye')bye++;else{missing++;if(strict)throw new Error(`No projection match for ${p.name} (${p.position}, ${p.nflTeam}) in week ${week}.`)}return out});
+   weeklyRosters[week]=enriched;
+   if(!team.roster?.length)weeklyLineups[week]=enriched;
+   else if(team.weeklyLineups?.[week]){
+    const wanted=new Set(team.weeklyLineups[week].map(id));
+    weeklyLineups[week]=enriched.filter(p=>wanted.has(id(p)));
+   }
   }
-  return {...team,weeklyLineups};
+  return {...team,weeklyRosters,...(Object.keys(weeklyLineups).length?{weeklyLineups}:{})};
  });
  return {league:{...snapshot,teams},coverage:{total,matched,bye,missing,usable:matched+bye,matchRate:total?(matched+bye)/total:0,weeks:targetWeeks}};
 }
