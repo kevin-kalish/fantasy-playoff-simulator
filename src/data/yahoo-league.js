@@ -14,6 +14,7 @@ function findObject(node,key){
 }
 function teamsFrom(json){const league=findObject(json?.fantasy_content,'league');return yahooCollection(league?.teams,'team')}
 function playersFromRoster(json){const roster=findObject(json?.fantasy_content,'roster');return yahooCollection(roster?.players,'player').map(p=>yahooPlayer(Object.entries(p).map(([k,v])=>({[k]:v}))))}
+function starters(players){return players.filter(p=>!['BN','IR','IL','NA'].includes(String(p.lineupSlot||'').toUpperCase()))}
 function teamKey(t){return String(val(t.team_key)||val(t.team_id)||'')}
 function matchupTeams(matchup){return yahooCollection(matchup?.teams,'team').map(teamKey).filter(Boolean)}
 function scheduleFrom(json){
@@ -36,12 +37,12 @@ export async function loadYahooLeagueSnapshot(get,{leagueKey,season,week,include
  const schedule=scoreboardRows.flatMap(x=>scheduleFrom(x.json)).filter(x=>x.week>=currentWeek&&x.week<=endWeek);
  const teams=await Promise.all(rawTeams.map(async t=>{
   const id=teamKey(t);
-  const lineupJson=await get(`team/${id}/roster;week=${currentWeek}`),lineup=playersFromRoster(lineupJson),weeklyLineups={};
+  const rosterJson=await get(`team/${id}/roster;week=${currentWeek}`),roster=playersFromRoster(rosterJson),lineup=starters(roster),weeklyLineups={};
   if(includeWeeklyLineups){
-   const rows=await Promise.all(remainingWeeks.map(async w=>({week:w,json:w===currentWeek?lineupJson:await get(`team/${id}/roster;week=${w}`)})));
-   for(const row of rows)weeklyLineups[row.week]=playersFromRoster(row.json);
+   const rows=await Promise.all(remainingWeeks.map(async w=>({week:w,json:w===currentWeek?rosterJson:await get(`team/${id}/roster;week=${w}`)})));
+   for(const row of rows)weeklyLineups[row.week]=starters(playersFromRoster(row.json));
   }
-  return {id,name:String(val(t.name)||id),...yahooStanding(t),lineup,...(includeWeeklyLineups?{weeklyLineups}:{})};
+  return {id,name:String(val(t.name)||id),...yahooStanding(t),lineup,roster,...(includeWeeklyLineups?{weeklyLineups}:{})};
  }));
  const snapshot=buildYahooSnapshot({source:{leagueId:leagueKey,season:num(league.season,Number(season)||0)},teams,schedule,playoffSpots:num(settings.num_playoff_teams,0),playoffWeeks:playoffStart(settings)?[playoffStart(settings),playoffStart(settings)+1,playoffStart(settings)+2]:undefined,reseed:String(val(settings.uses_playoff_reseeding)||'1')!=='0'});
  const validation=validateLeagueSnapshot(snapshot);
