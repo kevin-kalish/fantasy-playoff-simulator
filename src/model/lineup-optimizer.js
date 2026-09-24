@@ -12,7 +12,6 @@ export function optimizeLineup(players,{week=null,slots=DEFAULT_SLOTS}={}){
   for(let j=0;j<pool.length;j++)if(!used.has(j)&&eligible(pool[j],slot)){
    used.add(j);lineup.push({...pool[j],lineupSlot:slot});search(i+1,used,lineup,score+value(pool[j]));lineup.pop();used.delete(j);
   }
-  // Allow an empty slot when roster depth/injury/bye makes a legal full lineup impossible.
   lineup.push({id:`EMPTY-${i}`,name:'Empty slot',position:String(slot),projection:0,status:'EMPTY',lineupSlot:slot});search(i+1,used,lineup,score);lineup.pop();
  };
  search(0,new Set(),[],0);
@@ -25,9 +24,9 @@ export function buildFutureWeeklyLineups(snapshot,{slots=DEFAULT_SLOTS,weeks=nul
  const teams=(snapshot.teams||[]).map(team=>{
   const weeklyLineups={...(team.weeklyLineups||{})},lineupDiagnostics={};
   for(const week of targetWeeks){
-   const source=(useRoster&&team.roster?.length?team.roster:weeklyLineups[week]||team.lineup||[]);
+   const source=team.weeklyRosters?.[week]||(useRoster&&team.roster?.length?team.roster:weeklyLineups[week]||team.lineup||[]);
    const result=optimizeLineup(source,{week,slots});weeklyLineups[week]=result.lineup;
-   lineupDiagnostics[week]={projectedPoints:result.projectedPoints,emptySlots:result.emptySlots,complete:result.complete};
+   lineupDiagnostics[week]={projectedPoints:result.projectedPoints,emptySlots:result.emptySlots,complete:result.complete,rosterPlayers:source.length};
   }
   return {...team,weeklyLineups,lineupDiagnostics};
  });
