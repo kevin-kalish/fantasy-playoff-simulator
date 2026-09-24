@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+import {parseCSV} from '../src/data/csv.js';
+import {normalizeProjectionRows,providerAudit} from '../src/data/projection-provider.js';
+import {fetchNflverseCSV} from '../src/data/nflverse-source.js';
+import {normalizeNflverseActual} from '../src/data/nflverse.js';
+import {joinHistoricalProjectionActuals,projectionCoverage} from '../src/data/historical-projections.js';
+import {runRollingCalibration,summarizeRollingCalibration} from '../src/model/rolling-calibration.js';
+const path=process.argv[2],source=process.argv[3]||'generic-csv',out=process.argv[4]||'data/private/provider-calibration-report.json',draws=Number(process.argv[5]||1500);if(!path){console.error('Usage: npm run calibrate:provider -- projections.csv [source] [report.json] [draws]');process.exit(2)}
+const projections=normalizeProjectionRows(parseCSV(fs.readFileSync(path,'utf8')),{source});const seasons=[...new Set(projections.map(r=>r.season))].sort(),actuals=[];for(const season of seasons){const dl=await fetchNflverseCSV('player',season);for(const r of parseCSV(dl.text)){if(String(r.season_type||'REG').toUpperCase()!=='REG')continue;const row=normalizeNflverseActual(r);if(row.position&&Number(row.week)>=1&&Number(row.week)<=18)actuals.push(row);}}
+const joined=joinHistoricalProjectionActuals(projections,actuals),result=runRollingCalibration(joined.rows,{draws}),report={generatedAt:new Date().toISOString(),projectionSource:source,actualSource:'nflverse',providerAudit:providerAudit(projections,{source}),projectionCoverage:projectionCoverage(projections),joinSummary:joined.summary,calibration:summarizeRollingCalibration(result),byPosition:result.byPosition};fs.mkdirSync(out.split('/').slice(0,-1).join('/')||'.',{recursive:true});fs.writeFileSync(out,JSON.stringify(report,null,2));console.log(JSON.stringify({out,source,seasons,projectionRows:projections.length,actualRows:actuals.length,matchedRows:joined.rows.length,matchRate:joined.summary.matchRate,folds:result.folds.length,recommendation:result.recommendation,comparison:result.comparison},null,2));if(!result.folds.length)process.exitCode=2;
