@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {applyTradeScenario,evaluateTradeScenario} from '../src/model/trade-evaluator.js';
+const p=(id,name,pos,projection)=>({id,name,position:pos,projection});
+const input={simulations:1000,seed:77,modelVariant:'fixed',lineupSlots:['QB','RB'],playoffTeams:2,playoffWeeks:[3],teams:[{id:'A',name:'Alpha',wins:2,pointsFor:200,roster:[p('A-QB','AQ','QB',15),p('A-RB','AR','RB',10)],weeklyLineups:{1:[p('A-QB','AQ','QB',15),p('A-RB','AR','RB',10)],2:[p('A-QB','AQ','QB',15),p('A-RB','AR','RB',10)],3:[p('A-QB','AQ','QB',15),p('A-RB','AR','RB',10)]}},{id:'B',name:'Bravo',wins:1,pointsFor:180,roster:[p('B-QB','BQ','QB',14),p('B-RB','BR','RB',20)],weeklyLineups:{1:[p('B-QB','BQ','QB',14),p('B-RB','BR','RB',20)],2:[p('B-QB','BQ','QB',14),p('B-RB','BR','RB',20)],3:[p('B-QB','BQ','QB',14),p('B-RB','BR','RB',20)]}}],schedule:[{week:1,home:'A',away:'B'},{week:2,home:'B',away:'A'}]};
+const rows=[];for(const week of [1,2,3])for(const t of input.teams)for(const x of t.roster)rows.push({week,playerId:x.id,projection:x.projection});
+const traded=applyTradeScenario(input,{teamAId:'A',teamBId:'B',teamAGives:['A-RB'],teamBGives:['B-RB'],projectionRows:rows});
+assert.equal(traded.teams[0].roster.some(x=>x.id==='B-RB'),true);assert.equal(traded.teams[1].roster.some(x=>x.id==='A-RB'),true);assert.equal(traded.teams[0].weeklyLineups[1].some(x=>x.id==='B-RB'),true);
+const result=evaluateTradeScenario(input,{teamAId:'A',teamBId:'B',teamAGives:['A-RB'],teamBGives:['B-RB'],projectionRows:rows});
+assert.equal(result.trade.type,'trade');assert.equal(result.teams.A.teamId,'A');assert.equal(result.teams.B.teamId,'B');assert.ok(result.teams.A.winsDelta>0);assert.ok(result.teams.B.winsDelta<0);
+assert.throws(()=>applyTradeScenario(input,{teamAId:'A',teamBId:'B',teamAGives:['NOPE'],teamBGives:['B-RB'],projectionRows:rows}),/not found/);
+console.log('trade-evaluator-tests: all checks passed');
