@@ -13,13 +13,18 @@ const enriched=enrichLeagueSnapshotProjections(snapshot,[{playerId:'461.p.1',nam
 assert.equal(enriched.matched,2);assert.equal(enriched.total,2);assert.equal(enriched.matchRate,1);assert.equal(enriched.league.teams[0].lineup[0].projection,14.25);assert.equal(enriched.league.teams[1].lineup[0].projection,9.5);
 
 let requested='';
-const discoveryFixture={
- fantasy_content:{
-  users:{
-   0:{user:[{}, {games:{0:{game:[{}, {leagues:{0:{league:[{league_key:'461.l.99'},{league_id:'99'},{name:'Test League'},{season:'2025'}]},count:1}}]}}]}}
-  }
- }
-};
+const league=[
+ {league_key:'461.l.99'},
+ {league_id:'99'},
+ {name:'Test League'},
+ {season:'2025'}
+];
+const leagues={0:{league},count:1};
+const game=[{}, {leagues}];
+const games={0:{game}};
+const user=[{}, {games}];
+const discoveryFixture={fantasy_content:{users:{0:{user}}}};
+
 const get=createYahooClient({
  accessToken:'test-token',
  fetchImpl:async(url,opts)=>{
@@ -28,7 +33,7 @@ const get=createYahooClient({
   return {ok:true,json:async()=>discoveryFixture};
  }
 });
-const leagues=await discoverYahooNflLeagues(get,{season:2025});
+const found=await discoverYahooNflLeagues(get,{season:2025});
 assert.ok(requested.includes('game_codes=nfl'));
-assert.equal(leagues[0].leagueKey,'461.l.99');
+assert.equal(found[0].leagueKey,'461.l.99');
 console.log('yahoo-tests: all checks passed');
