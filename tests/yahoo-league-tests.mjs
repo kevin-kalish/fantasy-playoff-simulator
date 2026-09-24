@@ -9,10 +9,8 @@ const team=(id,name,wins,losses,points)=>({
 });
 const player=(id,name,pos,nflTeam)=>[prop('player_key',id),prop('name',{full:name}),prop('editorial_team_abbr',nflTeam),prop('display_position',pos)];
 const collection=(key,rows)=>Object.fromEntries([...rows.map((row,i)=>[String(i),{[key]:Array.isArray(row)?row:Object.entries(row).map(([k,v])=>prop(k,v))}]),['count',rows.length]]);
-const leaguePayload=league=>({fantasy_content:{league}});
 const rosterPayload=players=>({fantasy_content:{team:[{}, {roster:{players:collection('player',players)}}]}});
 const matchup=(week,a,b)=>({week:String(week),teams:collection('team',[{team_key:a},{team_key:b}])});
-const scoreboardPayload=(week,pairs)=>leaguePayload:[{}];
 
 const settings={playoff_start_week:'15',num_playoff_teams:'2',uses_playoff_reseeding:'1'};
 const rawTeams=[team('461.l.1.t.1','Alpha',7,3,1100),team('461.l.1.t.2','Beta',6,4,1050)];
