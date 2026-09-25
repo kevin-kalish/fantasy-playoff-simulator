@@ -27,7 +27,7 @@ const original=bravo.roster.find(p=>p.id==='T2-RB');
 if(benchIndex>=0&&original)w11[benchIndex]={...original,projection:18.9,lineupSlot:'RB'};
 
 const spec={
- teamId:'T2',week:11,projectionRows,
+ teamId:'T2',week:11,projectionRows,projectionSource:'fixture',
  startSit:{slot:'RB'},
  waivers:{candidates:waiverCandidates,dropPlayerIds:['T2-RB','T2-WR'],weeks,lineupSlots:snapshot.lineupSlots},
  trades:[{label:'Trade Bravo WR for Charlie RB',teamAId:'T2',teamBId:'T3',teamAGives:['T2-WR'],teamBGives:['T3-RB'],weeks,lineupSlots:snapshot.lineupSlots}],
@@ -39,6 +39,7 @@ for(const r of report.recommendations){
  const pointText=Number.isFinite(r.projectedPointDelta)?` (${r.projectedPointDelta>=0?'+':''}${r.projectedPointDelta.toFixed(2)} projected pts)`:'';
  const c=r.confirmation;
  const confirmText=c?` | confirmed ${(100*c.meanChampionshipDelta).toFixed(2)}% championship, range ${(100*c.stability.min).toFixed(2)}% to ${(100*c.stability.max).toFixed(2)}%, stability ${String(c.stability.confidence).toUpperCase()}, direction ${c.directionConsistent?'consistent':'mixed'}`:'';
- console.log(`#${r.rank} [${r.type}] ${r.summary}${pointText}${confirmText}`);
+ const trust=` | ${r.trust.status}${r.trust.inputSanity==='review'?' | INPUT REVIEW':''}`;
+ console.log(`#${r.rank} [${r.type}] ${r.summary}${pointText}${confirmText}${trust}`);
 }
 console.log(JSON.stringify(report,null,2));
