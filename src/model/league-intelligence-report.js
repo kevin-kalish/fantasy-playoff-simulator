@@ -1,5 +1,6 @@
 import {simulateLeague} from '../simulator.js';
 import {buildWeeklyGMRecommendations} from './gm-recommendation-engine.js';
+import {buildWeeklyMatchupIntelligence} from './weekly-matchup-intelligence.js';
 import {requireSimulationTrust} from './simulation-trust-gate.js';
 
 const num=x=>Number.isFinite(Number(x))?Number(x):0;
@@ -11,13 +12,15 @@ export function buildLeagueIntelligenceReport(input,{teamId,week,projectionRows=
  const gate=requireSimulationTrust(input,trust);
  const team=input.teams.find(t=>String(t.id)===String(teamId));if(!team)throw new Error(`Unknown team: ${teamId}`);
  const results=simulateLeague(input),outlook=results.find(r=>String(r.id)===String(teamId));
+ const matchup=buildWeeklyMatchupIntelligence(input,{teamId,week,trust});
  const gm=buildWeeklyGMRecommendations(input,{teamId,week,projectionRows,waivers,trades,startSit,limit,validation},{throwOnInvalid:true,trust});
  return {
-  schemaVersion:1,
+  schemaVersion:2,
   generatedAt:new Date().toISOString(),
   team:{id:team.id,name:team.name,record:{wins:num(team.wins),losses:num(team.losses),ties:num(team.ties)},points:num(team.points),currentSeed:currentSeed(input,teamId)},
   league:{teamCount:input.teams.length,playoffSpots:input.playoffSpots,playoffWeeks:[...(input.playoffWeeks||[])],reseed:Boolean(input.reseed),tiebreaker:input.tiebreaker},
   outlook:{playoffProbability:outlook.playoffProbability,championshipProbability:outlook.championshipProbability,averageWins:outlook.averageWins,seedDistribution:seedDistribution(outlook),simulations:outlook.simulations,seed:outlook.seed,modelVariant:outlook.modelVariant},
+  matchup,
   recommendations:{actionCount:gm.actionCount,validation:gm.validation,items:gm.recommendations},
   roster:rosterSummary(team,week),
   trust:{trusted:gate.trusted,auditPassed:gate.auditPassed,projectionCoverage:input.metadata?.projectionCoverage??null,source:input.metadata?.source??null}
