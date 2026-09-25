@@ -1,0 +1,3 @@
+import fs from 'node:fs';import {buildWeeklyGMRecommendations} from '../src/model/gm-recommendation-engine.js';
+const [inputPath,specPath]=process.argv.slice(2);if(!inputPath||!specPath){console.error('Usage: npm run gm:weekly -- <simulation-input.json> <gm-spec.json>');process.exit(1)}
+const read=p=>JSON.parse(fs.readFileSync(p,'utf8')),input=read(inputPath),spec=read(specPath),report=buildWeeklyGMRecommendations(input,spec);console.log(`WEEKLY GM: ${report.teamName} Week ${report.week}`);for(const r of report.recommendations)console.log(`#${r.rank} [${r.type}] ${r.summary}`);console.log(JSON.stringify(report,null,2));
