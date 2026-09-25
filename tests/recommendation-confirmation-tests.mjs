@@ -6,5 +6,5 @@ const input={simulations:1000,seed:88,modelVariant:'volatility',lineupSlots:['QB
 const rows=[{week:1,playerId:'AR',projection:10},{week:1,playerId:'AB',projection:15}];
 const report=confirmTopRecommendations(input,{teamId:'A',week:1,projectionRows:rows,startSit:{slot:'RB'},waivers:null,trades:[],limit:5},{top:1,seeds:[11,22,33],simulations:2000});
 const r=report.recommendations[0];
-assert.equal(r.type,'start-sit');assert.equal(r.confirmation.samples.length,3);assert.equal(r.confirmation.simulationsPerSeed,2000);assert.equal(r.confirmation.stability.samples,3);assert.equal(r.confirmation.directionConsistent,true);assert.ok(r.confirmation.meanChampionshipDelta>=0);
+assert.equal(r.type,'start-sit');assert.equal(r.confirmation.samples.length,3);assert.equal(r.confirmation.simulationsPerSeed,2000);assert.equal(r.confirmation.stability.samples,3);assert.equal(r.confirmation.directionConsistent,true);assert.ok(r.confirmation.meanChampionshipDelta>=0);assert.ok(['CONFIRMED_HIGH','CONFIRMED_MODERATE','LOW_CONFIDENCE'].includes(r.trust.status));assert.equal(r.provenance.preview.simulations,1000);assert.equal(r.provenance.confirmation.totalSimulations,6000);
 console.log('recommendation-confirmation-tests: all checks passed');
