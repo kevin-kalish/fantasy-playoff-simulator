@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {makeYahooReferenceApiFixture} from '../fixtures/yahoo-api-reference-week3.mjs';
+import {runYahooLeagueAudit,formatYahooAuditReport} from '../src/data/yahoo-live-audit.js';
+const reference=JSON.parse(fs.readFileSync(new URL('../fixtures/yahoo-reference-2026-week3.json',import.meta.url),'utf8'));
+const fixture=makeYahooReferenceApiFixture();
+const good=await runYahooLeagueAudit(fixture.get,{leagueKey:fixture.leagueKey,season:2026,week:3,reference});
+assert.equal(good.report.passed,true);assert.match(formatYahooAuditReport(good.report),/SAFE TO PROCEED/);assert.match(formatYahooAuditReport(good.report),/PLAYOFF_SPOTS/);
+const badRef=structuredClone(reference);badRef.playoffs.spots=6;
+const bad=await runYahooLeagueAudit(fixture.get,{leagueKey:fixture.leagueKey,season:2026,week:3,reference:badRef});
+assert.equal(bad.report.passed,false);assert(bad.report.failures.some(x=>x.code==='PLAYOFF_SPOTS'));assert.match(formatYahooAuditReport(bad.report),/BLOCKED/);
+console.log('yahoo-live-audit-tests: all checks passed');
