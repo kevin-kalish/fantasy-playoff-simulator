@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {auditImportedYahooLeague,rosterShapeFromYahooSnapshot} from '../src/data/yahoo-reference-bridge.js';
+const reference=JSON.parse(fs.readFileSync(new URL('../fixtures/yahoo-reference-2026-week3.json',import.meta.url),'utf8'));
+const active=['QB','RB','RB','WR','WR','TE','RB/WR/TE','K','DEF'];
+const roster=[...active.map((lineupSlot,i)=>({id:`P${i}`,lineupSlot})),...Array.from({length:6},(_,i)=>({id:`B${i}`,lineupSlot:'BN'})),...Array.from({length:2},(_,i)=>({id:`I${i}`,lineupSlot:'IR'}))];
+const snapshot={teams:Array.from({length:10},(_,i)=>i?{id:`T${i+1}`,name:`Team ${i+1}`,wins:1,losses:1,ties:0,points:200}:{id:'T1',name:'The Fightin’ Kali',wins:0,losses:2,ties:0,points:177.54,pointsAgainst:237.20,rank:10,waiverPriority:10,moves:1,roster}),lineupSlots:active,playoffSpots:8,playoffWeeks:[15,16,17],reseed:true,playoffTiebreaker:'higher-seed'};
+assert.deepEqual(rosterShapeFromYahooSnapshot(snapshot),reference.roster);
+const audit=auditImportedYahooLeague(snapshot,reference);assert.equal(audit.passed,true,JSON.stringify(audit.failures));
+const broken=structuredClone(snapshot);broken.lineupSlots=broken.lineupSlots.filter(x=>x!=='K');
+const failed=auditImportedYahooLeague(broken,reference);assert.equal(failed.passed,false);assert(failed.failures.some(x=>x.code==='ROSTER_K'));
+console.log('yahoo-reference-bridge-tests: all checks passed');
