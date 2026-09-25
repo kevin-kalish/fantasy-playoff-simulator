@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {confirmTopRecommendations} from '../src/model/recommendation-confirmation.js';
+const p=(id,name,pos,projection,slot=null)=>({id,name,position:pos,projection,stdev:4,...(slot?{lineupSlot:slot}:{})});
+const aq=p('AQ','Alpha QB','QB',15),ar=p('AR','Alpha RB','RB',10),ab=p('AB','Alpha Bench RB','RB',15),bq=p('BQ','Bravo QB','QB',14),br=p('BR','Bravo RB','RB',14);
+const input={simulations:1000,seed:88,modelVariant:'volatility',lineupSlots:['QB','RB'],playoffSpots:1,playoffWeeks:[3],teams:[{id:'A',name:'Alpha',wins:1,losses:1,points:200,roster:[aq,ar,ab],weeklyLineups:{1:[p('AQ','Alpha QB','QB',15,'QB'),p('AR','Alpha RB','RB',10,'RB')],2:[p('AQ','Alpha QB','QB',15,'QB'),p('AR','Alpha RB','RB',10,'RB')],3:[p('AQ','Alpha QB','QB',15,'QB'),p('AR','Alpha RB','RB',10,'RB')]}},{id:'B',name:'Bravo',wins:1,losses:1,points:199,roster:[bq,br],weeklyLineups:{1:[p('BQ','Bravo QB','QB',14,'QB'),p('BR','Bravo RB','RB',14,'RB')],2:[p('BQ','Bravo QB','QB',14,'QB'),p('BR','Bravo RB','RB',14,'RB')],3:[p('BQ','Bravo QB','QB',14,'QB'),p('BR','Bravo RB','RB',14,'RB')]}}],schedule:[{week:1,matchups:[['A','B']]},{week:2,matchups:[['A','B']]}]};
+const rows=[{week:1,playerId:'AR',projection:10},{week:1,playerId:'AB',projection:15}];
+const report=confirmTopRecommendations(input,{teamId:'A',week:1,projectionRows:rows,startSit:{slot:'RB'},waivers:null,trades:[],limit:5},{top:1,seeds:[11,22,33],simulations:2000});
+const r=report.recommendations[0];
+assert.equal(r.type,'start-sit');assert.equal(r.confirmation.samples.length,3);assert.equal(r.confirmation.simulationsPerSeed,2000);assert.equal(r.confirmation.stability.samples,3);assert.equal(r.confirmation.directionConsistent,true);assert.ok(r.confirmation.meanChampionshipDelta>=0);
+console.log('recommendation-confirmation-tests: all checks passed');
