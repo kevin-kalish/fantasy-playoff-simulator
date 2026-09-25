@@ -1,5 +1,6 @@
 const POSITIONS=new Set(['QB','RB','WR','TE','K','DEF']);
 const num=(v,fallback=0)=>{const n=Number(v);return Number.isFinite(n)?n:fallback};
+const optionalNum=v=>v==null||v===''?undefined:(Number.isFinite(Number(v))?Number(v):undefined);
 const text=(v)=>v==null?'':String(v).trim();
 
 export const LEAGUE_SNAPSHOT_VERSION=1;
@@ -25,14 +26,16 @@ function normalizeTeam(raw,index){
  const roster=(raw.roster||raw.players||[]).map((p,i)=>normalizePlayer(p,i,id));
  const weeklyLineups={};
  for(const [week,players] of Object.entries(raw.weeklyLineups||{})) weeklyLineups[week]=(players||[]).map((p,i)=>normalizePlayer(p,i,id));
- return {id,name:text(raw.name||raw.teamName||raw.team_name)||id,wins:num(raw.wins),losses:num(raw.losses),ties:num(raw.ties),points:num(raw.points??raw.pointsFor??raw.points_for),lineup,...(roster.length?{roster}:{}),...(Object.keys(weeklyLineups).length?{weeklyLineups}:{})};
+ const pointsAgainst=optionalNum(raw.pointsAgainst??raw.points_against),rank=optionalNum(raw.rank??raw.standingRank??raw.standing_rank),waiverPriority=optionalNum(raw.waiverPriority??raw.waiver_priority),moves=optionalNum(raw.moves??raw.numberOfMoves??raw.number_of_moves);
+ return {id,name:text(raw.name||raw.teamName||raw.team_name)||id,wins:num(raw.wins),losses:num(raw.losses),ties:num(raw.ties),points:num(raw.points??raw.pointsFor??raw.points_for),...(pointsAgainst!==undefined?{pointsAgainst}:{}),...(rank!==undefined?{rank}:{}),...(waiverPriority!==undefined?{waiverPriority}:{}),...(moves!==undefined?{moves}:{}),lineup,...(roster.length?{roster}:{}),...(Object.keys(weeklyLineups).length?{weeklyLineups}:{})};
 }
 function normalizeMatchup(raw){if(Array.isArray(raw))return[text(raw[0]),text(raw[1])];return[text(raw.home||raw.team1||raw.a),text(raw.away||raw.team2||raw.b)]}
 function normalizeWeek(raw){return{week:num(raw.week),matchups:(raw.matchups||raw.games||[]).map(normalizeMatchup),...(raw.forcedWinners?{forcedWinners:raw.forcedWinners}:{})}}
 
 export function normalizeLeagueSnapshot(input){
  const raw=typeof input==='string'?JSON.parse(input):input;if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('League snapshot must be a JSON object.');const source=raw.source||{};
- return {schemaVersion:LEAGUE_SNAPSHOT_VERSION,source:{provider:text(source.provider||raw.provider||'manual').toLowerCase(),...(source.leagueId||raw.leagueId?{leagueId:text(source.leagueId||raw.leagueId)}:{}),...(source.season||raw.season?{season:num(source.season||raw.season)}:{})},teams:(raw.teams||[]).map(normalizeTeam),schedule:(raw.schedule||[]).map(normalizeWeek),nflGames:raw.nflGames||[],playoffSpots:num(raw.playoffSpots,8),playoffWeeks:(raw.playoffWeeks||[15,16,17]).map(Number),reseed:raw.reseed!==false,tiebreaker:text(raw.tiebreaker||'points'),...(Array.isArray(raw.lineupSlots)&&raw.lineupSlots.length?{lineupSlots:raw.lineupSlots.map(x=>text(x).toUpperCase())}:{}),...(raw.simulations!=null?{simulations:num(raw.simulations)}:{}),...(raw.seed!=null?{seed:num(raw.seed)}:{})};
+ const playoffTiebreaker=text(raw.playoffTiebreaker||raw.playoffTieBreaker||'');
+ return {schemaVersion:LEAGUE_SNAPSHOT_VERSION,source:{provider:text(source.provider||raw.provider||'manual').toLowerCase(),...(source.leagueId||raw.leagueId?{leagueId:text(source.leagueId||raw.leagueId)}:{}),...(source.season||raw.season?{season:num(source.season||raw.season)}:{})},teams:(raw.teams||[]).map(normalizeTeam),schedule:(raw.schedule||[]).map(normalizeWeek),nflGames:raw.nflGames||[],playoffSpots:num(raw.playoffSpots,8),playoffWeeks:(raw.playoffWeeks||[15,16,17]).map(Number),reseed:raw.reseed!==false,tiebreaker:text(raw.tiebreaker||'points'),...(playoffTiebreaker?{playoffTiebreaker}:{}),...(Array.isArray(raw.lineupSlots)&&raw.lineupSlots.length?{lineupSlots:raw.lineupSlots.map(x=>text(x).toUpperCase())}:{}),...(raw.simulations!=null?{simulations:num(raw.simulations)}:{}),...(raw.seed!=null?{seed:num(raw.seed)}:{})};
 }
 
 export function validateLeagueSnapshot(input){
