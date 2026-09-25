@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {assessSimulationTrust,requireSimulationTrust} from '../src/model/simulation-trust-gate.js';
+const base={metadata:{source:{provider:'fixture'},projectionCoverage:{total:10,matchRate:1}}};
+assert.equal(assessSimulationTrust(base).trusted,true);
+const yahoo={metadata:{source:{provider:'yahoo'},projectionCoverage:{total:10,matchRate:1}}};
+let r=assessSimulationTrust(yahoo);assert.equal(r.trusted,false);assert(r.errors.some(x=>x.code==='MISSING_SOURCE_AUDIT'));
+r=assessSimulationTrust(yahoo,{audit:{passed:false,failures:[{code:'PLAYOFF_SPOTS'}]}});assert.equal(r.trusted,false);assert(r.errors.some(x=>x.code==='SOURCE_AUDIT_FAILED'));
+r=assessSimulationTrust(yahoo,{audit:{passed:true,failures:[]}});assert.equal(r.trusted,true);assert.equal(r.auditPassed,true);
+r=assessSimulationTrust(base,{dataQuality:{passed:false,blockingCodes:['LOW_PROJECTION_COVERAGE']}});assert.equal(r.trusted,false);assert(r.errors.some(x=>x.code==='DATA_QUALITY_BLOCKED'));
+assert.throws(()=>requireSimulationTrust(yahoo),e=>e.code==='SIMULATION_TRUST_BLOCKED'&&e.trust?.trusted===false);
+console.log('simulation-trust-gate-tests: all checks passed');
