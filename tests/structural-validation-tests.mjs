@@ -10,24 +10,26 @@ const base={simulations:12000,seed:20260923,modelVariant:'baseline',lineupSlots:
  {id:'C',name:'C',wins:0,losses:2,points:180,roster:[qb('CQ',16),p('CR',9)],weeklyLineups:{1:[qb('CQ',16),p('CR',9)],2:[qb('CQ',16),p('CR',9)],3:[qb('CQ',16),p('CR',9)]}}
 ],schedule:[{week:1,matchups:[['A','B']]},{week:2,matchups:[['A','C']]}]};
 
-// Identity: comparing an input to an exact clone must be exactly zero under paired seeds.
 const identity=compareSimulationInputs(base,structuredClone(base),{teamId:'A'}).focus;
 assert.equal(identity.playoffProbabilityDelta,0);assert.equal(identity.championshipProbabilityDelta,0);assert.equal(identity.averageWinsDelta,0);
 
-// Transaction isolation: only the target team's roster/lineups may change.
 const rows=[1,2,3].flatMap(week=>[{week,playerId:'AQ',projection:18},{week,playerId:'AB',projection:8},{week,playerId:'AX',projection:12}]);
 const changed=applyAddDropScenario(base,{teamId:'A',addPlayer:p('AX',12),dropPlayerId:'AR',projectionRows:rows});
 assert.deepEqual(changed.teams.slice(1),base.teams.slice(1));
 assert.deepEqual(base.teams[0].roster.map(x=>x.id),['AQ','AR','AB']);
 assert.deepEqual(changed.teams[0].roster.map(x=>x.id),['AQ','AB','AX']);
 
-// Monotonic sanity: a larger projection improvement should not produce a worse paired outcome than a smaller one.
-const small=applyRosterProjectionScenario(base,{teamId:'A',playerId:'AR',projectionDelta:.1});
+const tiny=applyRosterProjectionScenario(base,{teamId:'A',playerId:'AR',projectionDelta:.1});
+const medium=applyRosterProjectionScenario(base,{teamId:'A',playerId:'AR',projectionDelta:2});
 const strong=applyRosterProjectionScenario(base,{teamId:'A',playerId:'AR',projectionDelta:5});
-const dSmall=compareSimulationInputs(base,small,{teamId:'A'}).focus;
+const dTiny=compareSimulationInputs(base,tiny,{teamId:'A'}).focus;
+const dMedium=compareSimulationInputs(base,medium,{teamId:'A'}).focus;
 const dStrong=compareSimulationInputs(base,strong,{teamId:'A'}).focus;
-assert.ok(dSmall.averageWinsDelta>=-1e-12);assert.ok(dStrong.averageWinsDelta>=dSmall.averageWinsDelta-1e-12);
-assert.ok(dStrong.playoffProbabilityDelta>=dSmall.playoffProbabilityDelta-1e-12);
-assert.ok(dStrong.championshipProbabilityDelta>=dSmall.championshipProbabilityDelta-1e-12);
+assert.ok(dTiny.averageWinsDelta>=-1e-12);assert.ok(dMedium.averageWinsDelta>=dTiny.averageWinsDelta-1e-12);assert.ok(dStrong.averageWinsDelta>=dMedium.averageWinsDelta-1e-12);
+assert.ok(dMedium.playoffProbabilityDelta>=dTiny.playoffProbabilityDelta-1e-12);assert.ok(dStrong.playoffProbabilityDelta>=dMedium.playoffProbabilityDelta-1e-12);
+assert.ok(dMedium.championshipProbabilityDelta>=dTiny.championshipProbabilityDelta-1e-12);assert.ok(dStrong.championshipProbabilityDelta>=dMedium.championshipProbabilityDelta-1e-12);
+// Near-equivalent changes must not exceed the impact of materially larger improvements.
+assert.ok(Math.abs(dTiny.averageWinsDelta)<=Math.abs(dMedium.averageWinsDelta)+1e-12);
+assert.ok(Math.abs(dTiny.championshipProbabilityDelta)<=Math.abs(dMedium.championshipProbabilityDelta)+1e-12);
 
 console.log('structural-validation-tests: all checks passed');
