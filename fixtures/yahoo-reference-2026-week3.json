@@ -1,0 +1,23 @@
+{
+  "reference": "Yahoo 2026 Week 3 screenshots",
+  "season": 2026,
+  "week": 3,
+  "teamCount": 10,
+  "referenceTeam": {"name":"The Fightin’ Kali","rank":10,"wins":0,"losses":2,"ties":0,"pointsFor":177.54,"pointsAgainst":237.20,"waiverPriority":10,"moves":1},
+  "roster": {"QB":1,"RB":2,"WR":2,"TE":1,"W/R/T":1,"K":1,"DEF":1,"BN":6,"IR":2},
+  "playoffs": {"spots":8,"weeks":[15,16,17],"reseed":true,"tieBreaker":"higher-seed"},
+  "scoring": {
+    "fractional":true,"negative":true,
+    "passing":{"yardsPerPoint":25,"touchdown":4,"interception":-1,"bonuses":[{"yards":300,"points":5},{"yards":400,"points":10}]},
+    "rushing":{"yardsPerPoint":10,"touchdown":6,"bonuses":[{"yards":100,"points":5},{"yards":200,"points":10}]},
+    "receiving":{"reception":0.5,"yardsPerPoint":10,"touchdown":6,"bonuses":[{"yards":100,"points":5},{"yards":200,"points":10}]},
+    "misc":{"returnTouchdown":6,"twoPointConversion":2,"fumbleLost":-2,"offensiveFumbleReturnTouchdown":6},
+    "kicking":{"fieldGoal":{"0-19":3,"20-29":3,"30-39":3,"40-49":4,"50+":5},"patMade":1},
+    "defense":{"pointsAllowed":{"0":10,"1-6":7,"7-13":4,"14-20":1,"21-27":0,"28-34":-1,"35+":-4},"sack":1,"interception":2,"fumbleRecovery":2,"touchdown":6,"safety":2,"blockedKick":2,"returnTouchdown":6,"extraPointReturn":2}
+  },
+  "completedGames":[
+    {"week":1,"team":"The Fightin’ Kali","opponent":"End zone Em-pire","teamScore":85.82,"opponentScore":130.16},
+    {"week":2,"team":"The Fightin’ Kali","opponent":"THE KALISH KABANA!!!!","teamScore":91.72,"opponentScore":107.04}
+  ],
+  "week3":{"opponent":"AiLi’s Football Guys","yahooProjection":142.91,"opponentYahooProjection":100.31}
+}
