@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import {prepareLeagueSimulation} from '../src/model/league-preparation.js';
-import {buildWeeklyGMRecommendations} from '../src/model/gm-recommendation-engine.js';
+import {confirmTopRecommendations} from '../src/model/recommendation-confirmation.js';
 
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
 const snapshot=read('fixtures/prepared-league.json');
@@ -26,13 +26,19 @@ const benchIndex=w11.findIndex(p=>p.id==='T2-RB-BENCH');
 const original=bravo.roster.find(p=>p.id==='T2-RB');
 if(benchIndex>=0&&original)w11[benchIndex]={...original,projection:18.9,lineupSlot:'RB'};
 
-const report=buildWeeklyGMRecommendations(prepared.input,{
+const spec={
  teamId:'T2',week:11,projectionRows,
  startSit:{slot:'RB'},
  waivers:{candidates:waiverCandidates,dropPlayerIds:['T2-RB','T2-WR'],weeks,lineupSlots:snapshot.lineupSlots},
  trades:[{label:'Trade Bravo WR for Charlie RB',teamAId:'T2',teamBId:'T3',teamAGives:['T2-WR'],teamBGives:['T3-RB'],weeks,lineupSlots:snapshot.lineupSlots}],
  limit:10
-});
+};
+const report=confirmTopRecommendations(prepared.input,spec,{top:Number(process.env.CONFIRM_TOP||3),seeds:[101,202,303],simulations:Number(process.env.CONFIRM_SIMULATIONS||20000)});
 console.log(`GM FIXTURE: ${report.teamName} Week ${report.week}`);
-for(const r of report.recommendations)console.log(`#${r.rank} [${r.type}] ${r.summary}${Number.isFinite(r.projectedPointDelta)?` (${r.projectedPointDelta>=0?'+':''}${r.projectedPointDelta.toFixed(2)} projected pts)`:''}`);
+for(const r of report.recommendations){
+ const pointText=Number.isFinite(r.projectedPointDelta)?` (${r.projectedPointDelta>=0?'+':''}${r.projectedPointDelta.toFixed(2)} projected pts)`:'';
+ const c=r.confirmation;
+ const confirmText=c?` | confirmed ${(100*c.meanChampionshipDelta).toFixed(2)}% championship, range ${(100*c.stability.min).toFixed(2)}% to ${(100*c.stability.max).toFixed(2)}%, stability ${String(c.stability.confidence).toUpperCase()}, direction ${c.directionConsistent?'consistent':'mixed'}`:'';
+ console.log(`#${r.rank} [${r.type}] ${r.summary}${pointText}${confirmText}`);
+}
 console.log(JSON.stringify(report,null,2));
