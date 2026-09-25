@@ -1,12 +1,14 @@
 import {simulateLeague} from '../simulator.js';
+import {requireSimulationTrust} from './simulation-trust-gate.js';
 
 const clone=x=>structuredClone(x);
 function byId(results){return Object.fromEntries(results.map(r=>[r.id,r]));}
-export function compareSimulationInputs(baselineInput,scenarioInput,{teamId=null}={}){
+export function compareSimulationInputs(baselineInput,scenarioInput,{teamId=null,trust=null}={}){
+ const trustResult=requireSimulationTrust(baselineInput,trust||{});
  const baseline=simulateLeague(baselineInput),scenario=simulateLeague({...scenarioInput,seed:baselineInput.seed,simulations:baselineInput.simulations});
  const a=byId(baseline),b=byId(scenario);
  const deltas=baseline.map(row=>({id:row.id,name:row.name,playoffProbability:b[row.id].playoffProbability,playoffProbabilityDelta:b[row.id].playoffProbability-row.playoffProbability,championshipProbability:b[row.id].championshipProbability,championshipProbabilityDelta:b[row.id].championshipProbability-row.championshipProbability,averageWins:b[row.id].averageWins,averageWinsDelta:b[row.id].averageWins-row.averageWins}));
- return {teamId,simulations:baselineInput.simulations,seed:baselineInput.seed,baseline,scenario,deltas,focus:teamId?deltas.find(x=>x.id===teamId)||null:null};
+ return {teamId,simulations:baselineInput.simulations,seed:baselineInput.seed,trust:trustResult,baseline,scenario,deltas,focus:teamId?deltas.find(x=>x.id===teamId)||null:null};
 }
 export function applyLineupScenario(input,{teamId,week,removePlayerId=null,addPlayer}){
  const next=clone(input),team=next.teams.find(t=>t.id===teamId);if(!team)throw new Error(`Unknown team ${teamId}`);
