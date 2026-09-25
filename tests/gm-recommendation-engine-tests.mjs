@@ -1,0 +1,9 @@
+import assert from 'node:assert/strict';
+import {buildWeeklyGMRecommendations} from '../src/model/gm-recommendation-engine.js';
+const p=(id,name,pos,projection,slot=null)=>({id,name,position:pos,projection,...(slot?{lineupSlot:slot}:{})});
+const aq=p('A-QB','Alpha QB','QB',15),ar=p('A-RB','Alpha RB','RB',10),ab=p('A-BRB','Alpha Bench RB','RB',20),bq=p('B-QB','Bravo QB','QB',14),br=p('B-RB','Bravo RB','RB',14);
+const input={simulations:1000,seed:88,modelVariant:'baseline',lineupSlots:['QB','RB'],playoffSpots:2,playoffWeeks:[3],teams:[{id:'A',name:'Alpha',wins:2,losses:0,points:200,roster:[aq,ar,ab],weeklyLineups:{1:[p('A-QB','Alpha QB','QB',15,'QB'),p('A-RB','Alpha RB','RB',10,'RB')],2:[p('A-QB','Alpha QB','QB',15,'QB'),p('A-RB','Alpha RB','RB',10,'RB')],3:[p('A-QB','Alpha QB','QB',15,'QB'),p('A-RB','Alpha RB','RB',10,'RB')]}},{id:'B',name:'Bravo',wins:1,losses:1,points:180,roster:[bq,br],weeklyLineups:{1:[p('B-QB','Bravo QB','QB',14,'QB'),p('B-RB','Bravo RB','RB',14,'RB')],2:[p('B-QB','Bravo QB','QB',14,'QB'),p('B-RB','Bravo RB','RB',14,'RB')],3:[p('B-QB','Bravo QB','QB',14,'QB'),p('B-RB','Bravo RB','RB',14,'RB')]}}],schedule:[{week:1,matchups:[['A','B']]},{week:2,matchups:[['B','A']]}]};
+const rows=[{week:1,playerId:'A-RB',projection:10},{week:1,playerId:'A-BRB',projection:20}];
+const report=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:rows,startSit:{slot:'RB'},trades:[],waivers:null});
+assert.equal(report.teamId,'A');assert.equal(report.week,1);assert.equal(report.actionCount,1);assert.equal(report.recommendations[0].type,'start-sit');assert.equal(report.recommendations[0].details.startPlayerId,'A-BRB');assert.equal(report.recommendations[0].projectedPointDelta,10);assert.equal(report.recommendations[0].rank,1);
+console.log('gm-recommendation-engine-tests: all checks passed');
