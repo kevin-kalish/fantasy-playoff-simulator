@@ -1,0 +1,8 @@
+import assert from 'node:assert/strict';
+import {buildLeagueIntelligenceReport} from '../src/model/league-intelligence-report.js';
+const p=(id,name,pos,projection,slot)=>({id,name,position:pos,projection,nflTeam:'BUF',lineupSlot:slot});
+const a=[p('A-QB','Alpha QB','QB',20,'QB'),p('A-RB','Alpha RB','RB',15,'RB')],b=[p('B-QB','Bravo QB','QB',18,'QB'),p('B-RB','Bravo RB','RB',14,'RB')];
+const input={metadata:{source:{provider:'fixture'},projectionCoverage:{total:4,projected:4,matchRate:1}},simulations:500,seed:77,modelVariant:'baseline',playoffSpots:2,playoffWeeks:[3],reseed:true,tiebreaker:'points',teams:[{id:'A',name:"The Fightin' Kali",wins:2,losses:0,points:220,roster:a,weeklyLineups:{1:a,2:a,3:a}},{id:'B',name:'Bravo',wins:1,losses:1,points:190,roster:b,weeklyLineups:{1:b,2:b,3:b}}],schedule:[{week:1,matchups:[['A','B']]},{week:2,matchups:[['B','A']]}]};
+const report=buildLeagueIntelligenceReport(input,{teamId:'A',week:1,startSit:false});
+assert.equal(report.schemaVersion,1);assert.equal(report.team.name,"The Fightin' Kali");assert.equal(report.team.currentSeed,1);assert.equal(report.league.playoffSpots,2);assert.deepEqual(report.league.playoffWeeks,[3]);assert.equal(report.league.reseed,true);assert.equal(report.outlook.simulations,500);assert.equal(report.outlook.seed,77);assert.equal(report.roster.starters.length,2);assert.equal(report.trust.trusted,true);assert.equal(report.recommendations.actionCount,0);assert.ok(report.outlook.seedDistribution.length>0);
+console.log('league-intelligence-report-tests: all checks passed');
