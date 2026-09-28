@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 
 const clean=s=>String(s??'').trim();
 const number=v=>{const n=Number(v);return Number.isFinite(n)?n:undefined};
@@ -21,9 +22,9 @@ export function normalizeProjectionRows(rows,{season,week,source='projection-cac
  })).filter(row=>row.season&&row.week&&row.name&&row.position&&Number.isFinite(row.projection));
 }
 
-export function readProjectionInput(path,{season,week,source}={}){
- const text=fs.readFileSync(path,'utf8');
- const raw=path.toLowerCase().endsWith('.csv')?parseProjectionCsv(text):JSON.parse(text);
+export function readProjectionInput(filePath,{season,week,source}={}){
+ const text=fs.readFileSync(filePath,'utf8');
+ const raw=filePath.toLowerCase().endsWith('.csv')?parseProjectionCsv(text):JSON.parse(text);
  const rows=Array.isArray(raw)?raw:(raw.rows??raw.projections??[]);
  return normalizeProjectionRows(rows,{season,week,source});
 }
@@ -35,7 +36,7 @@ export function mergeProjectionCache(existingRows,newRows){
  return [...merged.values()].sort((a,b)=>a.season-b.season||a.week-b.week||a.name.localeCompare(b.name));
 }
 
-export function writeProjectionCache(path,rows,{source='projection-cache'}={}){
- fs.mkdirSync(new URL('.',`file://${process.cwd()}/${path.replaceAll('\\','/')}`).pathname,{recursive:true});
- fs.writeFileSync(path,JSON.stringify({updatedAt:new Date().toISOString(),source,rows},null,2)+'\n');
+export function writeProjectionCache(filePath,rows,{source='projection-cache'}={}){
+ fs.mkdirSync(path.dirname(filePath),{recursive:true});
+ fs.writeFileSync(filePath,JSON.stringify({updatedAt:new Date().toISOString(),source,rows},null,2)+'\n');
 }
