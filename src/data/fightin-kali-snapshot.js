@@ -14,6 +14,7 @@ export function applyFightinKaliConfig(input,config){
  return normalizeLeagueSnapshot({
   ...league,
   source:{...league.source,season:config.season,leagueId:league.source?.leagueId||config.leagueId},
+  currentWeek:league.currentWeek??league.source?.currentWeek,
   playoffSpots:config.playoffs.spots,
   playoffWeeks:config.playoffs.weeks,
   reseed:config.playoffs.reseed,
@@ -28,14 +29,16 @@ export function prepareFightinKaliSnapshot(input,config){
  const league=applyFightinKaliConfig(input,config);
  const validation=validateLeagueSnapshot(league);
  const team=findConfiguredTeam(league,config);
- const remainingWeeks=(league.schedule??[]).map(x=>x.week).filter(Number.isFinite).sort((a,b)=>a-b);
+ const scheduledWeeks=(league.schedule??[]).map(x=>x.week).filter(Number.isFinite).sort((a,b)=>a-b);
+ const currentWeek=league.currentWeek??league.source?.currentWeek??scheduledWeeks[0]??null;
+ const remainingWeeks=scheduledWeeks.filter(week=>currentWeek==null||week>=currentWeek);
  return {
   league,
   team,
   validation,
   state:{
    season:config.season,
-   currentWeek:remainingWeeks[0]??null,
+   currentWeek,
    remainingRegularSeasonWeeks:remainingWeeks,
    playoffWeeks:[...config.playoffs.weeks],
    sourceProvider:league.source?.provider||'manual',
