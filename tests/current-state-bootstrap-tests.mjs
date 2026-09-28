@@ -9,6 +9,7 @@ assert.equal(prepared.team.wins,0);
 assert.equal(prepared.team.roster.length,3);
 assert.deepEqual(prepared.league.schedule[0].matchups,[[prepared.team.id,'alpha']]);
 assert.equal(prepared.league.playoffTiebreaker,'higher-seed');
+assert.equal(prepared.league.source.week,3);
 assert.equal(prepared.state.currentWeek,3);
 assert.throws(()=>bootstrapCurrentState({...capture,teams:[capture.teams[1]]},config),/Configured team not found/);
 console.log('current-state-bootstrap-tests: all checks passed');
