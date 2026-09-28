@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+execFileSync(process.execPath,['scripts/generate-e2e-fixture-projections.mjs'],{stdio:'pipe'});
+const env={...process.env,FANTASYPROS_API_KEY:''};
+const output=execFileSync(process.execPath,['scripts/run-weekly-intelligence.mjs','fixtures/prepared-league.json','fixtures/weekly-intelligence-spec.json'],{encoding:'utf8',env});
+assert.match(output,/WEEKLY INTELLIGENCE: Alpha Week 11/);
+assert.match(output,/OUTLOOK:/);
+assert.match(output,/MATCHUP: Delta/);
+assert.match(output,/TRUST:/);
+const jsonStart=output.indexOf('{\n  "readiness"');
+assert.ok(jsonStart>=0,'expected JSON payload');
+const payload=JSON.parse(output.slice(jsonStart));
+assert.equal(payload.readiness.ready,true);
+assert.equal(payload.report.team.id,'T1');
+assert.equal(payload.report.week,11);
+assert.equal(payload.report.projectionProvider.provider,'fixture');
+assert.equal(payload.report.projectionProvider.degraded,false);
+console.log('weekly-intelligence-command-tests: all checks passed');
