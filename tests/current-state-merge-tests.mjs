@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {mergeCurrentState,summarizeCurrentStatePatch} from '../src/data/current-state-merge.js';
+
+const base={source:{provider:'manual'},teams:[{id:'1',name:"The Fightin' Kali",wins:2,losses:1,ties:0,points:300,lineup:[]}],schedule:[{week:4,matchups:[]}],nflGames:[]};
+const patch={capturedAt:'2026-09-28T13:00:00Z',teams:[{name:"The Fightin' Kali",wins:3,losses:1,points:412.5,rank:2}],schedule:[{week:5,matchups:[]}]};
+const merged=mergeCurrentState(base,patch);
+assert.equal(merged.teams[0].wins,3);
+assert.equal(merged.teams[0].losses,1);
+assert.equal(merged.teams[0].points,412.5);
+assert.equal(merged.teams[0].rank,2);
+assert.equal(merged.schedule[0].week,5);
+assert.equal(merged.source.capturedAt,patch.capturedAt);
+assert.deepEqual(summarizeCurrentStatePatch(patch),{teamsUpdated:1,scheduleReplaced:true,nflGamesReplaced:false,capturedAt:patch.capturedAt});
+assert.throws(()=>mergeCurrentState(base,{teams:[{name:'Missing Team',wins:1}]}),/unknown team/);
+console.log('current-state-merge-tests: all checks passed');
