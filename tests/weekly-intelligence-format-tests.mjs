@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {formatWeeklyIntelligence} from '../src/model/weekly-intelligence-format.js';
+const report={team:{name:"The Fightin' Kali",currentSeed:3,record:{wins:2,losses:1,ties:0}},outlook:{playoffProbability:.81,championshipProbability:.17},matchup:{week:4,opponentName:'Opponent',simulated:{winProbability:.58}},leverage:{posture:'balanced',urgency:'medium'},trust:{trusted:true,projections:{provider:'fixture',degraded:false,coverage:{matchRate:.96}}},recommendations:{items:[{rank:1,type:'start-sit',summary:'Start Player A'}]},roster:{starters:[{projection:12.4},{projection:9.6}]}};
+const text=formatWeeklyIntelligence(report);
+assert.match(text,/The Fightin' Kali — Week 4/);
+assert.match(text,/Playoffs 81.0%/);
+assert.match(text,/win 58.0%/);
+assert.match(text,/projection coverage 96.0%/);
+assert.match(text,/Start Player A/);
+assert.match(text,/22.0 projected points/);
+console.log('weekly-intelligence-format-tests: all checks passed');
