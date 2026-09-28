@@ -11,3 +11,16 @@ export function normalizeProjectionRow(row,{source='generic',season,week}={}){
 }
 export function normalizeProjectionRows(rows,opts={}){return rows.map(r=>normalizeProjectionRow(r,opts)).filter(Boolean);}
 export function providerAudit(rows,{source='unknown'}={}){const weeks=new Set(rows.map(r=>`${r.season}:${r.week}`)),seasons=[...new Set(rows.map(r=>r.season))].sort(),positions={};for(const r of rows)positions[r.position]=(positions[r.position]||0)+1;return{source,rows:rows.length,seasons,weeks:weeks.size,positions};}
+
+const asRows=value=>Array.isArray(value)?value:Array.isArray(value?.rows)?value.rows:[];
+const errText=e=>String(e?.message||e||'unknown error');
+export function createProjectionProvider({name,load,priority=0}={}){if(!name||typeof load!=='function')throw new Error('Projection provider requires name and load function.');return{name:String(name),priority:Number(priority)||0,load};}
+export async function loadProjectionRows(providers=[],context={}, {minimumRows=1}={}){
+ const ordered=[...providers].sort((a,b)=>(b.priority||0)-(a.priority||0)),attempts=[];
+ for(const provider of ordered){
+  try{const rows=asRows(await provider.load(context));if(rows.length>=minimumRows)return{provider:provider.name,rows,attempts:[...attempts,{provider:provider.name,ok:true,rows:rows.length}],degraded:attempts.length>0};attempts.push({provider:provider.name,ok:false,rows:rows.length,error:`insufficient rows: ${rows.length} < ${minimumRows}`});}
+  catch(error){attempts.push({provider:provider.name,ok:false,rows:0,error:errText(error)});}
+ }
+ const error=new Error(`No usable projection provider. ${attempts.map(x=>`${x.provider}: ${x.error}`).join('; ')}`);error.attempts=attempts;throw error;
+}
+export function projectionProviderTrust(result,{minimumRows=1}={}){const rows=result?.rows?.length||0,attempts=result?.attempts||[];return{ready:rows>=minimumRows,provider:result?.provider||null,rows,degraded:Boolean(result?.degraded),fallbacksUsed:Math.max(0,attempts.length-1),attempts};}
