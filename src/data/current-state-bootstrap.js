@@ -22,7 +22,7 @@ export function bootstrapCurrentState(capture,config={}){
   matchups:(w.matchups??[]).map(([a,b])=>[nameToId.get(a)??a,nameToId.get(b)??b])
  }));
  const raw={
-  source:{provider:patch.provider??'manual-capture',leagueId:config.leagueId,season:config.season,capturedAt:patch.capturedAt,week:patch.currentWeek},
+  source:{provider:patch.provider??'manual-capture',leagueId:config.leagueId,season:config.season,capturedAt:patch.capturedAt,currentWeek:patch.currentWeek},
   currentWeek:patch.currentWeek,
   teams,
   schedule,
