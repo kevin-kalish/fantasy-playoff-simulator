@@ -5,7 +5,7 @@ const scoringName=value=>{const s=String(value||'HALF').toLowerCase();return s==
 const rowsFrom=value=>Array.isArray(value)?value:Array.isArray(value?.players)?value.players:Array.isArray(value?.projections)?value.projections:[];
 
 export function normalizeJerryGMProjections(payload,{season,week}={}){
- const rows=rowsFrom(payload).map(row=>({...row,projection:row.projection??row.projectedPPG??row.projected_points??row.points}));
+ const rows=rowsFrom(payload).map(row=>({...row,projectedPoints:row.projectedPoints??row.projection??row.projectedPPG??row.projected_points??row.points}));
  return normalizeProjectionRows(rows,{source:'jerrygm',season:payload?.season??season,week:payload?.week??week});
 }
 
