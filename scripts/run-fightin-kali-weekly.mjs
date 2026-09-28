@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import {spawnSync} from 'node:child_process';
 import {buildWeeklyRefreshPlan} from '../src/model/weekly-refresh-plan.js';
 
 const snapshotPath=process.argv[2]??'data/private/fightin-kali-current.json';
@@ -14,6 +13,16 @@ fs.mkdirSync('data/private',{recursive:true});
 const specPath=`data/private/fightin-kali-week-${plan.week}-spec.json`;
 fs.writeFileSync(specPath,JSON.stringify(plan,null,2)+'\n');
 console.error(`WEEKLY REFRESH: season ${plan.season} week ${plan.week}; team ${plan.teamId}; modeled weeks ${plan.weeks.join(',')}.`);
-const run=spawnSync(process.execPath,['scripts/run-weekly-intelligence.mjs',snapshotPath,specPath],{stdio:'inherit',env:process.env});
-if(run.error) fail(run.error.message);
-process.exit(run.status??1);
+
+// Import the weekly command in-process rather than spawning a second Node process.
+// This preserves its exit code while avoiding a Windows/libuv shutdown assertion seen
+// after expected provider failures (for example, a FantasyPros HTTP 403).
+const originalArgv=process.argv;
+try{
+ process.argv=[process.execPath,'scripts/run-weekly-intelligence.mjs',snapshotPath,specPath];
+ await import('./run-weekly-intelligence.mjs');
+} catch(error) {
+ fail(error?.message??String(error));
+} finally {
+ process.argv=originalArgv;
+}
