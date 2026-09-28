@@ -34,22 +34,25 @@ const capture={
    ]}
  ],
  schedule:[
-  {week:3,matchups:[["The Fightin' Kali","AiLi’s Football Guys"]]},
-  {week:4,matchups:[["The Fightin' Kali",'The Desmond Diamonds']]},
-  {week:5,matchups:[["The Fightin' Kali",'Bens Big Boys']]},
-  {week:6,matchups:[["The Fightin' Kali",'AI Generated Slop']]},
-  {week:7,matchups:[["The Fightin' Kali",'Captain Marrvelous']]},
-  {week:8,matchups:[["The Fightin' Kali",'Shambala']]},
-  {week:9,matchups:[["The Fightin' Kali","James's Great Team"]]},
-  {week:10,matchups:[["The Fightin' Kali",'End zone Em-pire']]},
-  {week:11,matchups:[["The Fightin' Kali",'THE KALISH KABANA!!!!']]},
-  {week:12,matchups:[["The Fightin' Kali","AiLi’s Football Guys"]]},
-  {week:13,matchups:[["The Fightin' Kali",'The Desmond Diamonds']]},
-  {week:14,matchups:[["The Fightin' Kali",'Bens Big Boys']]}
+  {week:1,matchups:[["The Fightin' Kali",'End zone Em-pire'],['Captain Marrvelous',"AiLi’s Football Guys"],['THE KALISH KABANA!!!!','Shambala'],['AI Generated Slop','The Desmond Diamonds'],['Bens Big Boys',"James's Great Team"]]},
+  {week:2,matchups:[["The Fightin' Kali",'THE KALISH KABANA!!!!'],['End zone Em-pire',"James's Great Team"],['Captain Marrvelous','The Desmond Diamonds'],['AI Generated Slop','Bens Big Boys'],["AiLi’s Football Guys",'Shambala']]},
+  {week:3,matchups:[["The Fightin' Kali","AiLi’s Football Guys"],['End zone Em-pire','THE KALISH KABANA!!!!'],['Captain Marrvelous','Bens Big Boys'],['AI Generated Slop',"James's Great Team"],['The Desmond Diamonds','Shambala']]},
+  {week:4,matchups:[["The Fightin' Kali",'The Desmond Diamonds'],['End zone Em-pire',"AiLi’s Football Guys"],['Captain Marrvelous','AI Generated Slop'],['THE KALISH KABANA!!!!',"James's Great Team"],['Bens Big Boys','Shambala']]},
+  {week:5,matchups:[["The Fightin' Kali",'Bens Big Boys'],['End zone Em-pire','The Desmond Diamonds'],['Captain Marrvelous',"James's Great Team"],['THE KALISH KABANA!!!!',"AiLi’s Football Guys"],['AI Generated Slop','Shambala']]},
+  {week:6,matchups:[["The Fightin' Kali",'AI Generated Slop'],['End zone Em-pire','Bens Big Boys'],['Captain Marrvelous','Shambala'],['THE KALISH KABANA!!!!','The Desmond Diamonds'],["AiLi’s Football Guys","James's Great Team"]]},
+  {week:7,matchups:[["The Fightin' Kali",'Captain Marrvelous'],['End zone Em-pire','AI Generated Slop'],['THE KALISH KABANA!!!!','Bens Big Boys'],["AiLi’s Football Guys",'The Desmond Diamonds'],["James's Great Team",'Shambala']]},
+  {week:8,matchups:[["The Fightin' Kali",'Shambala'],['End zone Em-pire','Captain Marrvelous'],['THE KALISH KABANA!!!!','AI Generated Slop'],["AiLi’s Football Guys",'Bens Big Boys'],['The Desmond Diamonds',"James's Great Team"]]},
+  {week:9,matchups:[["The Fightin' Kali", "James's Great Team"],['End zone Em-pire','Shambala'],['Captain Marrvelous','THE KALISH KABANA!!!!'],['AI Generated Slop',"AiLi’s Football Guys"],['Bens Big Boys','The Desmond Diamonds']]},
+  {week:10,matchups:[["The Fightin' Kali",'End zone Em-pire'],['Captain Marrvelous',"AiLi’s Football Guys"],['THE KALISH KABANA!!!!','Shambala'],['AI Generated Slop','The Desmond Diamonds'],['Bens Big Boys',"James's Great Team"]]},
+  {week:11,matchups:[["The Fightin' Kali",'THE KALISH KABANA!!!!'],['End zone Em-pire',"James's Great Team"],['Captain Marrvelous','The Desmond Diamonds'],['AI Generated Slop','Bens Big Boys'],["AiLi’s Football Guys",'Shambala']]},
+  {week:12,matchups:[["The Fightin' Kali", "AiLi’s Football Guys"],['End zone Em-pire','THE KALISH KABANA!!!!'],['Captain Marrvelous','Bens Big Boys'],['AI Generated Slop',"James's Great Team"],['The Desmond Diamonds','Shambala']]},
+  {week:13,matchups:[["The Fightin' Kali",'The Desmond Diamonds'],['End zone Em-pire',"AiLi’s Football Guys"],['Captain Marrvelous','AI Generated Slop'],['THE KALISH KABANA!!!!',"James's Great Team"],['Bens Big Boys','Shambala']]},
+  {week:14,matchups:[["The Fightin' Kali",'Bens Big Boys'],['End zone Em-pire','The Desmond Diamonds'],['Captain Marrvelous',"James's Great Team"],['THE KALISH KABANA!!!!',"AiLi’s Football Guys"],['AI Generated Slop','Shambala']]}
  ]
 };
 fs.mkdirSync('data/private',{recursive:true});
 fs.writeFileSync(outputPath,JSON.stringify(capture,null,2)+'\n');
-console.log(`CAPTURE TEMPLATE: READY | ${capture.teams.length} teams | ${capture.schedule.length} Fightin' Kali schedule rows`);
+const matchupCount=capture.schedule.reduce((sum,row)=>sum+row.matchups.length,0);
+console.log(`CAPTURE TEMPLATE: READY | ${capture.teams.length} teams | ${capture.schedule.length} weeks | ${matchupCount} matchups`);
 console.log(`Wrote: ${outputPath}`);
-console.log('NOTE: Opponent-vs-opponent matchups are not yet captured; bootstrap will require a complete league schedule before simulation.');
+console.log('NOTE: Complete league schedule captured from Yahoo screenshots; no rivalry-week semantics are modeled.');
