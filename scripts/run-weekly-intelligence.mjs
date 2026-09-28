@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import {prepareLeagueSimulation} from '../src/model/league-preparation.js';
 import {assessSimulationReadiness} from '../src/model/simulation-readiness.js';
 import {buildLeagueIntelligenceReport} from '../src/model/league-intelligence-report.js';
+import {formatWeeklyIntelligence} from '../src/model/weekly-intelligence-format.js';
 import {loadWeeklyProjections} from '../src/data/weekly-projection-provider.js';
 
 const [snapshotPath,specPath]=process.argv.slice(2);
@@ -24,10 +25,7 @@ console.error(`READY CHECK: ${readiness.ready?'PASS':'FAIL'}; projections ${(100
 if(!readiness.ready){for(const error of readiness.errors)console.error(`ERROR: ${error}`);console.log(JSON.stringify({readiness,projectionHealth:loaded.trust,metadata:prepared.input.metadata,report:null},null,2));process.exitCode=2;}
 else{
  const report=buildLeagueIntelligenceReport(prepared.input,{...spec,week,projectionRows:loaded.rows,providerHealth:loaded.trust,trust:{requireProjectionCoverage:true,minimumProjectionMatchRate}});
- console.log(`WEEKLY INTELLIGENCE: ${report.team.name} Week ${week}`);
- console.log(`OUTLOOK: playoff ${(100*report.outlook.playoffProbability).toFixed(1)}%; championship ${(100*report.outlook.championshipProbability).toFixed(1)}%; seed ${report.team.currentSeed}.`);
- console.log(`MATCHUP: ${report.matchup.opponentName}; win ${(100*report.matchup.simulated.winProbability).toFixed(1)}%; posture ${report.leverage.posture}; urgency ${report.leverage.urgency}.`);
- console.log(`TRUST: ${report.trust.trusted?'PASS':'REVIEW'}; projection source ${report.trust.projections.provider}${report.trust.projections.degraded?' (DEGRADED/FALLBACK)':''}.`);
- for(const r of report.recommendations.items)console.log(`#${r.rank} [${r.type}] ${r.summary}`);
- console.log(JSON.stringify({readiness,report},null,2));
+ console.log(formatWeeklyIntelligence(report,{maxActions:Number(spec.maxActions??5)}));
+ if(spec.outputPath){fs.writeFileSync(spec.outputPath,JSON.stringify({readiness,report},null,2));console.error(`REPORT JSON: ${spec.outputPath}`);}
+ if(spec.includeJson) console.log(JSON.stringify({readiness,report},null,2));
 }
