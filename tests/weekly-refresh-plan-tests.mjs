@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {buildWeeklyRefreshPlan} from '../src/model/weekly-refresh-plan.js';
+const config={season:2026,teamName:'The Fightin’ Kali',teamAliases:["The Fightin' Kali"],playoffs:{weeks:[15,16,17]},defaults:{simulations:50000,seed:42,modelVariant:'correlated',minimumProjectionMatchRate:.9,maxActions:5}};
+const snapshot={source:{season:2026},currentWeek:4,teams:[{id:'KALI',name:"The Fightin' Kali"},{id:'X',name:'Alpha'}]};
+const p=buildWeeklyRefreshPlan(snapshot,config);
+assert.equal(p.teamId,'KALI');
+assert.equal(p.week,4);
+assert.deepEqual(p.weeks,[4,5,6]);
+assert.equal(p.simulations,50000);
+assert.equal(p.outputPath,'data/private/fightin-kali-week-4-report.json');
+assert.deepEqual(buildWeeklyRefreshPlan({...snapshot,currentWeek:14},config).weeks,[14]);
+assert.throws(()=>buildWeeklyRefreshPlan({...snapshot,teams:[]},config),/Configured team not found/);
+console.log('weekly-refresh-plan-tests: all checks passed');
