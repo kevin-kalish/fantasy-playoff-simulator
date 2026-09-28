@@ -30,10 +30,16 @@ export function parseScheduleText(text){
  return [...weeks].sort((a,b)=>a[0]-b[0]).map(([week,matchups])=>({week,matchups}));
 }
 
+const inferCurrentWeek=teams=>{
+ const games=(teams??[]).map(t=>Number(t.wins??0)+Number(t.losses??0)+Number(t.ties??0)).filter(Number.isFinite);
+ return games.length?Math.max(...games)+1:undefined;
+};
+
 export function captureToPatch(capture={}){
  const teams=Array.isArray(capture.teams)?capture.teams:parseStandingsText(capture.standings??'');
  const schedule=Array.isArray(capture.schedule)?capture.schedule:(capture.scheduleText?parseScheduleText(capture.scheduleText):undefined);
- return {provider:'manual-capture',capturedAt:capture.capturedAt??new Date().toISOString(),teams,...(schedule?{schedule}:{}),...(capture.nflGames?{nflGames:capture.nflGames}:{})};
+ const currentWeek=num(capture.currentWeek)??inferCurrentWeek(teams);
+ return {provider:'manual-capture',capturedAt:capture.capturedAt??new Date().toISOString(),teams,...(currentWeek?{currentWeek}:{}),...(schedule?{schedule}:{}),...(capture.nflGames?{nflGames:capture.nflGames}:{})};
 }
 
 export const CAPTURE_HELP=`Standings format (one team per line):\nTeam Name | W-L[-T] | points | pointsAgainst | rank\n\nSchedule format:\nWeek | Team A vs Team B\nExample: 4 | The Fightin' Kali vs Team Two`;
