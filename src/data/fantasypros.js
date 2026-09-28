@@ -1,4 +1,4 @@
-const BASE='https://api.fantasypros.com/v2/json/nfl';
+const BASE='https://api.fantasypros.com/public/v2/json/nfl';
 const POSITIONS=new Set(['QB','RB','WR','TE','K','DST']);
 export function fantasyProsUrl(path,params={}){const u=new URL(`${BASE}${path}`);for(const [k,v] of Object.entries(params))if(v!==undefined&&v!==null&&v!=='')u.searchParams.set(k,String(v));return u.toString()}
 export class FantasyProsClient{
