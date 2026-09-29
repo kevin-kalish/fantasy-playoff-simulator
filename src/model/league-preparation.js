@@ -45,13 +45,13 @@ function addLongRangeProjections(league,directWeeks,{seasonProjectionRows=[],sea
  const direct=new Set(directWeeks.map(Number));
  const derivedWeeks=allFuture.filter(w=>!direct.has(w));
  const seasonIndex=seasonProjectionIndex(seasonProjectionRows),blendWeight=Math.max(0,Math.min(1,Number(seasonWeight)));
- let seasonMatches=0,eligiblePlayers=0;
+ let seasonMatches=0,eligiblePlayers=0;const seasonMissing=[];
  const teams=(league.teams||[]).map(team=>{
   const weeklyRosters={...(team.weeklyRosters||{})};
   const roster=team.roster?.length?team.roster:team.lineup||[];
   eligiblePlayers+=roster.length;
   const seasonByPlayer=new Map(roster.map(player=>[playerId(player),seasonProjectionFor(player,seasonIndex)]));
-  seasonMatches+=roster.filter(player=>Number.isFinite(seasonByPlayer.get(playerId(player)))).length;
+  for(const player of roster){const projection=seasonByPlayer.get(playerId(player));if(Number.isFinite(projection))seasonMatches++;else seasonMissing.push({teamId:team.id,teamName:team.name,id:playerId(player),name:player.name,position:player.position??player.pos??null,nflTeam:player.nflTeam??player.team??null});}
   for(const week of derivedWeeks){
    weeklyRosters[week]=roster.map(player=>{
     const pid=playerId(player);
@@ -67,7 +67,7 @@ function addLongRangeProjections(league,directWeeks,{seasonProjectionRows=[],sea
   return {...team,weeklyRosters};
  });
  const hasSeasonRows=seasonProjectionRows.length>0;
- return {...league,teams,longRangeProjectionWeeks:derivedWeeks,directProjectionWeeks:[...direct].sort((a,b)=>a-b),longRangeProjectionMethod:hasSeasonRows?'season-horizon-blend':'recency-weighted-horizon',longRangeRecencyDecay:LONG_RANGE_RECENCY_DECAY,longRangeSeasonWeight:hasSeasonRows?blendWeight:0,seasonProjectionCoverage:{eligible:eligiblePlayers,matched:seasonMatches,matchRate:eligiblePlayers?seasonMatches/eligiblePlayers:1}};
+ return {...league,teams,longRangeProjectionWeeks:derivedWeeks,directProjectionWeeks:[...direct].sort((a,b)=>a-b),longRangeProjectionMethod:hasSeasonRows?'season-horizon-blend':'recency-weighted-horizon',longRangeRecencyDecay:LONG_RANGE_RECENCY_DECAY,longRangeSeasonWeight:hasSeasonRows?blendWeight:0,seasonProjectionCoverage:{eligible:eligiblePlayers,matched:seasonMatches,missing:seasonMissing,matchRate:eligiblePlayers?seasonMatches/eligiblePlayers:1}};
 }
 
 export function prepareLeagueSimulation(snapshot,projectionRows,{slots=null,weeks=null,season=snapshot?.source?.season,strictProjections=false,minimumProjectionMatchRate=.9,calibrationReport=null,simulations=50000,seed=20260923,modelVariant='correlated',seasonProjectionRows=[],longRangeSeasonWeight=LONG_RANGE_SEASON_WEIGHT}={}){
