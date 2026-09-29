@@ -10,7 +10,9 @@ function rosterSummary(team,week){const lineup=team.weeklyLineups?.[week]||team.
 function seedDistribution(result){return (result.seedProbability||[]).map((probability,i)=>({seed:i+1,probability})).filter(x=>x.probability>0);}
 function projectionTrust(input,providerHealth){const coverage=input.metadata?.projectionCoverage??null,health=providerHealth??input.metadata?.projectionProvider??null;return {coverage,provider:health?.provider??input.metadata?.source?.provider??null,ready:health?.ready??null,degraded:Boolean(health?.degraded),fallbacksUsed:health?.fallbacksUsed??0,attempts:health?.attempts??[],directWeeks:input.metadata?.directProjectionWeeks??[],longRangeWeeks:input.metadata?.longRangeProjectionWeeks??[]};}
 function postseasonProjectionTrust(input){
- const weeks=[...(input.playoffWeeks||[])],direct=new Set(input.metadata?.directProjectionWeeks??[]);
+ const weeks=[...(input.playoffWeeks||[])];
+ const explicitDirect=input.metadata?.directProjectionWeeks;
+ const direct=new Set(Array.isArray(explicitDirect)?explicitDirect:weeks);
  const covered=weeks.filter(week=>input.teams.every(team=>Array.isArray(team.weeklyLineups?.[week])&&team.weeklyLineups[week].length>0));
  const directlyProjected=weeks.filter(week=>direct.has(Number(week)));
  const coverage=weeks.length?directlyProjected.length/weeks.length:0;
