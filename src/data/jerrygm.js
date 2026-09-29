@@ -4,6 +4,7 @@ const rowsFrom=value=>Array.isArray(value)?value:Array.isArray(value?.players)?v
 const numberOrNull=value=>{const n=Number(value);return Number.isFinite(n)?n:null};
 const cleanPosition=value=>{const p=String(value||'').trim().toUpperCase();return p==='D/ST'?'DST':p};
 const POSITIONS=new Set(['QB','RB','WR','TE','K','DST','DEF']);
+const chunks=(values,size)=>{const out=[];for(let i=0;i<values.length;i+=size)out.push(values.slice(i,i+size));return out};
 
 export function normalizeJerryGMProjections(payload,{season,week}={}){
  const resolvedSeason=numberOrNull(payload?.season??season);
@@ -14,16 +15,25 @@ export function normalizeJerryGMProjections(payload,{season,week}={}){
   const rowSeason=numberOrNull(row.season??row.year)??resolvedSeason;
   const rowWeek=numberOrNull(row.week??row.wk)??resolvedWeek;
   if(!rowSeason||!rowWeek||!POSITIONS.has(position)||projection==null)return null;
-  return{season:rowSeason,week:rowWeek,playerId:String(row.playerId??row.player_id??row.id??'').trim(),name:String(row.name??row.player??row.player_name??'').trim(),position,nflTeam:String(row.nflTeam??row.team??row.team_id??'').trim().toUpperCase(),projection,source:'jerrygm'};
+  const ids=row.ids??{};
+  return{season:rowSeason,week:rowWeek,playerId:String(row.playerId??row.player_id??row.id??ids.gsis??ids.yahoo??'').trim(),yahooId:String(row.yahooId??ids.yahoo??'').trim(),name:String(row.name??row.player??row.player_name??'').trim(),position,nflTeam:String(row.nflTeam??row.team??row.team_id??'').trim().toUpperCase(),projection,source:'jerrygm'};
  }).filter(Boolean);
 }
 
 export class JerryGMClient{
  constructor({apiKey,fetchImpl=globalThis.fetch,baseUrl=BASE_URL}={}){if(!apiKey)throw new Error('JerryGM API key required.');this.apiKey=apiKey;this.fetch=fetchImpl;this.baseUrl=baseUrl;}
- async projections({season,week,scoring='HALF'}={}){
+ async request({season,week,scoring='HALF',names=[]}={}){
   const url=new URL(`${this.baseUrl}/projections`);url.searchParams.set('season',String(season));url.searchParams.set('week',String(week));url.searchParams.set('scoring',scoringName(scoring));
+  if(names.length)url.searchParams.set('names',names.join(','));
   const response=await this.fetch(url,{headers:{'x-api-key':this.apiKey,'authorization':`Bearer ${this.apiKey}`,'accept':'application/json'}});
   const text=await response.text();if(!response.ok)throw new Error(`JerryGM ${response.status}: ${text.slice(0,300)}`);
   try{return JSON.parse(text);}catch{throw new Error('JerryGM returned invalid JSON.');}
+ }
+ async projections({season,week,scoring='HALF',names=[]}={}){
+  const requested=[...new Set((names||[]).map(x=>String(x||'').trim()).filter(Boolean))];
+  if(!requested.length)return this.request({season,week,scoring});
+  const payloads=[];
+  for(const batch of chunks(requested,25))payloads.push(await this.request({season,week,scoring,names:batch}));
+  return{season,week,scoring:scoringName(scoring),players:payloads.flatMap(rowsFrom),targeted:true,batches:payloads.length};
  }
 }
