@@ -12,8 +12,9 @@ const snapshot=read(snapshotPath),spec=read(specPath);
 const season=Number(spec.season??snapshot.source?.season),week=Number(spec.week);
 if(!season||!week||!spec.teamId){console.error('weekly-spec.json requires teamId and week; season must be supplied or present in snapshot.source.season.');process.exit(2)}
 const weeks=spec.weeks?.length?spec.weeks:[week];
+const projectionNames=[...new Set((snapshot.teams??[]).flatMap(team=>team.roster??team.lineup??[]).map(player=>String(player?.name??'').trim()).filter(Boolean))];
 let loaded;
-try{loaded=await loadWeeklyProjectionHorizon({season,weeks,scoring:spec.scoring??'HALF',minimumRows:Number(spec.minimumProjectionRows??1),fixturePath:spec.projectionFixturePath??process.env.PROJECTION_FIXTURE_PATH??null});}
+try{loaded=await loadWeeklyProjectionHorizon({season,weeks,scoring:spec.scoring??'HALF',minimumRows:Number(spec.minimumProjectionRows??1),projectionNames,fixturePath:spec.projectionFixturePath??process.env.PROJECTION_FIXTURE_PATH??null});}
 catch(error){console.error(`PROJECTIONS: FAIL; ${error.message}`);process.exit(2)}
 const calibrationPath=spec.calibrationPath??'data/private/ffpros-research-calibration.json';
 const calibrationReport=calibrationPath&&fs.existsSync(calibrationPath)?read(calibrationPath):null;
