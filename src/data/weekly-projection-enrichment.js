@@ -7,58 +7,9 @@ const namePosition=p=>[key(p.name||p.playerName),pos(p)].join('|');
 const nameOnly=p=>key(p.name||p.playerName);
 const id=p=>String(p.playerId||p.id||'');
 const weekKey=(season,week)=>`${season||''}:${week}`;
-
-function add(map,k,row){
- if(!k)return;
- const rows=map.get(k)||[];
- rows.push(row);map.set(k,rows);
-}
+function add(map,k,row){if(!k)return;const rows=map.get(k)||[];rows.push(row);map.set(k,rows)}
 function unique(map,k){const rows=map.get(k)||[];return rows.length===1?rows[0]:null}
-function indexRows(rows){
- const byWeekId=new Map(),byWeekIdentity=new Map(),byWeekNamePosition=new Map(),byWeekName=new Map();
- for(const row of rows||[]){
-  const projection=Number(row.projection??row.projectedPoints);
-  const week=Number(row.week);if(!Number.isFinite(projection)||!Number.isInteger(week))continue;
-  const wk=weekKey(row.season,week),rid=id(row);
-  if(rid)byWeekId.set(`${wk}:${rid}`,row);
-  add(byWeekIdentity,`${wk}:${identity(row)}`,row);
-  add(byWeekNamePosition,`${wk}:${namePosition(row)}`,row);
-  add(byWeekName,`${wk}:${nameOnly(row)}`,row);
- }
- return {byWeekId,byWeekIdentity,byWeekNamePosition,byWeekName};
-}
-function find(index,p,season,week){
- const wk=weekKey(season,week),pid=id(p);
- return (pid&&index.byWeekId.get(`${wk}:${pid}`))
-  ||unique(index.byWeekIdentity,`${wk}:${identity(p)}`)
-  ||unique(index.byWeekNamePosition,`${wk}:${namePosition(p)}`)
-  ||unique(index.byWeekName,`${wk}:${nameOnly(p)}`)
-  ||null;
-}
-function apply(p,row,week){
- if(!row)return {...p,projection:null,projectionStatus:'missing'};
- const status=String(row.status??p.status??'ACTIVE').toUpperCase();
- const byeWeek=Number(row.byeWeek??p.byeWeek);
- const bye=status==='BYE'||byeWeek===week;
- return {...p,projection:bye?0:Number(row.projection??row.projectedPoints),status:bye?'BYE':status,...(Number.isInteger(byeWeek)?{byeWeek}:{}),projectionStatus:bye?'bye':'matched'};
-}
-
-export function enrichWeeklyProjections(snapshot,projectionRows,{weeks=null,season=snapshot?.source?.season,strict=false}={}){
- const targetWeeks=weeks||[...new Set([...(snapshot.schedule||[]).map(x=>Number(x.week)),...(snapshot.playoffWeeks||[]).map(Number)])].filter(Number.isInteger).sort((a,b)=>a-b);
- const index=indexRows(projectionRows);let matched=0,missing=0,bye=0,total=0;
- const teams=(snapshot.teams||[]).map(team=>{
-  const weeklyRosters={},weeklyLineups={};
-  for(const week of targetWeeks){
-   const base=team.roster?.length?team.roster:(team.weeklyLineups?.[week]||team.lineup||[]);
-   const enriched=base.map(p=>{total++;const row=find(index,p,season,week);const out=apply(p,row,week);if(out.projectionStatus==='matched')matched++;else if(out.projectionStatus==='bye')bye++;else{missing++;if(strict)throw new Error(`No projection match for ${p.name} (${p.position}, ${p.nflTeam}) in week ${week}.`)}return out});
-   weeklyRosters[week]=enriched;
-   if(!team.roster?.length)weeklyLineups[week]=enriched;
-   else if(team.weeklyLineups?.[week]){
-    const wanted=new Set(team.weeklyLineups[week].map(id));
-    weeklyLineups[week]=enriched.filter(p=>wanted.has(id(p)));
-   }
-  }
-  return {...team,weeklyRosters,...(Object.keys(weeklyLineups).length?{weeklyLineups}:{})};
- });
- return {league:{...snapshot,teams},coverage:{total,matched,bye,missing,usable:matched+bye,matchRate:total?(matched+bye)/total:0,weeks:targetWeeks}};
-}
+function indexRows(rows){const byWeekId=new Map(),byWeekIdentity=new Map(),byWeekNamePosition=new Map(),byWeekName=new Map();for(const row of rows||[]){const projection=Number(row.projection??row.projectedPoints);const week=Number(row.week);if(!Number.isFinite(projection)||!Number.isInteger(week))continue;const wk=weekKey(row.season,week),rid=id(row);if(rid)byWeekId.set(`${wk}:${rid}`,row);add(byWeekIdentity,`${wk}:${identity(row)}`,row);add(byWeekNamePosition,`${wk}:${namePosition(row)}`,row);add(byWeekName,`${wk}:${nameOnly(row)}`,row)}return{byWeekId,byWeekIdentity,byWeekNamePosition,byWeekName}}
+function find(index,p,season,week){const wk=weekKey(season,week),pid=id(p);return(pid&&index.byWeekId.get(`${wk}:${pid}`))||unique(index.byWeekIdentity,`${wk}:${identity(p)}`)||unique(index.byWeekNamePosition,`${wk}:${namePosition(p)}`)||unique(index.byWeekName,`${wk}:${nameOnly(p)}`)||null}
+function apply(p,row,week){if(!row)return{...p,projection:null,projectionStatus:'missing'};const status=String(row.status??p.status??'ACTIVE').toUpperCase();const byeWeek=Number(row.byeWeek??p.byeWeek);const bye=status==='BYE'||byeWeek===week;return{...p,projection:bye?0:Number(row.projection??row.projectedPoints),status:bye?'BYE':status,...(Number.isInteger(byeWeek)?{byeWeek}:{}),projectionStatus:bye?'bye':'matched'}}
+export function enrichWeeklyProjections(snapshot,projectionRows,{weeks=null,season=snapshot?.source?.season,strict=false}={}){const targetWeeks=weeks||[...new Set([...(snapshot.schedule||[]).map(x=>Number(x.week)),...(snapshot.playoffWeeks||[]).map(Number)])].filter(Number.isInteger).sort((a,b)=>a-b);const index=indexRows(projectionRows);let matched=0,missing=0,bye=0,total=0;const missingPlayers=[];const teams=(snapshot.teams||[]).map(team=>{const weeklyRosters={},weeklyLineups={};for(const week of targetWeeks){const base=team.roster?.length?team.roster:(team.weeklyLineups?.[week]||team.lineup||[]);const enriched=base.map(p=>{total++;const row=find(index,p,season,week);const out=apply(p,row,week);if(out.projectionStatus==='matched')matched++;else if(out.projectionStatus==='bye')bye++;else{missing++;missingPlayers.push({teamId:team.id,teamName:team.name,week,name:p.name,position:p.position,nflTeam:p.nflTeam,playerId:id(p)});if(strict)throw new Error(`No projection match for ${p.name} (${p.position}, ${p.nflTeam}) in week ${week}.`)}return out});weeklyRosters[week]=enriched;if(!team.roster?.length)weeklyLineups[week]=enriched;else if(team.weeklyLineups?.[week]){const wanted=new Set(team.weeklyLineups[week].map(id));weeklyLineups[week]=enriched.filter(p=>wanted.has(id(p)))}}return{...team,weeklyRosters,...(Object.keys(weeklyLineups).length?{weeklyLineups}:{})}});return{league:{...snapshot,teams},coverage:{total,matched,bye,missing,usable:matched+bye,matchRate:total?(matched+bye)/total:0,weeks:targetWeeks,missingPlayers}}}
