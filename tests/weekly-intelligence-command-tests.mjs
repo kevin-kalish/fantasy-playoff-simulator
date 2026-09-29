@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 execFileSync(process.execPath,['scripts/generate-e2e-fixture-projections.mjs'],{stdio:'pipe'});
-const env={...process.env,FANTASYPROS_API_KEY:''};
+// Keep this command test deterministic even when the developer shell has live
+// projection-provider credentials or a local projection cache configured.
+const env={...process.env,FANTASYPROS_API_KEY:'',JERRYGM_API_KEY:'',PROJECTION_CACHE_PATH:''};
 const output=execFileSync(process.execPath,['scripts/run-weekly-intelligence.mjs','fixtures/prepared-league.json','fixtures/weekly-intelligence-spec.json'],{encoding:'utf8',env});
 assert.match(output,/WEEKLY INTELLIGENCE: Alpha — Week 11/);
 assert.match(output,/Record 7-3 \| Seed #1 \| Playoffs/);

@@ -15,10 +15,12 @@ fs.writeFileSync(cache,JSON.stringify([
  {season:2026,week:6,playerId:'cache-1',name:'Cached RB',position:'RB',projection:17}
 ]));
 const fetchImpl=async()=>({ok:false,status:403,text:async()=>'{"message":"Forbidden"}'});
-const result=await loadWeeklyProjections({season:2026,week:4,apiKey:'test-key',fixturePath:file,cachePath:null,fetchImpl});
+// Explicitly disable JerryGM so these fallback tests are independent of the
+// developer shell's JERRYGM_API_KEY environment variable.
+const result=await loadWeeklyProjections({season:2026,week:4,apiKey:'test-key',jerryGMApiKey:'',fixturePath:file,cachePath:null,fetchImpl});
 assert.equal(result.provider,'fixture');assert.equal(result.rows.length,1);assert.equal(result.rows[0].week,4);assert.equal(result.trust.ready,true);assert.equal(result.trust.degraded,true);assert.equal(result.trust.fallbacksUsed,1);assert.match(result.trust.attempts[0].error,/403/);
-const horizon=await loadWeeklyProjectionHorizon({season:2026,weeks:[4,5,6],apiKey:'test-key',fixturePath:file,cachePath:null,fetchImpl});
+const horizon=await loadWeeklyProjectionHorizon({season:2026,weeks:[4,5,6],apiKey:'test-key',jerryGMApiKey:'',fixturePath:file,cachePath:null,fetchImpl});
 assert.equal(horizon.provider,'fixture');assert.deepEqual(horizon.weeks,[4,5,6]);assert.deepEqual(horizon.rows.map(x=>x.week),[4,5,6]);assert.equal(horizon.rows.length,3);assert.equal(horizon.trust.ready,true);assert.equal(horizon.trust.degraded,true);assert.equal(horizon.trust.fallbacksUsed,3);assert.equal(horizon.trust.weekResults.length,3);assert.equal(horizon.trust.attempts.filter(x=>x.provider==='fantasypros').length,3);
-const cached=await loadWeeklyProjections({season:2026,week:4,apiKey:'test-key',fixturePath:file,cachePath:cache,fetchImpl});
+const cached=await loadWeeklyProjections({season:2026,week:4,apiKey:'test-key',jerryGMApiKey:'',fixturePath:file,cachePath:cache,fetchImpl});
 assert.equal(cached.provider,'cache');assert.equal(cached.rows[0].name,'Cached RB');assert.equal(cached.trust.degraded,true);assert.equal(cached.trust.fallbacksUsed,1);
 fs.unlinkSync(file);fs.unlinkSync(cache);console.log('weekly-projection-provider-tests: all checks passed');
