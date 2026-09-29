@@ -8,38 +8,24 @@ const num=x=>Number.isFinite(Number(x))?Number(x):0;
 function currentSeed(input,teamId){return [...input.teams].sort((a,b)=>num(b.wins)-num(a.wins)||num(b.points)-num(a.points)||String(a.name).localeCompare(String(b.name))).findIndex(t=>String(t.id)===String(teamId))+1;}
 function rosterSummary(team,week){const lineup=team.weeklyLineups?.[week]||team.lineup||[];return {playerCount:(team.roster||lineup).length,starters:lineup.map(p=>({id:p.id??p.playerId,name:p.name??p.playerName,position:p.position??p.pos,slot:p.lineupSlot??p.slot??null,projection:num(p.projection??p.projectedPoints)}))};}
 function seedDistribution(result){return (result.seedProbability||[]).map((probability,i)=>({seed:i+1,probability})).filter(x=>x.probability>0);}
-function projectionTrust(input,providerHealth){const coverage=input.metadata?.projectionCoverage??null,health=providerHealth??input.metadata?.projectionProvider??null;return {coverage,provider:health?.provider??input.metadata?.source?.provider??null,ready:health?.ready??null,degraded:Boolean(health?.degraded),fallbacksUsed:health?.fallbacksUsed??0,attempts:health?.attempts??[]};}
+function projectionTrust(input,providerHealth){const coverage=input.metadata?.projectionCoverage??null,health=providerHealth??input.metadata?.projectionProvider??null;return {coverage,provider:health?.provider??input.metadata?.source?.provider??null,ready:health?.ready??null,degraded:Boolean(health?.degraded),fallbacksUsed:health?.fallbacksUsed??0,attempts:health?.attempts??[],directWeeks:input.metadata?.directProjectionWeeks??[],longRangeWeeks:input.metadata?.longRangeProjectionWeeks??[]};}
 function postseasonProjectionTrust(input){
- const weeks=[...(input.playoffWeeks||[])];
+ const weeks=[...(input.playoffWeeks||[])],direct=new Set(input.metadata?.directProjectionWeeks??[]);
  const covered=weeks.filter(week=>input.teams.every(team=>Array.isArray(team.weeklyLineups?.[week])&&team.weeklyLineups[week].length>0));
- const coverage=weeks.length?covered.length/weeks.length:0;
- return {trusted:weeks.length>0&&covered.length===weeks.length,coverage,weeks,coveredWeeks:covered,missingWeeks:weeks.filter(w=>!covered.includes(w)),reason:covered.length===weeks.length?'Dedicated projected lineups are available for every playoff week.':'Championship odds use fallback lineups for one or more playoff weeks and should be treated as provisional.'};
+ const directlyProjected=weeks.filter(week=>direct.has(Number(week)));
+ const coverage=weeks.length?directlyProjected.length/weeks.length:0;
+ const trusted=weeks.length>0&&directlyProjected.length===weeks.length&&covered.length===weeks.length;
+ return {trusted,coverage,weeks,coveredWeeks:covered,directlyProjectedWeeks:directlyProjected,missingWeeks:weeks.filter(w=>!directlyProjected.includes(w)),reason:trusted?'Dedicated provider projections are available for every playoff week.':'Championship odds use long-range projections for one or more playoff weeks and should be treated as provisional.'};
 }
-function leagueOutlook(input,results){
- return results.map(r=>{const team=input.teams.find(t=>String(t.id)===String(r.id));return {id:r.id,name:r.name,currentSeed:currentSeed(input,r.id),record:{wins:num(team?.wins),losses:num(team?.losses),ties:num(team?.ties)},points:num(team?.points),averageWins:r.averageWins,playoffProbability:r.playoffProbability,championshipProbability:r.championshipProbability,seedDistribution:seedDistribution(r)};}).sort((a,b)=>b.playoffProbability-a.playoffProbability||b.averageWins-a.averageWins||a.currentSeed-b.currentSeed);
-}
+function leagueOutlook(input,results){return results.map(r=>{const team=input.teams.find(t=>String(t.id)===String(r.id));return {id:r.id,name:r.name,currentSeed:currentSeed(input,r.id),record:{wins:num(team?.wins),losses:num(team?.losses),ties:num(team?.ties)},points:num(team?.points),averageWins:r.averageWins,playoffProbability:r.playoffProbability,championshipProbability:r.championshipProbability,seedDistribution:seedDistribution(r)};}).sort((a,b)=>b.playoffProbability-a.playoffProbability||b.averageWins-a.averageWins||a.currentSeed-b.currentSeed);}
 
 export function buildLeagueIntelligenceReport(input,{teamId,week,projectionRows=[],waivers=null,trades=[],startSit=true,limit=10,validation={},trust={},providerHealth=null,scenarioSimulations=null}={}){
- const gate=requireSimulationTrust(input,trust);
- const team=input.teams.find(t=>String(t.id)===String(teamId));if(!team)throw new Error(`Unknown team: ${teamId}`);
- const seedNow=currentSeed(input,teamId);
- const results=simulateLeague(input),outlook=results.find(r=>String(r.id)===String(teamId));
- const scenarioN=Math.max(1,Number(scenarioSimulations??Math.min(input.simulations||5000,5000)));
- const scenarioBaseline=simulateLeague({...input,simulations:scenarioN});
+ const gate=requireSimulationTrust(input,trust),team=input.teams.find(t=>String(t.id)===String(teamId));if(!team)throw new Error(`Unknown team: ${teamId}`);
+ const seedNow=currentSeed(input,teamId),results=simulateLeague(input),outlook=results.find(r=>String(r.id)===String(teamId));
+ const scenarioN=Math.max(1,Number(scenarioSimulations??Math.min(input.simulations||5000,5000))),scenarioBaseline=simulateLeague({...input,simulations:scenarioN});
  const matchup=buildWeeklyMatchupIntelligence(input,{teamId,week,trust,impactSimulations:scenarioN,baselineResults:scenarioBaseline});
  const leverage=buildPlayoffLeverageIntelligence({outlook,matchup,currentSeed:seedNow,playoffSpots:input.playoffSpots,week,playoffWeeks:input.playoffWeeks||[]});
  const gm=buildWeeklyGMRecommendations(input,{teamId,week,projectionRows,waivers,trades,startSit,limit,validation,leverage},{throwOnInvalid:true,trust,simulations:scenarioN,baselineResults:scenarioBaseline});
  const projections=projectionTrust(input,providerHealth),postseason=postseasonProjectionTrust(input);
- return {
-  schemaVersion:6,
-  generatedAt:new Date().toISOString(),
-  team:{id:team.id,name:team.name,record:{wins:num(team.wins),losses:num(team.losses),ties:num(team.ties)},points:num(team.points),currentSeed:seedNow},
-  league:{teamCount:input.teams.length,playoffSpots:input.playoffSpots,playoffWeeks:[...(input.playoffWeeks||[])],reseed:Boolean(input.reseed),tiebreaker:input.tiebreaker,outlook:leagueOutlook(input,results)},
-  outlook:{playoffProbability:outlook.playoffProbability,championshipProbability:outlook.championshipProbability,championshipTrusted:postseason.trusted,averageWins:outlook.averageWins,seedDistribution:seedDistribution(outlook),simulations:outlook.simulations,seed:outlook.seed,modelVariant:outlook.modelVariant},
-  matchup,
-  leverage,
-  recommendations:{actionCount:gm.actionCount,strategy:gm.strategy,validation:gm.validation,items:gm.recommendations,scenarioSimulations:scenarioN},
-  roster:rosterSummary(team,week),
-  trust:{trusted:gate.trusted,auditPassed:gate.auditPassed,projectionCoverage:projections.coverage,source:input.metadata?.source??null,projections,postseason}
- };
+ return {schemaVersion:6,generatedAt:new Date().toISOString(),team:{id:team.id,name:team.name,record:{wins:num(team.wins),losses:num(team.losses),ties:num(team.ties)},points:num(team.points),currentSeed:seedNow},league:{teamCount:input.teams.length,playoffSpots:input.playoffSpots,playoffWeeks:[...(input.playoffWeeks||[])],reseed:Boolean(input.reseed),tiebreaker:input.tiebreaker,outlook:leagueOutlook(input,results)},outlook:{playoffProbability:outlook.playoffProbability,championshipProbability:outlook.championshipProbability,championshipTrusted:postseason.trusted,averageWins:outlook.averageWins,seedDistribution:seedDistribution(outlook),simulations:outlook.simulations,seed:outlook.seed,modelVariant:outlook.modelVariant},matchup,leverage,recommendations:{actionCount:gm.actionCount,strategy:gm.strategy,validation:gm.validation,items:gm.recommendations,scenarioSimulations:scenarioN},roster:rosterSummary(team,week),trust:{trusted:gate.trusted,auditPassed:gate.auditPassed,projectionCoverage:projections.coverage,source:input.metadata?.source??null,projections,postseason}};
 }
