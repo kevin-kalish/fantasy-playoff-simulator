@@ -1,14 +1,19 @@
 const DEFAULT_SLOTS=['QB','RB','RB','WR','WR','TE','FLEX','K','DEF'];
+const NON_STARTER_SLOTS=new Set(['BN','BENCH','IR','IR+','NA']);
+const SLOT_ALIASES={'W/R/T':'FLEX','W/R':'RB/WR','W/T':'WR/TE','Q/W/R/T':'SUPERFLEX'};
 const ELIGIBLE={QB:['QB'],RB:['RB'],WR:['WR'],TE:['TE'],K:['K'],DEF:['DEF'],FLEX:['RB','WR','TE'],'RB/WR':['RB','WR'],'WR/TE':['WR','TE'],'RB/WR/TE':['RB','WR','TE'],SUPERFLEX:['QB','RB','WR','TE']};
 const value=p=>Number.isFinite(Number(p?.projection))?Number(p.projection):-Infinity;
 const usable=(p,week)=>p&&p.projectionStatus!=='missing'&&String(p.status||'ACTIVE').toUpperCase()!=='OUT'&&String(p.status||'ACTIVE').toUpperCase()!=='IR'&&String(p.status||'ACTIVE').toUpperCase()!=='SUSPENDED'&&String(p.status||'ACTIVE').toUpperCase()!=='BYE'&&Number(p.byeWeek)!==Number(week)&&Number.isFinite(Number(p.projection));
-const eligible=(p,slot)=>(ELIGIBLE[String(slot).toUpperCase()]||[String(slot).toUpperCase()]).includes(String(p.position||'').toUpperCase());
+const normalizeSlot=slot=>{const key=String(slot||'').trim().toUpperCase();return SLOT_ALIASES[key]||key};
+const starterSlots=slots=>(slots||DEFAULT_SLOTS).map(normalizeSlot).filter(slot=>!NON_STARTER_SLOTS.has(slot));
+const eligible=(p,slot)=>(ELIGIBLE[normalizeSlot(slot)]||[normalizeSlot(slot)]).includes(String(p.position||'').toUpperCase());
 
 export function optimizeLineup(players,{week=null,slots=DEFAULT_SLOTS}={}){
+ const activeSlots=starterSlots(slots);
  const pool=(players||[]).filter(p=>usable(p,week));let best=null,bestScore=-Infinity;
  const search=(i,used,lineup,score)=>{
-  if(i===slots.length){if(score>bestScore){bestScore=score;best=lineup.slice()}return}
-  const slot=slots[i];
+  if(i===activeSlots.length){if(score>bestScore){bestScore=score;best=lineup.slice()}return}
+  const slot=activeSlots[i];
   for(let j=0;j<pool.length;j++)if(!used.has(j)&&eligible(pool[j],slot)){
    used.add(j);lineup.push({...pool[j],lineupSlot:slot});search(i+1,used,lineup,score+value(pool[j]));lineup.pop();used.delete(j);
   }
