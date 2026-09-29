@@ -10,13 +10,16 @@ function rosterSummary(team,week){const lineup=team.weeklyLineups?.[week]||team.
 function seedDistribution(result){return (result.seedProbability||[]).map((probability,i)=>({seed:i+1,probability})).filter(x=>x.probability>0);}
 function projectionTrust(input,providerHealth){const coverage=input.metadata?.projectionCoverage??null,health=providerHealth??input.metadata?.projectionProvider??null;return {coverage,provider:health?.provider??input.metadata?.source?.provider??null,ready:health?.ready??null,degraded:Boolean(health?.degraded),fallbacksUsed:health?.fallbacksUsed??0,attempts:health?.attempts??[]};}
 
-export function buildLeagueIntelligenceReport(input,{teamId,week,projectionRows=[],waivers=null,trades=[],startSit=true,limit=10,validation={},trust={},providerHealth=null}={}){
+export function buildLeagueIntelligenceReport(input,{teamId,week,projectionRows=[],waivers=null,trades=[],startSit=true,limit=10,validation={},trust={},providerHealth=null,scenarioSimulations=null}={}){
  const gate=requireSimulationTrust(input,trust);
  const team=input.teams.find(t=>String(t.id)===String(teamId));if(!team)throw new Error(`Unknown team: ${teamId}`);
- const seedNow=currentSeed(input,teamId),results=simulateLeague(input),outlook=results.find(r=>String(r.id)===String(teamId));
- const matchup=buildWeeklyMatchupIntelligence(input,{teamId,week,trust});
+ const seedNow=currentSeed(input,teamId);
+ const results=simulateLeague(input),outlook=results.find(r=>String(r.id)===String(teamId));
+ const scenarioN=Math.max(1,Number(scenarioSimulations??Math.min(input.simulations||5000,5000)));
+ const scenarioBaseline=simulateLeague({...input,simulations:scenarioN});
+ const matchup=buildWeeklyMatchupIntelligence(input,{teamId,week,trust,impactSimulations:scenarioN,baselineResults:scenarioBaseline});
  const leverage=buildPlayoffLeverageIntelligence({outlook,matchup,currentSeed:seedNow,playoffSpots:input.playoffSpots,week,playoffWeeks:input.playoffWeeks||[]});
- const gm=buildWeeklyGMRecommendations(input,{teamId,week,projectionRows,waivers,trades,startSit,limit,validation,leverage},{throwOnInvalid:true,trust});
+ const gm=buildWeeklyGMRecommendations(input,{teamId,week,projectionRows,waivers,trades,startSit,limit,validation,leverage},{throwOnInvalid:true,trust,simulations:scenarioN,baselineResults:scenarioBaseline});
  const projections=projectionTrust(input,providerHealth);
  return {
   schemaVersion:5,
@@ -26,7 +29,7 @@ export function buildLeagueIntelligenceReport(input,{teamId,week,projectionRows=
   outlook:{playoffProbability:outlook.playoffProbability,championshipProbability:outlook.championshipProbability,averageWins:outlook.averageWins,seedDistribution:seedDistribution(outlook),simulations:outlook.simulations,seed:outlook.seed,modelVariant:outlook.modelVariant},
   matchup,
   leverage,
-  recommendations:{actionCount:gm.actionCount,strategy:gm.strategy,validation:gm.validation,items:gm.recommendations},
+  recommendations:{actionCount:gm.actionCount,strategy:gm.strategy,validation:gm.validation,items:gm.recommendations,scenarioSimulations:scenarioN},
   roster:rosterSummary(team,week),
   trust:{trusted:gate.trusted,auditPassed:gate.auditPassed,projectionCoverage:projections.coverage,source:input.metadata?.source??null,projections}
  };
