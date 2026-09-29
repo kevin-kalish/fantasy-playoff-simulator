@@ -4,6 +4,7 @@ import {assessSimulationReadiness} from '../src/model/simulation-readiness.js';
 import {buildLeagueIntelligenceReport} from '../src/model/league-intelligence-report.js';
 import {formatWeeklyIntelligence} from '../src/model/weekly-intelligence-format.js';
 import {loadWeeklyProjectionHorizon} from '../src/data/weekly-projection-provider.js';
+import {JerryGMClient,normalizeJerryGMSeasonProjections} from '../src/data/jerrygm.js';
 
 const [snapshotPath,specPath]=process.argv.slice(2);
 if(!snapshotPath||!specPath){console.error('Usage: npm run intelligence:weekly -- <league-snapshot.json> <weekly-spec.json>');process.exit(1)}
@@ -16,15 +17,25 @@ const projectionNames=[...new Set((snapshot.teams??[]).flatMap(team=>team.roster
 let loaded;
 try{loaded=await loadWeeklyProjectionHorizon({season,weeks,scoring:spec.scoring??'HALF',minimumRows:Number(spec.minimumProjectionRows??1),projectionNames,fixturePath:spec.projectionFixturePath??process.env.PROJECTION_FIXTURE_PATH??null});}
 catch(error){console.error(`PROJECTIONS: FAIL; ${error.message}`);process.exit(2)}
+let seasonProjectionRows=[];
+if(process.env.JERRYGM_API_KEY&&spec.useJerryGMSeasonBaseline!==false){
+ try{
+  const payload=await new JerryGMClient({apiKey:process.env.JERRYGM_API_KEY}).seasonProjections({season,scoring:spec.scoring??'HALF',names:projectionNames});
+  seasonProjectionRows=normalizeJerryGMSeasonProjections(payload,{season});
+  console.error(`SEASON BASELINE: jerrygm; ${seasonProjectionRows.length} roster projections.`);
+ }catch(error){console.error(`SEASON BASELINE: unavailable; ${error.message}; continuing with horizon-only long-range model.`);}
+}
 const calibrationPath=spec.calibrationPath??'data/private/ffpros-research-calibration.json';
 const calibrationReport=calibrationPath&&fs.existsSync(calibrationPath)?read(calibrationPath):null;
 const minimumProjectionMatchRate=Number(spec.minimumProjectionMatchRate??process.env.MIN_PROJECTION_MATCH_RATE??.9);
 const simulations=Number(spec.simulations??process.env.SIMULATIONS??50000);
 const scenarioSimulations=Number(spec.scenarioSimulations??process.env.SCENARIO_SIMULATIONS??5000);
-const prepared=prepareLeagueSimulation(snapshot,loaded.rows,{calibrationReport,simulations,seed:Number(spec.seed??process.env.SEED??20260923),modelVariant:spec.modelVariant??process.env.MODEL_VARIANT??'correlated',minimumProjectionMatchRate,weeks,season});
+const longRangeSeasonWeight=Number(spec.longRangeSeasonWeight??process.env.LONG_RANGE_SEASON_WEIGHT??.65);
+const prepared=prepareLeagueSimulation(snapshot,loaded.rows,{calibrationReport,simulations,seed:Number(spec.seed??process.env.SEED??20260923),modelVariant:spec.modelVariant??process.env.MODEL_VARIANT??'correlated',minimumProjectionMatchRate,weeks,season,seasonProjectionRows,longRangeSeasonWeight});
 prepared.input.metadata={...prepared.input.metadata,projectionProvider:loaded.trust};
 const readiness=assessSimulationReadiness(prepared,{minimumProjectionMatchRate});
 console.error(`PROJECTIONS: ${loaded.provider}; ${loaded.rows.length} rows across weeks ${loaded.weeks.join(',')}; ${loaded.trust.degraded?'DEGRADED/FALLBACK':'PRIMARY'}.`);
+if(seasonProjectionRows.length){const c=prepared.diagnostics.seasonProjectionCoverage;console.error(`LONG RANGE: ${prepared.diagnostics.longRangeProjectionMethod}; season weight ${(100*prepared.diagnostics.longRangeSeasonWeight).toFixed(0)}%; season coverage ${(100*c.matchRate).toFixed(1)}%.`);}
 console.error(`READY CHECK: ${readiness.ready?'PASS':'FAIL'}; projections ${(100*readiness.projectionCoverage.matchRate).toFixed(1)}% usable; incomplete lineups ${readiness.incompleteLineups.length}.`);
 if(!readiness.ready){for(const error of readiness.errors)console.error(`ERROR: ${error}`);console.log(JSON.stringify({readiness,projectionHealth:loaded.trust,metadata:prepared.input.metadata,report:null},null,2));process.exitCode=2;}
 else{
