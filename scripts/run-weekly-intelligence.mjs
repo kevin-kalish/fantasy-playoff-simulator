@@ -35,7 +35,7 @@ const prepared=prepareLeagueSimulation(snapshot,loaded.rows,{calibrationReport,s
 prepared.input.metadata={...prepared.input.metadata,projectionProvider:loaded.trust};
 const readiness=assessSimulationReadiness(prepared,{minimumProjectionMatchRate});
 console.error(`PROJECTIONS: ${loaded.provider}; ${loaded.rows.length} rows across weeks ${loaded.weeks.join(',')}; ${loaded.trust.degraded?'DEGRADED/FALLBACK':'PRIMARY'}.`);
-if(seasonProjectionRows.length){const c=prepared.diagnostics.seasonProjectionCoverage;console.error(`LONG RANGE: ${prepared.diagnostics.longRangeProjectionMethod}; season weight ${(100*prepared.diagnostics.longRangeSeasonWeight).toFixed(0)}%; season coverage ${(100*c.matchRate).toFixed(1)}%.`);}
+if(seasonProjectionRows.length){const c=prepared.diagnostics.seasonProjectionCoverage;console.error(`LONG RANGE: ${prepared.diagnostics.longRangeProjectionMethod}; season weight ${(100*prepared.diagnostics.longRangeSeasonWeight).toFixed(0)}%; season coverage ${(100*c.matchRate).toFixed(1)}%.`);if(c.missing?.length)console.error(`SEASON BASELINE MISSES (${c.missing.length}): ${c.missing.slice(0,30).map(x=>x.name??x.playerName??x.id).join(', ')}${c.missing.length>30?' ...':''}`);}
 console.error(`READY CHECK: ${readiness.ready?'PASS':'FAIL'}; projections ${(100*readiness.projectionCoverage.matchRate).toFixed(1)}% usable; incomplete lineups ${readiness.incompleteLineups.length}.`);
 if(!readiness.ready){for(const error of readiness.errors)console.error(`ERROR: ${error}`);console.log(JSON.stringify({readiness,projectionHealth:loaded.trust,metadata:prepared.input.metadata,report:null},null,2));process.exitCode=2;}
 else{
@@ -43,6 +43,7 @@ else{
  const started=Date.now();
  const report=buildLeagueIntelligenceReport(prepared.input,{...spec,week,projectionRows:loaded.rows,providerHealth:loaded.trust,trust:{requireProjectionCoverage:true,minimumProjectionMatchRate},scenarioSimulations});
  console.error(`MONTE CARLO: complete in ${((Date.now()-started)/1000).toFixed(1)}s.`);
+ const t=report.timing;console.error(`TIMING: core ${t.coreMonteCarloSeconds.toFixed(1)}s | scenario baseline ${t.scenarioBaselineSeconds.toFixed(1)}s | matchup ${t.matchupSeconds.toFixed(1)}s | recommendations ${t.recommendationsSeconds.toFixed(1)}s | total ${t.totalSeconds.toFixed(1)}s.`);
  console.log(formatWeeklyIntelligence(report,{maxActions:Number(spec.maxActions??5)}));
  if(spec.outputPath){fs.writeFileSync(spec.outputPath,JSON.stringify({readiness,report},null,2));console.error(`REPORT JSON: ${spec.outputPath}`);}
  if(spec.includeJson) console.log(JSON.stringify({readiness,report},null,2));
