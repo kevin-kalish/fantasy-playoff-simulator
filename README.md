@@ -1,33 +1,48 @@
 # Fantasy Playoff Simulator
 
-Monte Carlo fantasy football analytics application for estimating playoff, seed, matchup, and championship probabilities. Initial development targets a 10-team Yahoo Fantasy Football league with 8 playoff spots.
+Monte Carlo fantasy football analytics application for estimating playoff, seed, matchup, and championship probabilities. Current live development targets a 10-team Yahoo Fantasy Football league with 8 playoff spots.
 
 Live development site: https://kevin-kalish.github.io/fantasy-playoff-simulator/
+
+## Current status
+
+The project now has a working weekly intelligence pipeline for **The Fightin' Kali**. Until Yahoo API credentials are fully available, standings, schedule, and rosters are captured manually from Yahoo; JerryGM supplies live weekly projections. The current Week 4 production-style run simulates 50,000 core seasons plus 5,000 simulations per scenario and completes in roughly 30-40 seconds on the development machine.
+
+Projection horizon is intentionally explicit:
+
+- **Direct horizon** — JerryGM week-specific projections for the available three-week window (currently Weeks 4-6).
+- **Derived regular-season horizon** — later weeks use a recency-weighted player-strength estimate derived from the direct JerryGM window, with known bye weeks respected and transient weekly injury designations not projected indefinitely.
+- **Derived postseason horizon** — playoff-week projections currently use the same long-range method. Championship probabilities are therefore marked **PROVISIONAL** until dedicated playoff-week projections are available.
+- Completed weeks are represented by actual standings and are not simulated again. Structural validation verifies the remaining schedule before Monte Carlo begins.
 
 ## Current capabilities
 
 - Custom Yahoo scoring, including half-PPR and passing/rushing/receiving yardage bonuses.
-- Seeded, reproducible Monte Carlo season simulation.
-- Regular-season standings, seed distributions, playoff qualification, playoff bracket, reseeding, and championship probability.
+- Seeded, reproducible Monte Carlo season simulation with player volatility, availability, NFL-game correlation, and horizon uncertainty.
+- Full remaining regular-season simulation, standings, seed distributions, playoff qualification, playoff bracket/reseeding, and championship probability.
+- Weekly matchup win probability, playoff leverage/urgency, start-sit and GM recommendation infrastructure, and scenario analysis.
+- Weekly league-intelligence report with current record/seed, projection trust, direct-vs-derived projection horizon, remaining-game counts, playoff/title probabilities, and league-wide Monte Carlo outlook.
+- JerryGM live weekly projection adapter with targeted player batching for Free-tier limits.
+- Manual Yahoo current-state capture/merge path while live Yahoo OAuth/API integration is pending final credentials.
 - Interactive synthetic 10-team dashboard with team/week drill-down.
 - Single-game and multi-game what-if scenarios, rooting interests, and remaining-schedule-strength analysis.
 - Historical-stat ingestion, player-ID reconciliation, dataset manifests/readiness gates, and leakage-safe rolling-season backtesting.
 - CSV/JSON historical-data adapters plus nflverse actual-stat and FantasyPros projection adapters.
 - Historical data-source governance so technically accessible data is not automatically treated as approved for calibration/redistribution.
-- Player availability/injury uncertainty, bye handling, NFL-game correlation, and increasing future-week uncertainty.
-- Executable projection-only, volatility, availability, and correlated model variants.
 - Point-forecast metrics plus predictive-distribution coverage/tail calibration, Brier/log loss/ECE, and Monte Carlo convergence diagnostics.
+- Precompiled deterministic scoring inputs for substantially faster Monte Carlo execution.
 - Dependency-free automated validation suite.
 
 ## Architecture
 
-The simulation core is provider-independent. External services feed normalized internal objects rather than being embedded in simulation logic. Provider-specific historical datasets pass through adapters into one canonical observation contract. The browser UI is separate from model/scenario calculations so real league data can replace demo data without rewriting the model.
+The simulation core is provider-independent. External services feed normalized internal objects rather than being embedded in simulation logic. Provider-specific historical datasets pass through adapters into one canonical observation contract. The browser UI is separate from model/scenario calculations so live league data can replace manual/demo data without rewriting the model.
 
 ### Data providers
 
-- **Yahoo Fantasy Sports** — planned source of truth for league settings, standings, teams, rosters, and fantasy schedule. API approval pending.
-- **FantasyPros** — live projection adapter exists; access pending. Historical weekly projection pages are a research candidate, not yet an approved stored calibration dataset.
-- **nflverse** — primary historical actual-stat source. Target-league fantasy points are calculated locally from underlying stats.
+- **Yahoo Fantasy Sports** — intended source of truth for league settings, standings, teams, rosters, fantasy schedule, and transactions. Fantasy Sports API access has been approved; App ID and Client ID are configured locally, with final OAuth credential/access still pending. Manual Yahoo capture remains the temporary live-state source.
+- **JerryGM Projections API** — current primary live projection source. The Free API tier returns only the top 100 players for an untargeted all-active request, but supports up to 25 specifically named players per request. The adapter therefore batches targeted roster requests in groups of 25. JerryGM also exposes season projections when `week` is omitted; evaluating that season-level output for the long-range model is the next projection-quality task.
+- **FantasyPros** — projection adapter exists; access is not currently the primary live path. Historical weekly projection pages remain a research candidate, not an approved stored calibration dataset.
+- **nflverse** — primary historical actual-stat source and NFL data foundation. Target-league fantasy points are calculated locally from underlying stats.
 - **Ranking archives** — identity/ranking context only; rankings are never substituted for point projections.
 
 See `docs/DATA_SOURCES.md` for source status/governance and `docs/HISTORICAL_DATA.md` for the historical-data contract.
@@ -36,17 +51,33 @@ See `docs/DATA_SOURCES.md` for source status/governance and `docs/HISTORICAL_DAT
 
 - `src/scoring.js` — custom fantasy scoring engine.
 - `src/league-config.js` — league configuration.
-- `src/lineup.js` — projected legal-lineup optimizer with FLEX support.
+- `src/lineup.js` and `src/model/lineup-optimizer.js` — projected legal-lineup optimization with FLEX support.
 - `src/projections.js` — projection-provider interface/adapters.
-- `src/variance.js` / `src/calibration.js` — historical volatility and leakage-safe rolling features.
-- `src/simulator.js` — Monte Carlo engine with selectable model variants.
+- `src/data/jerrygm.js` — JerryGM API client, normalization, and targeted batching.
+- `src/model/league-preparation.js` — direct projection enrichment, recency-weighted long-range projection construction, lineup preparation, and simulation input assembly.
+- `src/simulator.js` — optimized Monte Carlo engine with structural validation and selectable model variants.
 - `src/standings.js` / `src/playoffs.js` / `src/scenarios.js` — standings, postseason, and scenario logic.
-- `src/data/*` — historical contracts, provider adapters, ID mapping, manifests, readiness, and source governance.
+- `src/model/league-intelligence-report.js` / `src/model/weekly-intelligence-format.js` — weekly decision report and trust/projection-horizon diagnostics.
+- `src/variance.js` / `src/calibration.js` — historical volatility and leakage-safe rolling features.
+- `src/data/*` — historical contracts, provider adapters, ID mapping, current-state capture, manifests, readiness, and source governance.
 - `src/model/experiment.js` / `src/model/season-backtest.js` — point-model experiments and rolling evaluation.
 - `src/model/distribution-backtest.js` — predictive interval coverage/tail calibration for stochastic model variants.
 - `src/model/nfl-games.js` / `src/model/correlation.js` — NFL-game identity and shared stochastic factors.
 - `src/model/availability.js` / `src/model/convergence.js` — availability and simulation precision.
 - `src/ui/*` — isolated UI state, analysis, and renderers.
+
+## Weekly workflow
+
+From the repository root, after updating the manually captured Yahoo state when necessary:
+
+```bash
+npm test
+npm run fightin-kali:weekly
+```
+
+The weekly command obtains the configured live projection source, builds direct and derived weekly lineups, applies readiness/trust gates, runs the Monte Carlo and scenario analyses, prints the weekly intelligence report, and writes the report JSON under `data/private/`.
+
+Environment credentials are intentionally kept outside source control. Current local development uses `JERRYGM_API_KEY`, `YAHOO_APP_ID`, and `YAHOO_CLIENT_ID`; any Yahoo client secret/token material must likewise remain outside the repository.
 
 ## Historical data contract
 
@@ -57,13 +88,14 @@ Minimum required fields are `season`, `week`, `playerId`, `position`, `projectio
 1. **Projection establishes expected performance.**
 2. **Historical results estimate uncertainty**, with player estimates shrunk toward position priors when samples are small.
 3. **Distribution quality matters separately from mean accuracy.** Adding volatility does not inherently improve a projection's mean; it must improve interval coverage, tails, matchup probabilities, or downstream playoff calibration.
-4. **Availability is stochastic when appropriate** and zero on byes/out designations.
+4. **Availability is stochastic when appropriate** and zero on known byes; transient current-week injury labels are not assumed to persist for the rest of the season.
 5. **Shared NFL-game factors create correlated outcomes** rather than correlating fantasy opponents simply because they face each other.
 6. **Distant weeks carry more uncertainty** than the immediate week.
-7. **Matchup effects remain modest until backtesting demonstrates predictive value.**
-8. **Underlying-stat simulation is the long-term target**, because threshold bonuses make yardage/TD distribution shape important.
+7. **Direct provider projections and derived long-range projections are tracked separately.** Long-range estimates should be replaced by direct weekly information as it becomes available.
+8. **Matchup effects remain modest until backtesting demonstrates predictive value.**
+9. **Underlying-stat simulation is the long-term target**, because threshold bonuses make yardage/TD distribution shape important.
 
-Current correlation coefficients and injury play probabilities are development priors, not calibrated estimates.
+Current correlation coefficients, injury play probabilities, and long-range recency decay are development priors, not fully calibrated estimates.
 
 ## Validation
 
@@ -73,18 +105,20 @@ Run:
 npm test
 ```
 
-The suite covers scoring, seeded randomness, schemas, standings/tiebreaks, availability/byes, playoff advancement, deterministic season simulation, NFL-game identity, forecast metrics, model variants, predictive-distribution calibration, historical ingestion/folds, rolling backtests, CSV/JSON imports, provider adapters, dataset readiness, and source governance.
+The suite covers scoring, seeded randomness, schemas, standings/tiebreaks, availability/byes, playoff advancement, deterministic season simulation, NFL-game identity, forecast metrics, model variants, predictive-distribution calibration, historical ingestion/folds, rolling backtests, CSV/JSON imports, provider adapters, dataset readiness, source governance, current-state capture, weekly projection enrichment, lineup optimization, simulation readiness/trust, scenario analysis, and GM recommendation logic.
+
+The live simulator also validates season structure before running: team IDs must be unique, scheduled teams must exist, self-matchups and duplicate same-week appearances are rejected, playoff-team counts must be valid, and remaining games are counted explicitly.
 
 ## Development roadmap
 
-1. Verify historical FantasyPros weekly projection coverage and terms; acquire only metadata/data that is permitted for the project.
-2. Join approved historical projections to nflverse actuals and run the readiness gate.
-3. Calibrate volatility and availability with predictive-distribution metrics, not RMSE alone.
-4. Estimate correlation/matchup parameters from historical NFL-game data and validate downstream matchup probabilities.
-5. Add underlying-stat simulation for passing/rushing/receiving and threshold bonuses.
-6. Connect Yahoo OAuth/import and live projections after approvals.
-7. Replace synthetic data with real league data while retaining demo mode.
+1. **Improve the long-range projection model.** Evaluate JerryGM's season-level projection output (omit `week`) and richer response fields such as stat lines/breakdowns before adding additional home-grown adjustments. Separate underlying player strength from week-specific matchup/opportunity effects where the available data supports it.
+2. **Complete Yahoo live integration.** Finish OAuth when the remaining Yahoo credential is issued, then replace manual standings/rosters/schedule capture with live Yahoo imports while retaining manual fallback and auditability.
+3. **Validate JerryGM coverage and identifiers.** Prefer stable player IDs over name matching, use the full player crosswalk where appropriate, and retain targeted batching when Free-tier limits require it.
+4. **Calibrate long-range uncertainty.** Make confidence degradation with forecast horizon explicit and test whether the stochastic widening is calibrated historically.
+5. **Expand historical validation.** Join approved historical projections to nflverse actuals and evaluate volatility, availability, correlation, matchup effects, and downstream playoff probabilities.
+6. **Add underlying-stat simulation** for passing/rushing/receiving and threshold bonuses where it materially improves calibration.
+7. **Continue performance work only where useful.** The full 50,000-run live simulation has already been reduced from roughly two minutes to roughly half a minute; model quality now takes priority over micro-optimization.
 
 ## Important status note
 
-The application is a development prototype. Synthetic demo probabilities are for software testing only. Until live data integration and historical calibration are complete, outputs should not be interpreted as validated fantasy-football forecasts.
+The application is a development prototype. The current live league pipeline uses real standings/rosters captured from Yahoo and live JerryGM projections, but long-range and postseason forecasts still contain derived model inputs. Playoff probabilities should be treated as developmental forecasts, and championship probabilities remain explicitly provisional until dedicated playoff-week projections are available and the broader model is historically calibrated.
