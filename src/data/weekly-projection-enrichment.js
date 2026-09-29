@@ -1,20 +1,39 @@
-const key=s=>String(s||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
-const identity=p=>[key(p.name||p.playerName),String(p.position||p.pos||'').toUpperCase(),String(p.nflTeam||p.team||'').toUpperCase()].join('|');
+const key=s=>String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\b(jr|sr|ii|iii|iv)\b\.?/g,'').replace(/[^a-z0-9]/g,'');
+const pos=p=>String(p.position||p.pos||'').toUpperCase();
+const team=p=>String(p.nflTeam||p.team||'').toUpperCase();
+const identity=p=>[key(p.name||p.playerName),pos(p),team(p)].join('|');
+const namePosition=p=>[key(p.name||p.playerName),pos(p)].join('|');
+const nameOnly=p=>key(p.name||p.playerName);
 const id=p=>String(p.playerId||p.id||'');
 const weekKey=(season,week)=>`${season||''}:${week}`;
 
+function add(map,k,row){
+ if(!k)return;
+ const rows=map.get(k)||[];
+ rows.push(row);map.set(k,rows);
+}
+function unique(map,k){const rows=map.get(k)||[];return rows.length===1?rows[0]:null}
 function indexRows(rows){
- const byWeekId=new Map(),byWeekIdentity=new Map();
+ const byWeekId=new Map(),byWeekIdentity=new Map(),byWeekNamePosition=new Map(),byWeekName=new Map();
  for(const row of rows||[]){
   const projection=Number(row.projection??row.projectedPoints);
   const week=Number(row.week);if(!Number.isFinite(projection)||!Number.isInteger(week))continue;
   const wk=weekKey(row.season,week),rid=id(row);
   if(rid)byWeekId.set(`${wk}:${rid}`,row);
-  byWeekIdentity.set(`${wk}:${identity(row)}`,row);
+  add(byWeekIdentity,`${wk}:${identity(row)}`,row);
+  add(byWeekNamePosition,`${wk}:${namePosition(row)}`,row);
+  add(byWeekName,`${wk}:${nameOnly(row)}`,row);
  }
- return {byWeekId,byWeekIdentity};
+ return {byWeekId,byWeekIdentity,byWeekNamePosition,byWeekName};
 }
-function find(index,p,season,week){const wk=weekKey(season,week),pid=id(p);return (pid&&index.byWeekId.get(`${wk}:${pid}`))||index.byWeekIdentity.get(`${wk}:${identity(p)}`)||null}
+function find(index,p,season,week){
+ const wk=weekKey(season,week),pid=id(p);
+ return (pid&&index.byWeekId.get(`${wk}:${pid}`))
+  ||unique(index.byWeekIdentity,`${wk}:${identity(p)}`)
+  ||unique(index.byWeekNamePosition,`${wk}:${namePosition(p)}`)
+  ||unique(index.byWeekName,`${wk}:${nameOnly(p)}`)
+  ||null;
+}
 function apply(p,row,week){
  if(!row)return {...p,projection:null,projectionStatus:'missing'};
  const status=String(row.status??p.status??'ACTIVE').toUpperCase();
