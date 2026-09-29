@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {get,leagueKey,currentWeek} from '../fixtures/yahoo-api-reference-week3.mjs';
-import {runYahooLeagueAudit,formatYahooAuditReport} from '../src/data/yahoo-live-audit.js';
+import {runYahooLeagueAudit,formatYahooAuditReport,auditYahooRosterCompleteness} from '../src/data/yahoo-live-audit.js';
 const reference=JSON.parse(fs.readFileSync(new URL('../fixtures/yahoo-reference-2026-week3.json',import.meta.url),'utf8'));
 const good=await runYahooLeagueAudit(get,{leagueKey,season:2026,week:currentWeek,reference});
-assert.equal(good.report.passed,true);assert.match(formatYahooAuditReport(good.report),/SAFE TO PROCEED/);assert.match(formatYahooAuditReport(good.report),/PLAYOFF_SPOTS/);
+assert.equal(good.report.passed,true);assert.equal(good.completeness.passed,true);assert(good.report.checks.some(x=>x.code==='ROSTERS_POPULATED'));assert(good.report.checks.some(x=>x.code==='CURRENT_LINEUPS_POPULATED'));assert(good.report.checks.some(x=>x.code==='WEEKLY_LINEUPS_POPULATED'));assert.match(formatYahooAuditReport(good.report),/SAFE TO PROCEED/);assert.match(formatYahooAuditReport(good.report),/PLAYOFF_SPOTS/);
 const badRef=structuredClone(reference);badRef.playoffs.spots=6;
 const bad=await runYahooLeagueAudit(get,{leagueKey,season:2026,week:currentWeek,reference:badRef});
 assert.equal(bad.report.passed,false);assert(bad.report.failures.some(x=>x.code==='PLAYOFF_SPOTS'));assert.match(formatYahooAuditReport(bad.report),/BLOCKED/);
+const incomplete=structuredClone(good.league);incomplete.teams[1].roster=[];incomplete.teams[1].lineup=[];incomplete.teams[1].weeklyLineups[currentWeek]=[];
+const completeness=auditYahooRosterCompleteness(incomplete,{week:currentWeek});
+assert.equal(completeness.passed,false);assert(completeness.failures.some(x=>x.code==='ROSTERS_POPULATED'));assert(completeness.failures.some(x=>x.code==='CURRENT_LINEUPS_POPULATED'));assert(completeness.failures.some(x=>x.code==='WEEKLY_LINEUPS_POPULATED'));
 console.log('yahoo-live-audit-tests: all checks passed');
