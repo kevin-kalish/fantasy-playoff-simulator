@@ -20,10 +20,21 @@ export function normalizeJerryGMProjections(payload,{season,week}={}){
  }).filter(Boolean);
 }
 
+export function normalizeJerryGMSeasonProjections(payload,{season}={}){
+ const resolvedSeason=numberOrNull(payload?.season??season);
+ return rowsFrom(payload).map(row=>{
+  const position=cleanPosition(row.position??row.pos??row.position_id);
+  const projection=numberOrNull(row.projectedPPG??row.projectedPoints??row.projection??row.projected_points??row.points);
+  if(!resolvedSeason||!POSITIONS.has(position)||projection==null)return null;
+  const ids=row.ids??{};
+  return{season:resolvedSeason,playerId:String(row.playerId??row.player_id??row.id??ids.gsis??ids.yahoo??'').trim(),yahooId:String(row.yahooId??ids.yahoo??'').trim(),name:String(row.name??row.player??row.player_name??'').trim(),position,nflTeam:String(row.nflTeam??row.team??row.team_id??'').trim().toUpperCase(),projection,seasonTotal:numberOrNull(row.seasonTotal??row.season_total),source:'jerrygm-season'};
+ }).filter(Boolean);
+}
+
 export class JerryGMClient{
  constructor({apiKey,fetchImpl=globalThis.fetch,baseUrl=BASE_URL}={}){if(!apiKey)throw new Error('JerryGM API key required.');this.apiKey=apiKey;this.fetch=fetchImpl;this.baseUrl=baseUrl;}
  async request({season,week,scoring='HALF',names=[]}={}){
-  const url=new URL(`${this.baseUrl}/projections`);url.searchParams.set('season',String(season));url.searchParams.set('week',String(week));url.searchParams.set('scoring',scoringName(scoring));
+  const url=new URL(`${this.baseUrl}/projections`);url.searchParams.set('season',String(season));if(Number.isInteger(Number(week)))url.searchParams.set('week',String(week));url.searchParams.set('scoring',scoringName(scoring));
   if(names.length)url.searchParams.set('names',names.join(','));
   const response=await this.fetch(url,{headers:{'x-api-key':this.apiKey,'authorization':`Bearer ${this.apiKey}`,'accept':'application/json'}});
   const text=await response.text();if(!response.ok)throw new Error(`JerryGM ${response.status}: ${text.slice(0,300)}`);
@@ -36,4 +47,5 @@ export class JerryGMClient{
   for(const batch of chunks(requested,25))payloads.push(await this.request({season,week,scoring,names:batch}));
   return{season,week,scoring:scoringName(scoring),players:payloads.flatMap(rowsFrom),targeted:true,batches:payloads.length};
  }
+ async seasonProjections({season,scoring='HALF',names=[]}={}){return this.projections({season,scoring,names});}
 }
