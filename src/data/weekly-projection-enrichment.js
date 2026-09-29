@@ -1,7 +1,8 @@
 const key=s=>String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\b(jr|sr|ii|iii|iv)\b\.?/g,'').replace(/[^a-z0-9]/g,'');
 const positionAlias=value=>{const p=String(value||'').trim().toUpperCase();return p==='DST'||p==='D/ST'?'DEF':p};
+const TEAM_ALIASES={LA:'LAR',LAR:'LAR',JAC:'JAX',JAX:'JAX',WAS:'WSH',WSH:'WSH'};
 const pos=p=>positionAlias(p.position||p.pos);
-const team=p=>String(p.nflTeam||p.team||'').toUpperCase();
+const team=p=>{const t=String(p.nflTeam||p.team||'').trim().toUpperCase();return TEAM_ALIASES[t]||t};
 const identity=p=>[key(p.name||p.playerName),pos(p),team(p)].join('|');
 const namePosition=p=>[key(p.name||p.playerName),pos(p)].join('|');
 const nameOnly=p=>key(p.name||p.playerName);
