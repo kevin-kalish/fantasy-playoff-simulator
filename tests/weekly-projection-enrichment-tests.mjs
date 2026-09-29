@@ -33,4 +33,11 @@ const wrongDefenseOut=enrichWeeklyProjections(defenseSnapshot,wrongDefenseRows);
 assert.equal(wrongDefenseOut.coverage.matched,0);
 assert.equal(wrongDefenseOut.coverage.missing,1);
 
+const ramsSnapshot={source:{season:2025},teams:[{id:'R',name:'R',roster:[{id:'yahoo-rams',name:'Rams',position:'DEF',nflTeam:'LAR'}]}],schedule:[{week:11,matchups:[]}],playoffWeeks:[]};
+const ramsRows=[{season:2025,week:11,playerId:'jerry-rams',name:'Los Angeles Rams',position:'DST',nflTeam:'LA',projection:7.25}];
+const ramsOut=enrichWeeklyProjections(ramsSnapshot,ramsRows);
+assert.equal(ramsOut.coverage.matched,1,'LAR roster should match LA projection team alias');
+assert.equal(ramsOut.coverage.missing,0);
+assert.equal(ramsOut.league.teams[0].weeklyRosters[11][0].projection,7.25);
+
 console.log('weekly-projection-enrichment-tests: all checks passed');
