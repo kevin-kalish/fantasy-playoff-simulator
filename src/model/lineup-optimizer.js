@@ -1,12 +1,14 @@
 const DEFAULT_SLOTS=['QB','RB','RB','WR','WR','TE','FLEX','K','DEF'];
 const NON_STARTER_SLOTS=new Set(['BN','BENCH','IR','IR+','NA']);
-const SLOT_ALIASES={'W/R/T':'FLEX','W/R':'RB/WR','W/T':'WR/TE','Q/W/R/T':'SUPERFLEX'};
+const SLOT_ALIASES={'W/R/T':'FLEX','W/R':'RB/WR','W/T':'WR/TE','Q/W/R/T':'SUPERFLEX','D/ST':'DEF','DST':'DEF'};
+const POSITION_ALIASES={'D/ST':'DEF','DST':'DEF'};
 const ELIGIBLE={QB:['QB'],RB:['RB'],WR:['WR'],TE:['TE'],K:['K'],DEF:['DEF'],FLEX:['RB','WR','TE'],'RB/WR':['RB','WR'],'WR/TE':['WR','TE'],'RB/WR/TE':['RB','WR','TE'],SUPERFLEX:['QB','RB','WR','TE']};
 const value=p=>Number.isFinite(Number(p?.projection))?Number(p.projection):-Infinity;
 const usable=(p,week)=>p&&p.projectionStatus!=='missing'&&String(p.status||'ACTIVE').toUpperCase()!=='OUT'&&String(p.status||'ACTIVE').toUpperCase()!=='IR'&&String(p.status||'ACTIVE').toUpperCase()!=='SUSPENDED'&&String(p.status||'ACTIVE').toUpperCase()!=='BYE'&&Number(p.byeWeek)!==Number(week)&&Number.isFinite(Number(p.projection));
 const normalizeSlot=slot=>{const key=String(slot||'').trim().toUpperCase();return SLOT_ALIASES[key]||key};
+const normalizePosition=position=>{const key=String(position||'').trim().toUpperCase();return POSITION_ALIASES[key]||key};
 const starterSlots=slots=>(slots||DEFAULT_SLOTS).map(normalizeSlot).filter(slot=>!NON_STARTER_SLOTS.has(slot));
-const eligible=(p,slot)=>(ELIGIBLE[normalizeSlot(slot)]||[normalizeSlot(slot)]).includes(String(p.position||'').toUpperCase());
+const eligible=(p,slot)=>(ELIGIBLE[normalizeSlot(slot)]||[normalizeSlot(slot)]).includes(normalizePosition(p.position));
 
 export function optimizeLineup(players,{week=null,slots=DEFAULT_SLOTS}={}){
  const activeSlots=starterSlots(slots);
