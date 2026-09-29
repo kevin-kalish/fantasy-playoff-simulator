@@ -7,7 +7,12 @@ const usableProjection=p=>p?.projectionStatus!=='missing'&&String(p?.status||'AC
 const LONG_RANGE_RECENCY_DECAY=.8;
 const LONG_RANGE_SEASON_WEIGHT=.65;
 const TRANSIENT_STATUSES=new Set(['PROBABLE','QUESTIONABLE','DOUBTFUL','OUT','BYE']);
+const NAME_SUFFIXES=new Set(['jr','sr','ii','iii','iv','v']);
 const normalizeName=value=>String(value||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+const normalizePersonName=value=>String(value||'').trim().toLowerCase().replace(/[.'’-]/g,' ').split(/\s+/).filter(Boolean).filter(part=>!NAME_SUFFIXES.has(part)).join('');
+const TEAM_ALIASES={ari:'arizona',atl:'atlanta',bal:'baltimore',buf:'buffalo',car:'carolina',chi:'chicago',cin:'cincinnati',cle:'cleveland',dal:'dallas',den:'denver',det:'detroit',gb:'greenbay',hou:'houston',ind:'indianapolis',jax:'jacksonville',kc:'kansascity',lv:'lasvegas',lac:'losangeleschargers',lar:'losangelesrams',mia:'miami',min:'minnesota',ne:'newengland',no:'neworleans',nyg:'newyorkgiants',nyj:'newyorkjets',phi:'philadelphia',pit:'pittsburgh',sea:'seattle',sf:'sanfrancisco',tb:'tampabay',ten:'tennessee',was:'washington'};
+const DEFENSE_WORDS=new Set(['def','defense','dst']);
+const defenseKey=value=>{const raw=String(value||'').trim().toLowerCase().replace(/[^a-z0-9 ]/g,' ');const parts=raw.split(/\s+/).filter(Boolean).filter(part=>!DEFENSE_WORDS.has(part));const joined=parts.join('');for(const [abbr,city] of Object.entries(TEAM_ALIASES)){if(joined===abbr||joined===city||joined===`${city}defense`)return abbr;}return null;};
 
 function weightedProjection(samples){
  if(!samples.length)return null;
@@ -22,20 +27,25 @@ function longRangeStatus(player,week){
  return TRANSIENT_STATUSES.has(status)?'ACTIVE':status;
 }
 function seasonProjectionIndex(rows=[]){
- const byId=new Map(),byYahoo=new Map(),byName=new Map();
+ const byId=new Map(),byYahoo=new Map(),byName=new Map(),byPersonName=new Map(),byDefense=new Map();
  for(const row of rows){
   const projection=Number(row?.projection);if(!Number.isFinite(projection))continue;
   if(row.playerId)byId.set(String(row.playerId),projection);
   if(row.yahooId)byYahoo.set(String(row.yahooId),projection);
   const name=normalizeName(row.name);if(name)byName.set(name,projection);
+  const person=normalizePersonName(row.name);if(person)byPersonName.set(person,projection);
+  if(['DST','DEF'].includes(String(row.position||'').toUpperCase())){const key=defenseKey(row.nflTeam)||defenseKey(row.name);if(key)byDefense.set(key,projection);}
  }
- return{byId,byYahoo,byName};
+ return{byId,byYahoo,byName,byPersonName,byDefense};
 }
 function seasonProjectionFor(player,index){
  const ids=[playerId(player),String(player?.gsisId??''),String(player?.yahooId??player?.ids?.yahoo??'')].filter(Boolean);
  for(const id of ids)if(index.byId.has(id))return index.byId.get(id);
  const yahoo=String(player?.yahooId??player?.ids?.yahoo??'');if(yahoo&&index.byYahoo.has(yahoo))return index.byYahoo.get(yahoo);
- return index.byName.get(normalizeName(player?.name))??null;
+ const exact=index.byName.get(normalizeName(player?.name));if(Number.isFinite(exact))return exact;
+ const position=String(player?.position??player?.pos??'').toUpperCase();
+ if(['DST','DEF'].includes(position)){const key=defenseKey(player?.nflTeam??player?.team)||defenseKey(player?.name);if(key&&index.byDefense.has(key))return index.byDefense.get(key);}
+ return index.byPersonName.get(normalizePersonName(player?.name))??null;
 }
 function addLongRangeProjections(league,directWeeks,{seasonProjectionRows=[],seasonWeight=LONG_RANGE_SEASON_WEIGHT}={}){
  const currentWeek=Math.min(...directWeeks);
