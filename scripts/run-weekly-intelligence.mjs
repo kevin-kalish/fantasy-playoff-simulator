@@ -19,14 +19,19 @@ catch(error){console.error(`PROJECTIONS: FAIL; ${error.message}`);process.exit(2
 const calibrationPath=spec.calibrationPath??'data/private/ffpros-research-calibration.json';
 const calibrationReport=calibrationPath&&fs.existsSync(calibrationPath)?read(calibrationPath):null;
 const minimumProjectionMatchRate=Number(spec.minimumProjectionMatchRate??process.env.MIN_PROJECTION_MATCH_RATE??.9);
-const prepared=prepareLeagueSimulation(snapshot,loaded.rows,{calibrationReport,simulations:Number(spec.simulations??process.env.SIMULATIONS??50000),seed:Number(spec.seed??process.env.SEED??20260923),modelVariant:spec.modelVariant??process.env.MODEL_VARIANT??'correlated',minimumProjectionMatchRate,weeks,season});
+const simulations=Number(spec.simulations??process.env.SIMULATIONS??50000);
+const scenarioSimulations=Number(spec.scenarioSimulations??process.env.SCENARIO_SIMULATIONS??5000);
+const prepared=prepareLeagueSimulation(snapshot,loaded.rows,{calibrationReport,simulations,seed:Number(spec.seed??process.env.SEED??20260923),modelVariant:spec.modelVariant??process.env.MODEL_VARIANT??'correlated',minimumProjectionMatchRate,weeks,season});
 prepared.input.metadata={...prepared.input.metadata,projectionProvider:loaded.trust};
 const readiness=assessSimulationReadiness(prepared,{minimumProjectionMatchRate});
 console.error(`PROJECTIONS: ${loaded.provider}; ${loaded.rows.length} rows across weeks ${loaded.weeks.join(',')}; ${loaded.trust.degraded?'DEGRADED/FALLBACK':'PRIMARY'}.`);
 console.error(`READY CHECK: ${readiness.ready?'PASS':'FAIL'}; projections ${(100*readiness.projectionCoverage.matchRate).toFixed(1)}% usable; incomplete lineups ${readiness.incompleteLineups.length}.`);
 if(!readiness.ready){for(const error of readiness.errors)console.error(`ERROR: ${error}`);console.log(JSON.stringify({readiness,projectionHealth:loaded.trust,metadata:prepared.input.metadata,report:null},null,2));process.exitCode=2;}
 else{
- const report=buildLeagueIntelligenceReport(prepared.input,{...spec,week,projectionRows:loaded.rows,providerHealth:loaded.trust,trust:{requireProjectionCoverage:true,minimumProjectionMatchRate}});
+ console.error(`MONTE CARLO: running ${simulations.toLocaleString()} core simulations; scenario analyses use ${scenarioSimulations.toLocaleString()} each...`);
+ const started=Date.now();
+ const report=buildLeagueIntelligenceReport(prepared.input,{...spec,week,projectionRows:loaded.rows,providerHealth:loaded.trust,trust:{requireProjectionCoverage:true,minimumProjectionMatchRate},scenarioSimulations});
+ console.error(`MONTE CARLO: complete in ${((Date.now()-started)/1000).toFixed(1)}s.`);
  console.log(formatWeeklyIntelligence(report,{maxActions:Number(spec.maxActions??5)}));
  if(spec.outputPath){fs.writeFileSync(spec.outputPath,JSON.stringify({readiness,report},null,2));console.error(`REPORT JSON: ${spec.outputPath}`);}
  if(spec.includeJson) console.log(JSON.stringify({readiness,report},null,2));
