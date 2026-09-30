@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import {buildWeeklyRefreshPlan} from '../src/model/weekly-refresh-plan.js';
+import {createYahooClient} from '../src/data/yahoo-client.js';
+import {loadYahooWaiverPool,candidateDropPlayerIds} from '../src/data/yahoo-waivers.js';
 
 const snapshotPath=process.argv[2]??'data/private/fightin-kali-current.json';
 const weekArg=process.argv[3]?Number(process.argv[3]):undefined;
@@ -9,6 +11,22 @@ if(!fs.existsSync(snapshotPath)) fail(`snapshot not found: ${snapshotPath}`);
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
 const snapshot=read(snapshotPath),config=read(configPath);
 let plan; try{plan=buildWeeklyRefreshPlan(snapshot,config,{week:weekArg});}catch(e){fail(e.message)}
+
+if(process.env.YAHOO_ACCESS_TOKEN){
+ try{
+  const leagueKey=process.env.YAHOO_LEAGUE_KEY??snapshot.source?.leagueKey??config.leagueKey;
+  if(!leagueKey)throw new Error('Yahoo league key is required.');
+  const get=createYahooClient({accessToken:process.env.YAHOO_ACCESS_TOKEN});
+  const candidates=await loadYahooWaiverPool(get,{leagueKey,limit:Number(process.env.WAIVER_CANDIDATE_LIMIT??30)});
+  const team=snapshot.teams.find(t=>String(t.id)===String(plan.teamId));
+  const dropPlayerIds=candidateDropPlayerIds(team,{limit:Number(process.env.WAIVER_DROP_LIMIT??8)});
+  if(candidates.length&&dropPlayerIds.length){
+   plan.waivers={candidates,dropPlayerIds,weeks:plan.weeks};
+   console.error(`WAIVERS: Yahoo pool; ${candidates.length} candidates x ${dropPlayerIds.length} possible drops.`);
+  }else console.error(`WAIVERS: no scenarios; ${candidates.length} candidates, ${dropPlayerIds.length} possible drops.`);
+ }catch(error){console.error(`WAIVERS: unavailable; ${error.message}; continuing without waiver recommendations.`);}
+}
+
 fs.mkdirSync('data/private',{recursive:true});
 const specPath=`data/private/fightin-kali-week-${plan.week}-spec.json`;
 fs.writeFileSync(specPath,JSON.stringify(plan,null,2)+'\n');
