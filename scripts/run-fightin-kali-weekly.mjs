@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import {buildWeeklyRefreshPlan} from '../src/model/weekly-refresh-plan.js';
 import {createYahooClient} from '../src/data/yahoo-client.js';
-import {loadYahooWaiverPool,candidateDropPlayerIds} from '../src/data/yahoo-waivers.js';
+import {loadYahooWaiverPool,candidateDropPlayerIds,prescreenWaiverScenarios} from '../src/data/yahoo-waivers.js';
 
 const snapshotPath=process.argv[2]??'data/private/fightin-kali-current.json';
 const weekArg=process.argv[3]?Number(process.argv[3]):undefined;
@@ -17,13 +17,14 @@ if(process.env.YAHOO_ACCESS_TOKEN){
   const leagueKey=process.env.YAHOO_LEAGUE_KEY??snapshot.source?.leagueKey??config.leagueKey;
   if(!leagueKey)throw new Error('Yahoo league key is required.');
   const get=createYahooClient({accessToken:process.env.YAHOO_ACCESS_TOKEN});
-  const candidates=await loadYahooWaiverPool(get,{leagueKey,limit:Number(process.env.WAIVER_CANDIDATE_LIMIT??30)});
+  const raw=await loadYahooWaiverPool(get,{leagueKey,limit:Number(process.env.WAIVER_CANDIDATE_LIMIT??30)});
   const team=snapshot.teams.find(t=>String(t.id)===String(plan.teamId));
-  const dropPlayerIds=candidateDropPlayerIds(team,{limit:Number(process.env.WAIVER_DROP_LIMIT??8)});
-  if(candidates.length&&dropPlayerIds.length){
-   plan.waivers={candidates,dropPlayerIds,weeks:plan.weeks};
-   console.error(`WAIVERS: Yahoo pool; ${candidates.length} candidates x ${dropPlayerIds.length} possible drops.`);
-  }else console.error(`WAIVERS: no scenarios; ${candidates.length} candidates, ${dropPlayerIds.length} possible drops.`);
+  const screen=prescreenWaiverScenarios(team,raw,{candidateLimit:Number(process.env.WAIVER_SCREEN_LIMIT??12),dropsPerCandidate:Number(process.env.WAIVER_DROPS_PER_CANDIDATE??3)});
+  const dropPlayerIds=[...new Set(Object.values(screen.dropMap).flat())];
+  if(screen.candidates.length&&dropPlayerIds.length){
+   plan.waivers={candidates:screen.candidates,dropPlayerIds,weeks:plan.weeks,prescreen:screen};
+   console.error(`WAIVERS: Yahoo pool; ${raw.length} available -> ${screen.candidates.length} screened candidates x ${dropPlayerIds.length} possible drops.`);
+  }else console.error(`WAIVERS: no scenarios; ${raw.length} candidates, ${dropPlayerIds.length} possible drops.`);
  }catch(error){console.error(`WAIVERS: unavailable; ${error.message}; continuing without waiver recommendations.`);}
 }
 
