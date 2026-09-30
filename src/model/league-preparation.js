@@ -6,6 +6,8 @@ const playerId=p=>String(p?.id??p?.playerId??'');
 const usableProjection=p=>p?.projectionStatus!=='missing'&&String(p?.status||'ACTIVE').toUpperCase()!=='BYE'&&Number.isFinite(Number(p?.projection));
 const LONG_RANGE_RECENCY_DECAY=.8;
 const LONG_RANGE_SEASON_WEIGHT=.65;
+const LONG_RANGE_CONFIDENCE_DECAY=.94;
+const LONG_RANGE_CONFIDENCE_FLOOR=.55;
 const TRANSIENT_STATUSES=new Set(['PROBABLE','QUESTIONABLE','DOUBTFUL','OUT','BYE']);
 const NAME_SUFFIXES=new Set(['jr','sr','ii','iii','iv','v']);
 const normalizeName=value=>String(value||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -22,6 +24,15 @@ function weightedProjection(samples){
  let total=0,weight=0;
  for(const sample of samples){const w=Math.pow(LONG_RANGE_RECENCY_DECAY,newest-sample.week);total+=sample.projection*w;weight+=w;}
  return weight?total/weight:null;
+}
+function longRangeConfidence(week,lastDirectWeek,{hasSeason,hasHorizon}){
+ const distance=Math.max(1,Number(week)-Number(lastDirectWeek));
+ const horizonDecay=Math.max(LONG_RANGE_CONFIDENCE_FLOOR,Math.pow(LONG_RANGE_CONFIDENCE_DECAY,distance));
+ // Season + recent weekly signal is the strongest derived case. A single-source
+ // projection is intentionally discounted further, but this is diagnostic only
+ // until historical calibration supports using confidence to widen distributions.
+ const sourceFactor=hasSeason&&hasHorizon?1:hasSeason?.9:hasHorizon?.8:0;
+ return Math.max(0,Math.min(1,horizonDecay*sourceFactor));
 }
 function longRangeStatus(player,week){
  const byeWeek=Number(player.byeWeek);if(Number.isInteger(byeWeek)&&byeWeek===week)return 'BYE';
@@ -50,7 +61,7 @@ function seasonProjectionFor(player,index){
  return index.byPersonName.get(normalizePersonName(player?.name))??null;
 }
 function addLongRangeProjections(league,directWeeks,{seasonProjectionRows=[],seasonWeight=LONG_RANGE_SEASON_WEIGHT}={}){
- const currentWeek=Math.min(...directWeeks);
+ const currentWeek=Math.min(...directWeeks),lastDirectWeek=Math.max(...directWeeks);
  const regularWeeks=(league.schedule||[]).map(x=>Number(x.week)).filter(w=>Number.isInteger(w)&&w>=currentWeek);
  const playoffWeeks=(league.playoffWeeks||[]).map(Number).filter(Number.isInteger);
  const allFuture=[...new Set([...regularWeeks,...playoffWeeks])].sort((a,b)=>a-b);
@@ -58,6 +69,8 @@ function addLongRangeProjections(league,directWeeks,{seasonProjectionRows=[],sea
  const derivedWeeks=allFuture.filter(w=>!direct.has(w));
  const seasonIndex=seasonProjectionIndex(seasonProjectionRows),blendWeight=Math.max(0,Math.min(1,Number(seasonWeight)));
  let seasonMatches=0,eligiblePlayers=0;const seasonMissing=[];
+ const confidenceByWeek=Object.fromEntries(directWeeks.map(week=>[week,1]));
+ const confidenceSamples=new Map(derivedWeeks.map(week=>[week,[]]));
  const teams=(league.teams||[]).map(team=>{
   const weeklyRosters={...(team.weeklyRosters||{})};
   const roster=team.roster?.length?team.roster:team.lineup||[];
@@ -72,14 +85,17 @@ function addLongRangeProjections(league,directWeeks,{seasonProjectionRows=[],sea
     const hasSeason=Number.isFinite(seasonBaseline),hasHorizon=Number.isFinite(horizon);
     const projection=hasSeason&&hasHorizon?seasonBaseline*blendWeight+horizon*(1-blendWeight):hasSeason?seasonBaseline:horizon;
     const method=hasSeason&&hasHorizon?'season-horizon-blend':hasSeason?'season-baseline':'recency-weighted-horizon';
+    const confidence=longRangeConfidence(week,lastDirectWeek,{hasSeason,hasHorizon});
+    if(projection!==null)confidenceSamples.get(week).push(confidence);
     const status=longRangeStatus(player,week),bye=status==='BYE';
-    return {...player,projection:bye?0:projection,status,projectionStatus:bye?'bye':projection===null?'missing':'long-range',projectionSource:method,projectionSampleCount:samples.length,seasonBaseline:hasSeason?seasonBaseline:null};
+    return {...player,projection:bye?0:projection,status,projectionStatus:bye?'bye':projection===null?'missing':'long-range',projectionSource:method,projectionSampleCount:samples.length,projectionConfidence:confidence,seasonBaseline:hasSeason?seasonBaseline:null};
    });
   }
   return {...team,weeklyRosters};
  });
+ for(const week of derivedWeeks){const values=confidenceSamples.get(week);confidenceByWeek[week]=values.length?values.reduce((a,b)=>a+b,0)/values.length:0;}
  const hasSeasonRows=seasonProjectionRows.length>0;
- return {...league,teams,longRangeProjectionWeeks:derivedWeeks,directProjectionWeeks:[...direct].sort((a,b)=>a-b),longRangeProjectionMethod:hasSeasonRows?'season-horizon-blend':'recency-weighted-horizon',longRangeRecencyDecay:LONG_RANGE_RECENCY_DECAY,longRangeSeasonWeight:hasSeasonRows?blendWeight:0,seasonProjectionCoverage:{eligible:eligiblePlayers,matched:seasonMatches,missing:seasonMissing,matchRate:eligiblePlayers?seasonMatches/eligiblePlayers:1}};
+ return {...league,teams,longRangeProjectionWeeks:derivedWeeks,directProjectionWeeks:[...direct].sort((a,b)=>a-b),longRangeProjectionMethod:hasSeasonRows?'season-horizon-blend':'recency-weighted-horizon',longRangeRecencyDecay:LONG_RANGE_RECENCY_DECAY,longRangeSeasonWeight:hasSeasonRows?blendWeight:0,longRangeConfidence:{method:'horizon-decay-v1',decay:LONG_RANGE_CONFIDENCE_DECAY,floor:LONG_RANGE_CONFIDENCE_FLOOR,byWeek:confidenceByWeek},seasonProjectionCoverage:{eligible:eligiblePlayers,matched:seasonMatches,missing:seasonMissing,matchRate:eligiblePlayers?seasonMatches/eligiblePlayers:1}};
 }
 
 export function prepareLeagueSimulation(snapshot,projectionRows,{slots=null,weeks=null,season=snapshot?.source?.season,strictProjections=false,minimumProjectionMatchRate=.9,calibrationReport=null,simulations=50000,seed=20260923,modelVariant='correlated',seasonProjectionRows=[],longRangeSeasonWeight=LONG_RANGE_SEASON_WEIGHT}={}){
@@ -95,6 +111,6 @@ export function prepareLeagueSimulation(snapshot,projectionRows,{slots=null,week
  const incomplete=[];
  for(const team of optimized.teams||[])for(const [week,d] of Object.entries(team.lineupDiagnostics||{}))if(!d.complete)incomplete.push({teamId:team.id,teamName:team.name,week:Number(week),emptySlots:d.emptySlots,projectedPoints:d.projectedPoints});
  const input=buildLeagueSimulationInput(optimized,{calibrationReport,simulations,seed,modelVariant,minimumProjectionMatchRate});
- input.metadata={...input.metadata,currentWeek,directProjectionWeeks:directWeeks,longRangeProjectionWeeks:modeled.longRangeProjectionWeeks,longRangeProjectionMethod:modeled.longRangeProjectionMethod,longRangeRecencyDecay:modeled.longRangeRecencyDecay,longRangeSeasonWeight:modeled.longRangeSeasonWeight,seasonProjectionCoverage:modeled.seasonProjectionCoverage,lineupSlots:activeSlots,rosterProjectionCoverage:enriched.coverage,incompleteLineups:incomplete};
- return {league:optimized,input,diagnostics:{currentWeek,directProjectionWeeks:directWeeks,longRangeProjectionWeeks:modeled.longRangeProjectionWeeks,longRangeProjectionMethod:modeled.longRangeProjectionMethod,longRangeRecencyDecay:modeled.longRangeRecencyDecay,longRangeSeasonWeight:modeled.longRangeSeasonWeight,seasonProjectionCoverage:modeled.seasonProjectionCoverage,lineupSlots:activeSlots,projectionCoverage:enriched.coverage,incompleteLineups:incomplete}};
+ input.metadata={...input.metadata,currentWeek,directProjectionWeeks:directWeeks,longRangeProjectionWeeks:modeled.longRangeProjectionWeeks,longRangeProjectionMethod:modeled.longRangeProjectionMethod,longRangeRecencyDecay:modeled.longRangeRecencyDecay,longRangeSeasonWeight:modeled.longRangeSeasonWeight,longRangeConfidence:modeled.longRangeConfidence,seasonProjectionCoverage:modeled.seasonProjectionCoverage,lineupSlots:activeSlots,rosterProjectionCoverage:enriched.coverage,incompleteLineups:incomplete};
+ return {league:optimized,input,diagnostics:{currentWeek,directProjectionWeeks:directWeeks,longRangeProjectionWeeks:modeled.longRangeProjectionWeeks,longRangeProjectionMethod:modeled.longRangeProjectionMethod,longRangeRecencyDecay:modeled.longRangeRecencyDecay,longRangeSeasonWeight:modeled.longRangeSeasonWeight,longRangeConfidence:modeled.longRangeConfidence,seasonProjectionCoverage:modeled.seasonProjectionCoverage,lineupSlots:activeSlots,projectionCoverage:enriched.coverage,incompleteLineups:incomplete}};
 }
