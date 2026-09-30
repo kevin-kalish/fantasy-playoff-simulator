@@ -16,24 +16,29 @@ function focusDelta(result,key){
 function compareRows(a,b){return b.championshipDelta-a.championshipDelta||b.playoffDelta-a.playoffDelta||b.winsDelta-a.winsDelta||a.addPlayerName.localeCompare(b.addPlayerName)}
 function summary(row){return `Add ${row.addPlayerName}${row.dropPlayerName?` / Drop ${row.dropPlayerName}`:row.dropPlayerId?` / Drop ${row.dropPlayerId}`:''}: ${pct(row.playoffDelta)} playoff, ${pct(row.championshipDelta)} championship, ${wins(row.winsDelta)} wins`;}
 
-export function rankWaiverCandidates(input,{teamId,candidates,dropPlayerIds=[null],projectionRows=[],weeks=null,lineupSlots=null},options={}){
+export function rankWaiverCandidates(input,{teamId,candidates,dropPlayerIds=[null],dropMap=null,projectionRows=[],weeks=null,lineupSlots=null},options={}){
  if(!Array.isArray(candidates)||!candidates.length)throw new Error('candidates are required');
  if(!Array.isArray(dropPlayerIds)||!dropPlayerIds.length)dropPlayerIds=[null];
  const team=input.teams.find(t=>String(t.id)===String(teamId));if(!team)throw new Error(`Unknown team: ${teamId}`);
  const nameById=new Map((team.roster||[]).map(p=>[pid(p),p.name??pid(p)]));
- const rows=[];
+ const rows=[];let evaluatedScenarioCount=0,invalidScenarioCount=0;
  for(const addPlayer of candidates){
   let best=null;
-  for(const dropPlayerId of dropPlayerIds){
+  const mapped=dropMap?.[pid(addPlayer)];
+  const candidateDrops=Array.isArray(mapped)&&mapped.length?mapped:dropPlayerIds;
+  for(const dropPlayerId of candidateDrops){
    try{
+    evaluatedScenarioCount++;
     const result=evaluateAddDropScenario(input,{teamId,addPlayer,dropPlayerId,projectionRows,weeks,lineupSlots},options);
     const row={addPlayerId:pid(addPlayer),addPlayerName:addPlayer.name??pid(addPlayer),dropPlayerId:dropPlayerId??null,dropPlayerName:dropPlayerId?nameById.get(String(dropPlayerId))??String(dropPlayerId):null,playoffDelta:focusDelta(result,'playoffProbability'),championshipDelta:focusDelta(result,'championshipProbability'),winsDelta:focusDelta(result,'averageWins'),result};
     if(!best||compareRows(row,best)<0)best=row;
-   }catch(error){if(options.throwOnInvalid)throw error}
+   }catch(error){invalidScenarioCount++;if(options.throwOnInvalid)throw error}
   }
   if(best)rows.push(best);
  }
- return rows.sort(compareRows).map((r,i)=>({...r,rank:i+1,summary:summary(r)}));
+ const ranked=rows.sort(compareRows).map((r,i)=>({...r,rank:i+1,summary:summary(r)}));
+ Object.defineProperty(ranked,'diagnostics',{value:{candidateCount:candidates.length,evaluatedScenarioCount,invalidScenarioCount,candidateSpecificDrops:Boolean(dropMap)},enumerable:false});
+ return ranked;
 }
 
 export function compactWaiverRanking(ranked,{limit=10}={}){
