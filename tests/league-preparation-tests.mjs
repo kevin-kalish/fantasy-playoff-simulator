@@ -7,4 +7,10 @@ const seasonProjectionRows=[{name:'Los Angeles Rams',position:'DST',projection:9
 const result=prepareLeagueSimulation(snapshot,projections,{weeks:[4],seasonProjectionRows,simulations:10});
 assert.equal(result.diagnostics.seasonProjectionCoverage.matched,2);
 assert.equal(result.diagnostics.seasonProjectionCoverage.missing.length,0);
+assert.equal(result.diagnostics.longRangeConfidence.method,'horizon-decay-v1');
+assert.equal(result.diagnostics.longRangeConfidence.byWeek[4],1);
+assert.ok(result.diagnostics.longRangeConfidence.byWeek[7]<1);
+assert.ok(result.diagnostics.longRangeConfidence.byWeek[15]<result.diagnostics.longRangeConfidence.byWeek[7]);
+assert.equal(result.input.metadata.longRangeConfidence.byWeek[15],result.diagnostics.longRangeConfidence.byWeek[15]);
+assert.ok(result.league.teams[0].weeklyRosters[15][0].projectionConfidence<result.league.teams[0].weeklyRosters[7][0].projectionConfidence);
 console.log('league-preparation-tests: all checks passed');
