@@ -2,18 +2,17 @@ import fs from 'node:fs';
 
 const outputPath=process.argv[2]??'data/private/fightin-kali-capture.json';
 const capture={
- capturedAt:'2026-09-28T12:05:00-04:00',
+ capturedAt:'2026-09-29T17:45:00-04:00',
+ currentWeek:4,
  teams:[
-  {name:'Shambala',wins:2,losses:0,ties:0,points:299.48,pointsAgainst:191.26,rank:1,waiverPriority:9,moves:2},
-  {name:"James's Great Team",wins:2,losses:0,ties:0,points:273.04,pointsAgainst:241.66,rank:2,waiverPriority:2},
-  {name:'Captain Marrvelous',wins:1,losses:1,ties:0,points:258.78,pointsAgainst:195.82,rank:3,waiverPriority:5},
-  {name:'End zone Em-pire',wins:1,losses:1,ties:0,points:235.98,pointsAgainst:216.80,rank:4,waiverPriority:3,moves:3},
-  {name:'AI Generated Slop',wins:1,losses:1,ties:0,points:219.34,pointsAgainst:203.34,rank:5,waiverPriority:4,moves:1},
-  {name:"AiLi’s Football Guys",wins:1,losses:1,ties:0,points:213.28,pointsAgainst:258.12,rank:6,waiverPriority:1},
-  {name:'THE KALISH KABANA!!!!',wins:1,losses:1,ties:0,points:212.34,pointsAgainst:226.78,rank:7,waiverPriority:8,moves:2},
-  {name:'The Desmond Diamonds',wins:1,losses:1,ties:0,points:186.36,pointsAgainst:280.44,rank:8,waiverPriority:6},
-  {name:'Bens Big Boys',wins:0,losses:2,ties:0,points:221.32,pointsAgainst:246.04,rank:9,waiverPriority:7,moves:1},
-  {name:"The Fightin' Kali",wins:0,losses:2,ties:0,points:177.54,pointsAgainst:237.20,rank:10,waiverPriority:10,moves:1,
+  {name:"James's Great Team",wins:3,losses:0,ties:0,points:409.22,pointsAgainst:328.80,rank:1,waiverPriority:2},
+  {name:'Shambala',wins:2,losses:1,ties:0,points:395.24,pointsAgainst:326.40,rank:2,waiverPriority:9,moves:2},
+  {name:'Captain Marrvelous',wins:2,losses:1,ties:0,points:394.64,pointsAgainst:309.80,rank:3,waiverPriority:5},
+  {name:'The Desmond Diamonds',wins:2,losses:1,ties:0,points:321.50,pointsAgainst:376.20,rank:4,waiverPriority:6},
+  {name:'THE KALISH KABANA!!!!',wins:2,losses:1,ties:0,points:320.04,pointsAgainst:326.48,rank:5,waiverPriority:8,moves:2},
+  {name:'End zone Em-pire',wins:1,losses:2,ties:0,points:335.68,pointsAgainst:324.50,rank:6,waiverPriority:3,moves:3},
+  {name:"AiLi’s Football Guys",wins:1,losses:2,ties:0,points:320.70,pointsAgainst:397.18,rank:7,waiverPriority:1},
+  {name:"The Fightin' Kali",wins:1,losses:2,ties:0,points:316.60,pointsAgainst:344.62,rank:8,waiverPriority:10,moves:1,
    roster:[
     {name:'Drake Maye',position:'QB',nflTeam:'NE',lineupSlot:'QB'},
     {name:'Bijan Robinson',position:'RB',nflTeam:'ATL',lineupSlot:'RB'},
@@ -31,7 +30,9 @@ const capture={
     {name:'Isiah Pacheco',position:'RB',nflTeam:'DET',lineupSlot:'IR',status:'IR'},
     {name:'Brandon Aubrey',position:'K',nflTeam:'DAL',lineupSlot:'K'},
     {name:'Texans',position:'DEF',nflTeam:'HOU',lineupSlot:'DEF'}
-   ]}
+   ]},
+  {name:'AI Generated Slop',wins:1,losses:2,ties:0,points:306.48,pointsAgainst:339.52,rank:9,waiverPriority:4,moves:1},
+  {name:'Bens Big Boys',wins:0,losses:3,ties:0,points:335.30,pointsAgainst:381.90,rank:10,waiverPriority:7,moves:1}
  ],
  schedule:[
   {week:1,matchups:[["The Fightin' Kali",'End zone Em-pire'],['Captain Marrvelous',"AiLi’s Football Guys"],['THE KALISH KABANA!!!!','Shambala'],['AI Generated Slop','The Desmond Diamonds'],['Bens Big Boys',"James's Great Team"]]},
@@ -53,6 +54,6 @@ const capture={
 fs.mkdirSync('data/private',{recursive:true});
 fs.writeFileSync(outputPath,JSON.stringify(capture,null,2)+'\n');
 const matchupCount=capture.schedule.reduce((sum,row)=>sum+row.matchups.length,0);
-console.log(`CAPTURE TEMPLATE: READY | ${capture.teams.length} teams | ${capture.schedule.length} weeks | ${matchupCount} matchups`);
+console.log(`CAPTURE TEMPLATE: READY | ${capture.teams.length} teams | ${capture.schedule.length} weeks | ${matchupCount} matchups | current week ${capture.currentWeek}`);
 console.log(`Wrote: ${outputPath}`);
-console.log('NOTE: Complete league schedule captured from Yahoo screenshots; no rivalry-week semantics are modeled.');
+console.log('NOTE: Post-Week-3 standings captured manually from Yahoo; no rivalry-week semantics are modeled.');
