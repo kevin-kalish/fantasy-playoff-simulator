@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import {buildWeeklyRefreshPlan} from '../src/model/weekly-refresh-plan.js';
 import {createYahooClient} from '../src/data/yahoo-client.js';
-import {loadYahooWaiverPool,candidateDropPlayerIds,prescreenWaiverScenarios} from '../src/data/yahoo-waivers.js';
+import {loadYahooWaiverPool,prescreenWaiverScenarios} from '../src/data/yahoo-waivers.js';
 
 const snapshotPath=process.argv[2]??'data/private/fightin-kali-current.json';
 const weekArg=process.argv[3]?Number(process.argv[3]):undefined;
@@ -21,9 +21,10 @@ if(process.env.YAHOO_ACCESS_TOKEN){
   const team=snapshot.teams.find(t=>String(t.id)===String(plan.teamId));
   const screen=prescreenWaiverScenarios(team,raw,{candidateLimit:Number(process.env.WAIVER_SCREEN_LIMIT??12),dropsPerCandidate:Number(process.env.WAIVER_DROPS_PER_CANDIDATE??3)});
   const dropPlayerIds=[...new Set(Object.values(screen.dropMap).flat())];
+  const scenarioCount=Object.values(screen.dropMap).reduce((n,ids)=>n+ids.length,0);
   if(screen.candidates.length&&dropPlayerIds.length){
-   plan.waivers={candidates:screen.candidates,dropPlayerIds,weeks:plan.weeks,prescreen:screen};
-   console.error(`WAIVERS: Yahoo pool; ${raw.length} available -> ${screen.candidates.length} screened candidates x ${dropPlayerIds.length} possible drops.`);
+   plan.waivers={candidates:screen.candidates,dropPlayerIds,dropMap:screen.dropMap,weeks:plan.weeks,prescreen:screen};
+   console.error(`WAIVERS: Yahoo pool; ${raw.length} available -> ${screen.candidates.length} screened candidates / ${scenarioCount} candidate-specific add-drop scenarios.`);
   }else console.error(`WAIVERS: no scenarios; ${raw.length} candidates, ${dropPlayerIds.length} possible drops.`);
  }catch(error){console.error(`WAIVERS: unavailable; ${error.message}; continuing without waiver recommendations.`);}
 }
