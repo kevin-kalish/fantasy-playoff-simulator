@@ -6,4 +6,7 @@ const candidates=[p('RB-GOOD','RB',0),p('RB-OK','RB',0)];
 const rows=[{week:2,playerId:'A-QB',projection:20},{week:3,playerId:'A-QB',projection:20},{week:2,playerId:'A-BENCH',projection:6},{week:3,playerId:'A-BENCH',projection:6},{week:2,playerId:'RB-GOOD',projection:18},{week:3,playerId:'RB-GOOD',projection:18},{week:2,playerId:'RB-OK',projection:10},{week:3,playerId:'RB-OK',projection:10}];
 const ranked=rankWaiverCandidates(base,{teamId:'A',candidates,dropPlayerIds:['A-RB','A-BENCH'],projectionRows:rows});
 assert.equal(ranked.length,2);assert.equal(ranked[0].rank,1);assert.equal(ranked[0].addPlayerId,'RB-GOOD');assert.ok(ranked[0].playoffDelta>=ranked[1].playoffDelta);assert.ok(['A-RB','A-BENCH'].includes(ranked[0].dropPlayerId));
+assert.equal(ranked.diagnostics.evaluatedScenarioCount,4);assert.equal(ranked.diagnostics.candidateSpecificDrops,false);
+const mapped=rankWaiverCandidates(base,{teamId:'A',candidates,dropPlayerIds:['A-RB','A-BENCH'],dropMap:{'RB-GOOD':['A-BENCH'],'RB-OK':['A-RB']},projectionRows:rows});
+assert.equal(mapped.length,2);assert.equal(mapped.diagnostics.evaluatedScenarioCount,2);assert.equal(mapped.diagnostics.candidateSpecificDrops,true);assert.equal(mapped.find(r=>r.addPlayerId==='RB-GOOD').dropPlayerId,'A-BENCH');assert.equal(mapped.find(r=>r.addPlayerId==='RB-OK').dropPlayerId,'A-RB');
 console.log('waiver-ranker-tests: all checks passed');
