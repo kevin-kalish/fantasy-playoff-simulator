@@ -12,6 +12,12 @@ function compare(a,b){return b.strategicScore-a.strategicScore||b.championshipDe
 function tradeLabel(t,result,teamId){const side=String(t.teamAId)===String(teamId)?'A':'B',give=side==='A'?t.teamAGives:t.teamBGives,get=side==='A'?t.teamBGives:t.teamAGives;return `Trade ${give.join(', ')||'nothing'} for ${get.join(', ')||'nothing'}`}
 function summary(r){const flag=r.validation?.confidence==='review'?' [REVIEW]':'';return `${r.label}: ${pct(r.playoffDelta)} playoff, ${pct(r.championshipDelta)} championship, ${wins(r.winsDelta)} wins${flag}`;}
 function beneficial(r){return num(r.strategicScore)>0&&[r.playoffDelta,r.championshipDelta,r.winsDelta,r.projectedPointDelta].some(x=>num(x)>0);}
+function rejectionReason(r){
+ if(r.validation?.confidence==='low')return 'low-confidence';
+ if(num(r.strategicScore)<=0)return 'non-positive-strategic-score';
+ return 'no-positive-impact';
+}
+function nearMiss(r){return {type:r.type,label:r.label,strategicScore:r.strategicScore,playoffDelta:r.playoffDelta,championshipDelta:r.championshipDelta,winsDelta:r.winsDelta,projectedPointDelta:num(r.projectedPointDelta),confidence:r.validation?.confidence??null,reason:rejectionReason(r)};}
 function shortlistStartSit(input,spec,maxScenarios){
  const choices=spec.choices||enumerateStartSitChoices(input,spec);
  const max=Math.max(1,Number(maxScenarios??6));
@@ -28,7 +34,9 @@ export function buildWeeklyGMRecommendations(input,{teamId,week,projectionRows=[
  for(const trade of trades){try{const r=evaluateTradeScenario(input,{...trade,projectionRows:trade.projectionRows??projectionRows},options),focus=String(trade.teamAId)===String(teamId)?r.teams.A:String(trade.teamBId)===String(teamId)?r.teams.B:null;if(!focus)continue;actions.push({type:'trade',label:trade.label??tradeLabel(trade,r,teamId),playoffDelta:num(focus.playoffDelta),championshipDelta:num(focus.championshipDelta),winsDelta:num(focus.winsDelta),details:r});}catch(error){if(options.throwOnInvalid)throw error}}
  const checked=validateRecommendationSet(actions,{simulations:input.simulations,...validation}),weights=strategy(leverage?.posture);
  const scored=checked.map(r=>({...r,strategicScore:strategicScore(r,weights),strategyPosture:weights.posture})).sort(compare);
+ const rejected=scored.filter(r=>!beneficial(r));
  const ranked=scored.filter(beneficial).map((r,i)=>({...r,rank:i+1,summary:summary(r)}));
  const reviewCount=ranked.filter(r=>r.validation?.confidence==='review').length,lowConfidenceCount=ranked.filter(r=>r.validation?.confidence==='low').length;
- return {teamId:team.id,teamName:team.name,week:Number(week),simulations:input.simulations,seed:input.seed,actionCount:ranked.length,strategy:{...weights,urgency:leverage?.urgency??null,reason:leverage?.reason??null},validation:{reviewCount,lowConfidenceCount},diagnostics:{startSit:startSitDiagnostics},recommendations:ranked.slice(0,limit)};
+ const rejectionCounts=rejected.reduce((out,r)=>{const reason=rejectionReason(r);out[reason]=(out[reason]??0)+1;return out;},{});
+ return {teamId:team.id,teamName:team.name,week:Number(week),simulations:input.simulations,seed:input.seed,actionCount:ranked.length,strategy:{...weights,urgency:leverage?.urgency??null,reason:leverage?.reason??null},validation:{reviewCount,lowConfidenceCount},diagnostics:{evaluatedActionCount:scored.length,beneficialActionCount:ranked.length,rejectedActionCount:rejected.length,rejectionCounts,nearMisses:rejected.slice(0,3).map(nearMiss),startSit:startSitDiagnostics},recommendations:ranked.slice(0,limit)};
 }
