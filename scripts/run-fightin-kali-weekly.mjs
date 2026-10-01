@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import {buildWeeklyRefreshPlan} from '../src/model/weekly-refresh-plan.js';
 import {createYahooClient} from '../src/data/yahoo-client.js';
 import {loadYahooWaiverPool,prescreenWaiverScenarios} from '../src/data/yahoo-waivers.js';
+import {buildWaiverCandidatePool} from '../src/data/waiver-candidate-source.js';
 
 const snapshotPath=process.argv[2]??'data/private/fightin-kali-current.json';
 const weekArg=process.argv[3]?Number(process.argv[3]):undefined;
@@ -18,14 +19,15 @@ if(process.env.YAHOO_ACCESS_TOKEN){
   if(!leagueKey)throw new Error('Yahoo league key is required.');
   const get=createYahooClient({accessToken:process.env.YAHOO_ACCESS_TOKEN});
   const raw=await loadYahooWaiverPool(get,{leagueKey,limit:Number(process.env.WAIVER_CANDIDATE_LIMIT??30)});
+  const pool=buildWaiverCandidatePool(raw,{source:'yahoo',limit:Number(process.env.WAIVER_CANDIDATE_LIMIT??30)});
   const team=snapshot.teams.find(t=>String(t.id)===String(plan.teamId));
-  const screen=prescreenWaiverScenarios(team,raw,{candidateLimit:Number(process.env.WAIVER_SCREEN_LIMIT??12),dropsPerCandidate:Number(process.env.WAIVER_DROPS_PER_CANDIDATE??3)});
+  const screen=prescreenWaiverScenarios(team,pool.candidates,{candidateLimit:Number(process.env.WAIVER_SCREEN_LIMIT??12),dropsPerCandidate:Number(process.env.WAIVER_DROPS_PER_CANDIDATE??3)});
   const dropPlayerIds=[...new Set(Object.values(screen.dropMap).flat())];
   const scenarioCount=Object.values(screen.dropMap).reduce((n,ids)=>n+ids.length,0);
   if(screen.candidates.length&&dropPlayerIds.length){
-   plan.waivers={candidates:screen.candidates,dropPlayerIds,dropMap:screen.dropMap,weeks:plan.weeks,prescreen:screen};
-   console.error(`WAIVERS: Yahoo pool; ${raw.length} available -> ${screen.candidates.length} screened candidates / ${scenarioCount} candidate-specific add-drop scenarios.`);
-  }else console.error(`WAIVERS: no scenarios; ${raw.length} candidates, ${dropPlayerIds.length} possible drops.`);
+   plan.waivers={source:pool.source,candidates:screen.candidates,dropPlayerIds,dropMap:screen.dropMap,weeks:plan.weeks,prescreen:{...screen,sourceDiagnostics:pool.diagnostics}};
+   console.error(`WAIVERS: ${pool.source} pool; ${pool.diagnostics.inputCount} available -> ${screen.candidates.length} screened candidates / ${scenarioCount} candidate-specific add-drop scenarios.`);
+  }else console.error(`WAIVERS: no scenarios; ${pool.candidates.length} candidates, ${dropPlayerIds.length} possible drops.`);
  }catch(error){console.error(`WAIVERS: unavailable; ${error.message}; continuing without waiver recommendations.`);}
 }
 
