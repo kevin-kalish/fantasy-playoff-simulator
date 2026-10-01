@@ -13,7 +13,8 @@ if(!fs.existsSync(snapshotPath)) fail(`snapshot not found: ${snapshotPath}`);
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
 const snapshot=read(snapshotPath),config=read(configPath);
 let plan; try{plan=buildWeeklyRefreshPlan(snapshot,config,{week:weekArg});}catch(e){fail(e.message)}
-plan.scanAvailability={startSit:{status:'available'},waivers:{status:'unavailable',reason:'Yahoo waiver source not attempted.'},trades:{status:(plan.trades?.length?'available':'not-configured')}};
+plan.tradeDiscovery={enabled:true,maxPartners:Number(process.env.TRADE_MAX_PARTNERS??9),maxPlayersPerTeam:Number(process.env.TRADE_MAX_PLAYERS_PER_TEAM??7),maxScenarios:Number(process.env.TRADE_MAX_SCENARIOS??36),valueTolerance:Number(process.env.TRADE_VALUE_TOLERANCE??.35)};
+plan.scanAvailability={startSit:{status:'available'},waivers:{status:'unavailable',reason:'Yahoo waiver source not attempted.'},trades:{status:'not-configured',reason:'Trade discovery runs after projections are loaded.'}};
 
 let yahooAuth;
 try{yahooAuth=await resolveYahooAccessToken();}
