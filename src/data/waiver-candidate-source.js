@@ -6,14 +6,20 @@ const number = value => Number.isFinite(Number(value)) ? Number(value) : null;
 
 export function normalizeWaiverCandidate(player, source='unknown') {
   if (!player || typeof player !== 'object') return null;
-  const id = text(player.id ?? player.playerId ?? player.player_id ?? player.key ?? player.playerKey);
+  const id = text(player.id ?? player.playerId ?? player.player_id ?? player.key ?? player.playerKey ?? player.player_key);
   const name = text(player.name ?? player.fullName ?? player.full_name);
   if (!id || !name) return null;
-  const positions = Array.isArray(player.positions) ? player.positions : [player.position ?? player.eligiblePositions].flat().filter(Boolean);
+  const positions = Array.isArray(player.positions)
+    ? player.positions
+    : Array.isArray(player.eligiblePositions)
+      ? player.eligiblePositions
+      : Array.isArray(player.eligible_positions)
+        ? player.eligible_positions
+        : [player.position ?? player.displayPosition ?? player.display_position].filter(Boolean);
   return {
     id,
     name,
-    position: text(player.position ?? positions[0]),
+    position: text(player.position ?? player.displayPosition ?? player.display_position ?? positions[0]),
     positions: [...new Set(positions.map(text).filter(Boolean))],
     nflTeam: text(player.nflTeam ?? player.team ?? player.editorial_team_abbr),
     percentOwned: number(player.percentOwned ?? player.percent_owned),
