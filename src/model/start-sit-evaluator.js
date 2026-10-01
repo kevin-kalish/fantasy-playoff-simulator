@@ -1,3 +1,4 @@
+import {simulateLeague} from '../simulator.js';
 import {compareSimulationInputs} from './scenario-engine.js';
 
 const clone=x=>structuredClone(x);
@@ -22,6 +23,8 @@ export function applyStartSitChoice(input,{teamId,week,startPlayerId,sitPlayerId
  const slot=lineup[i].lineupSlot||lineup[i].position;if(!eligible(bench,slot))throw new Error(`${bench.name} is not eligible for ${slot}`);const r=rowFor(projectionRows,bench,week);lineup[i]={...bench,projection:r?Number(r.projection):Number(bench.projection??0),lineupSlot:slot};return out;
 }
 export function evaluateStartSitChoices(input,spec,options={}){
- const choices=spec.choices||enumerateStartSitChoices(input,spec);const results=choices.map(choice=>{const scenario=applyStartSitChoice(input,{...spec,...choice}),cmp=compareSimulationInputs(input,scenario,options),impact=teamResult(cmp,spec.teamId);return {...choice,...impact,simulations:cmp.simulations,seed:cmp.seed};});
+ const choices=spec.choices||enumerateStartSitChoices(input,spec),n=Math.max(1,Number(options.simulations??input.simulations)),baselineResults=options.baselineResults??simulateLeague({...input,simulations:n});
+ const compareOptions={...options,simulations:n,baselineResults};
+ const results=choices.map(choice=>{const scenario=applyStartSitChoice(input,{...spec,...choice}),cmp=compareSimulationInputs(input,scenario,compareOptions),impact=teamResult(cmp,spec.teamId);return {...choice,...impact,simulations:cmp.simulations,seed:cmp.seed};});
  return results.sort((a,b)=>b.championshipDelta-a.championshipDelta||b.playoffDelta-a.playoffDelta||b.projectedPointDelta-a.projectedPointDelta).map((x,i)=>({...x,rank:i+1}));
 }
