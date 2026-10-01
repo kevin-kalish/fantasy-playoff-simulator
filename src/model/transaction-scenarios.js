@@ -4,10 +4,17 @@ import {compareSimulationInputs} from './scenario-engine.js';
 const clone=x=>structuredClone(x);
 const pid=p=>String(p?.id??p?.playerId??'');
 const points=lineup=>(lineup||[]).reduce((sum,p)=>sum+Number(p?.projection??0),0);
+const normName=x=>String(x??'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
 
 function team(input,teamId){const t=input.teams.find(x=>String(x.id)===String(teamId));if(!t)throw new Error(`Unknown team: ${teamId}`);return t}
 function weeksFor(input){return [...new Set([...(input.schedule||[]).map(x=>Number(x.week)),...(input.playoffWeeks||[]).map(Number)])].filter(Number.isFinite).sort((a,b)=>a-b)}
-function projectionFor(player,week,projectionRows){const id=pid(player);const row=(projectionRows||[]).find(r=>Number(r.week)===Number(week)&&(String(r.playerId??r.id??'')===id||(!id&&r.name===player.name)));return row?Number(row.projection):Number(player.projection??0)}
+function projectionFor(player,week,projectionRows){
+ const id=pid(player),name=normName(player?.name),rows=(projectionRows||[]).filter(r=>Number(r.week)===Number(week));
+ const byId=id?rows.find(r=>String(r.playerId??r.id??'')===id):null;
+ const byName=name?rows.find(r=>normName(r.name??r.playerName)===name):null;
+ const row=byId??byName;
+ return row?Number(row.projection):Number(player.projection??0);
+}
 function projectedPlayer(player,week,projectionRows){return {...player,projection:projectionFor(player,week,projectionRows)}}
 function optimizedPoints(t,week,projectionRows,slots){const roster=(t.roster||[]).map(p=>projectedPlayer(p,week,projectionRows));const optimized=optimizeLineup(roster,slots);return points(optimized.lineup??optimized.players??optimized);}
 
