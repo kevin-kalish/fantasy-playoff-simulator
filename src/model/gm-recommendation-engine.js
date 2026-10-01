@@ -31,6 +31,22 @@ function shortlistStartSit(input,spec,maxScenarios){
  const ranked=[...choices].sort((a,b)=>num(b.projectedPointDelta)-num(a.projectedPointDelta)||String(a.slot).localeCompare(String(b.slot))||String(a.startPlayerName).localeCompare(String(b.startPlayerName)));
  return {choices:ranked.slice(0,max),total:choices.length,evaluated:max};
 }
+function scanCoverage({startSitDiagnostics,waiverDiagnostics,trades}){
+ const startSitEvaluated=num(startSitDiagnostics.evaluatedChoices),startSitTotal=num(startSitDiagnostics.totalChoices),waiverEvaluated=num(waiverDiagnostics.evaluatedScenarioCount),waiverCandidates=num(waiverDiagnostics.candidateCount),tradeCount=(trades||[]).length;
+ const sources=[];
+ if(startSitTotal)sources.push({type:'start-sit',evaluated:startSitEvaluated,available:startSitTotal,complete:startSitEvaluated>=startSitTotal});
+ if(waiverCandidates||waiverEvaluated)sources.push({type:'waiver',evaluated:waiverEvaluated,available:waiverCandidates,complete:waiverCandidates?waiverEvaluated>=waiverCandidates:false});
+ if(tradeCount)sources.push({type:'trade',evaluated:tradeCount,available:tradeCount,complete:true});
+ const constrained=sources.length===0||sources.some(s=>!s.complete);
+ return {sources,constrained,startSitEvaluated,startSitTotal,waiverEvaluated,waiverCandidates,tradeCount};
+}
+function noActionExplanation({ranked,rejected,coverage}){
+ if(ranked.length)return null;
+ if(!rejected.length)return coverage.sources.length?'No modeled action scenarios were produced.':'No actionable start/sit, waiver, or trade scenarios were available to evaluate.';
+ const types=[...new Set(rejected.map(r=>r.type))],scope=types.join(', '),allNonPositive=rejected.every(r=>rejectionReason(r)==='non-positive-strategic-score');
+ const result=allNonPositive?`All ${rejected.length} evaluated ${scope} scenario${rejected.length===1?'':'s'} had non-positive modeled strategic impact.`:`None of the ${rejected.length} evaluated ${scope} scenario${rejected.length===1?'':'s'} cleared the recommendation gate.`;
+ return coverage.constrained?`${result} Scan coverage was constrained; this is not evidence that no beneficial move exists.`:`${result} No beneficial move was found within the evaluated scan.`;
+}
 
 export function buildWeeklyGMRecommendations(input,{teamId,week,projectionRows=[],waivers=null,trades=[],startSit=true,limit=10,validation={},leverage=null},options={}){
  const team=input.teams.find(t=>String(t.id)===String(teamId));if(!team)throw new Error(`Unknown team: ${teamId}`);
@@ -43,6 +59,6 @@ export function buildWeeklyGMRecommendations(input,{teamId,week,projectionRows=[
  const rejected=scored.filter(r=>!beneficial(r));
  const ranked=scored.filter(beneficial).map((r,i)=>({...r,rank:i+1,summary:summary(r),explanation:explanation(r)}));
  const reviewCount=ranked.filter(r=>r.validation?.confidence==='review').length,lowConfidenceCount=ranked.filter(r=>r.validation?.confidence==='low').length;
- const rejectionCounts=rejected.reduce((out,r)=>{const reason=rejectionReason(r);out[reason]=(out[reason]??0)+1;return out;},{});
- return {teamId:team.id,teamName:team.name,week:Number(week),simulations:input.simulations,seed:input.seed,actionCount:ranked.length,strategy:{...weights,urgency:leverage?.urgency??null,reason:leverage?.reason??null},validation:{reviewCount,lowConfidenceCount},diagnostics:{evaluatedActionCount:scored.length,beneficialActionCount:ranked.length,rejectedActionCount:rejected.length,rejectionCounts,nearMisses:rejected.slice(0,3).map(nearMiss),startSit:startSitDiagnostics,waivers:waiverDiagnostics},recommendations:ranked.slice(0,limit)};
+ const rejectionCounts=rejected.reduce((out,r)=>{const reason=rejectionReason(r);out[reason]=(out[reason]??0)+1;return out;},{}),coverage=scanCoverage({startSitDiagnostics,waiverDiagnostics,trades});
+ return {teamId:team.id,teamName:team.name,week:Number(week),simulations:input.simulations,seed:input.seed,actionCount:ranked.length,strategy:{...weights,urgency:leverage?.urgency??null,reason:leverage?.reason??null},validation:{reviewCount,lowConfidenceCount},diagnostics:{evaluatedActionCount:scored.length,beneficialActionCount:ranked.length,rejectedActionCount:rejected.length,rejectionCounts,nearMisses:rejected.slice(0,3).map(nearMiss),startSit:startSitDiagnostics,waivers:waiverDiagnostics,coverage,noActionExplanation:noActionExplanation({ranked,rejected,coverage})},recommendations:ranked.slice(0,limit)};
 }
