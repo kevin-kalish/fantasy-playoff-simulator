@@ -3,7 +3,7 @@ import {parseCSV} from '../src/data/csv.js';
 import {fetchNflverseCSV} from '../src/data/nflverse-source.js';
 import {normalizeNflverseActual} from '../src/data/nflverse.js';
 import {fetchFantasyProsHistory,joinHistoricalProjectionActuals,projectionCoverage} from '../src/data/historical-projections.js';
-import {deriveSeasonBaselines,selectLongRangeCalibration} from '../src/model/long-range-calibration.js';
+import {deriveSeasonBaselines,selectLongRangeCalibration,evaluateLongRangeWalkForward} from '../src/model/long-range-calibration.js';
 
 const rawKey=process.env.FANTASYPROS_API_KEY??'';
 const key=rawKey.trim();
@@ -27,7 +27,8 @@ const baselines=deriveSeasonBaselines(joined.rows,{throughWeek:baselineThroughWe
 if(!baselines.length){console.error('CALIBRATION FAILED: no season baselines could be derived. No model parameters were evaluated.');process.exit(2)}
 const calibration=selectLongRangeCalibration(joined.rows,{seasonBaselines:baselines,minHistory:1,minTargetWeek:baselineThroughWeek+1});
 const defaults=calibration.results.find(r=>r.seasonWeight===.65&&r.recencyDecay===.8)||null;
-const report={generatedAt:new Date().toISOString(),seasons,projectionSource:'fantasypros',actualSource:'nflverse',status:'complete',baselineMethod:`mean weekly projection through week ${baselineThroughWeek}`,projectionSummary:projections.summary,projectionFailures:projections.failures,projectionCoverage:projectionCoverage(projections.rows),joinSummary:joined.summary,seasonBaselines:{count:baselines.length,throughWeek:baselineThroughWeek},calibration:{best:calibration.best,defaults,grid:calibration.results},comparison:calibration.best&&defaults?{rmseImprovement:defaults.rmse-calibration.best.rmse,rmseImprovementPct:defaults.rmse?(defaults.rmse-calibration.best.rmse)/defaults.rmse:null,seasonWeightDelta:calibration.best.seasonWeight-.65,recencyDecayDelta:calibration.best.recencyDecay-.8}:null};
+const walkForward=evaluateLongRangeWalkForward(joined.rows,{baselineThroughWeek,minHistory:1});
+const report={generatedAt:new Date().toISOString(),seasons,projectionSource:'fantasypros',actualSource:'nflverse',status:'complete',baselineMethod:`mean weekly projection through week ${baselineThroughWeek}`,projectionSummary:projections.summary,projectionFailures:projections.failures,projectionCoverage:projectionCoverage(projections.rows),joinSummary:joined.summary,seasonBaselines:{count:baselines.length,throughWeek:baselineThroughWeek},calibration:{best:calibration.best,defaults,grid:calibration.results},comparison:calibration.best&&defaults?{rmseImprovement:defaults.rmse-calibration.best.rmse,rmseImprovementPct:defaults.rmse?(defaults.rmse-calibration.best.rmse)/defaults.rmse:null,seasonWeightDelta:calibration.best.seasonWeight-.65,recencyDecayDelta:calibration.best.recencyDecay-.8}:null,walkForward};
 fs.mkdirSync(out.split('/').slice(0,-1).join('/')||'.',{recursive:true});fs.writeFileSync(out,JSON.stringify(report,null,2));
-console.log(JSON.stringify({out,seasons,projectionRows:projections.rows.length,matchedRows:joined.rows.length,baselines:baselines.length,best:calibration.best,defaults,comparison:report.comparison},null,2));
+console.log(JSON.stringify({out,seasons,projectionRows:projections.rows.length,matchedRows:joined.rows.length,baselines:baselines.length,best:calibration.best,defaults,comparison:report.comparison,walkForward:walkForward.summary},null,2));
 if(!calibration.best?.n)process.exitCode=2;
