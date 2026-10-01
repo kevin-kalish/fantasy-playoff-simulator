@@ -10,7 +10,7 @@ const key=r=>`${r.season}:${r.playerId}`;
 export function weightedRecentProjection(samples,{beforeWeek,decay=.8}={}){
  const eligible=(samples||[]).filter(r=>Number(r.week)<Number(beforeWeek)&&finite(r.projection));
  if(!eligible.length)return null;
- const newest=Math.max(...eligible.map(r=>Number(r.week)));
+ const newest=Math.max(...eligible.map(x=>Number(x.week)));
  let total=0,weight=0;
  for(const row of eligible){const w=Math.pow(decay,newest-Number(row.week));total+=Number(row.projection)*w;weight+=w;}
  return weight?total/weight:null;
@@ -46,3 +46,22 @@ export function evaluateLongRangeBlend(rows=[],{seasonBaselines=[],seasonWeights
 }
 
 export function selectLongRangeCalibration(rows=[],options={}){const results=evaluateLongRangeBlend(rows,options),best=results[0]||null;return{best,results,defaults:{seasonWeight:.65,recencyDecay:.8}};}
+
+export function evaluateLongRangeWalkForward(rows=[],{baselineThroughWeek=3,seasonWeights=DEFAULT_WEIGHTS,recencyDecays=DEFAULT_DECAYS,minHistory=1}={}){
+ const seasons=[...new Set((rows||[]).map(r=>Number(r.season)).filter(Number.isFinite))].sort((a,b)=>a-b),folds=[];
+ for(const holdoutSeason of seasons){
+  const trainRows=rows.filter(r=>Number(r.season)!==holdoutSeason),testRows=rows.filter(r=>Number(r.season)===holdoutSeason);
+  if(!trainRows.length||!testRows.length)continue;
+  const trainBaselines=deriveSeasonBaselines(trainRows,{throughWeek:baselineThroughWeek,minWeeks:1});
+  const selected=selectLongRangeCalibration(trainRows,{seasonBaselines:trainBaselines,seasonWeights,recencyDecays,minHistory,minTargetWeek:baselineThroughWeek+1});
+  if(!selected.best?.n)continue;
+  const testBaselines=deriveSeasonBaselines(testRows,{throughWeek:baselineThroughWeek,minWeeks:1});
+  const evaluated=evaluateLongRangeBlend(testRows,{seasonBaselines:testBaselines,seasonWeights:[selected.best.seasonWeight],recencyDecays:[selected.best.recencyDecay],minHistory,minTargetWeek:baselineThroughWeek+1})[0]||null;
+  const defaults=evaluateLongRangeBlend(testRows,{seasonBaselines:testBaselines,seasonWeights:[.65],recencyDecays:[.8],minHistory,minTargetWeek:baselineThroughWeek+1})[0]||null;
+  folds.push({holdoutSeason,trainedOnSeasons:seasons.filter(s=>s!==holdoutSeason),selected:{seasonWeight:selected.best.seasonWeight,recencyDecay:selected.best.recencyDecay,trainingRmse:selected.best.rmse,trainingN:selected.best.n},test:evaluated,defaults,rmseImprovement:evaluated&&defaults&&finite(evaluated.rmse)&&finite(defaults.rmse)?defaults.rmse-evaluated.rmse:null});
+ }
+ const valid=folds.filter(f=>finite(f.test?.rmse)&&finite(f.defaults?.rmse));
+ const totalN=valid.reduce((n,f)=>n+Number(f.test.n||0),0),weighted=(field)=>totalN?valid.reduce((sum,f)=>sum+Number(f[field]?.rmse||0)*Number(f.test.n||0),0)/totalN:null;
+ const selectedRmse=weighted('test'),defaultRmse=weighted('defaults');
+ return{folds,summary:{folds:valid.length,n:totalN,selectedRmse,defaultRmse,rmseImprovement:finite(selectedRmse)&&finite(defaultRmse)?defaultRmse-selectedRmse:null,rmseImprovementPct:finite(defaultRmse)&&defaultRmse?((defaultRmse-selectedRmse)/defaultRmse):null,selectedWeights:[...new Set(valid.map(f=>f.selected.seasonWeight))],selectedDecays:[...new Set(valid.map(f=>f.selected.recencyDecay))]}};
+}
