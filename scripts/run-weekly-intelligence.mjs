@@ -4,6 +4,7 @@ import {assessSimulationReadiness} from '../src/model/simulation-readiness.js';
 import {buildLeagueIntelligenceReport} from '../src/model/league-intelligence-report.js';
 import {formatWeeklyIntelligence} from '../src/model/weekly-intelligence-format.js';
 import {simulationFingerprint} from '../src/model/simulation-fingerprint.js';
+import {discoverTradeCandidates} from '../src/model/trade-candidate-source.js';
 import {loadWeeklyProjectionHorizon} from '../src/data/weekly-projection-provider.js';
 import {JerryGMClient,normalizeJerryGMSeasonProjections} from '../src/data/jerrygm.js';
 
@@ -47,6 +48,15 @@ console.error(`SIMULATION INPUT: ${fingerprint}; seed ${prepared.input.seed}; va
 console.error(`READY CHECK: ${readiness.ready?'PASS':'FAIL'}; projections ${(100*readiness.projectionCoverage.matchRate).toFixed(1)}% usable; incomplete lineups ${readiness.incompleteLineups.length}.`);
 if(!readiness.ready){for(const error of readiness.errors)console.error(`ERROR: ${error}`);console.log(JSON.stringify({readiness,projectionHealth:loaded.trust,metadata:prepared.input.metadata,report:null},null,2));process.exitCode=2;}
 else{
+ const tradeDiscovery=spec.tradeDiscovery;
+ if(tradeDiscovery?.enabled&&!(spec.trades?.length)){
+  try{
+   const discovered=discoverTradeCandidates(prepared.input,{teamId:spec.teamId,projectionRows:loaded.rows,weeks,maxPartners:Number(tradeDiscovery.maxPartners??9),maxPlayersPerTeam:Number(tradeDiscovery.maxPlayersPerTeam??7),maxScenarios:Number(tradeDiscovery.maxScenarios??36),valueTolerance:Number(tradeDiscovery.valueTolerance??.35)});
+   spec.trades=discovered.scenarios;
+   spec.scanAvailability={...spec.scanAvailability,trades:{status:'available',source:'projection-value-screen',scenarioCount:discovered.scenarios.length,diagnostics:discovered.diagnostics}};
+   console.error(`TRADES: projection-value discovery; ${discovered.diagnostics.partnerCount} partners / ${discovered.diagnostics.generatedScenarioCount} generated / ${discovered.scenarios.length} evaluated scenarios.`);
+  }catch(error){spec.scanAvailability={...spec.scanAvailability,trades:{status:'unavailable',reason:error.message}};console.error(`TRADES: unavailable; ${error.message}; continuing without trade recommendations.`);}
+ }
  console.error(`MONTE CARLO: running ${simulations.toLocaleString()} core simulations; scenario analyses use ${scenarioSimulations.toLocaleString()} each...`);
  const started=Date.now();
  const report=buildLeagueIntelligenceReport(prepared.input,{...spec,week,projectionRows:loaded.rows,providerHealth:loaded.trust,trust:{requireProjectionCoverage:true,minimumProjectionMatchRate},scenarioSimulations});
