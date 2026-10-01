@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import {buildWeeklyRefreshPlan} from '../src/model/weekly-refresh-plan.js';
 import {createYahooClient} from '../src/data/yahoo-client.js';
-import {loadYahooWaiverPool,prescreenWaiverScenarios} from '../src/data/yahoo-waivers.js';
+import {loadYahooWaiverPool,candidateDropPlayerIds} from '../src/data/yahoo-waivers.js';
 import {buildWaiverCandidatePool} from '../src/data/waiver-candidate-source.js';
 import {resolveYahooAccessToken} from '../src/data/yahoo-auth-session.js';
 
@@ -27,16 +27,18 @@ if(yahooAuth.accessToken){
   const raw=await loadYahooWaiverPool(get,{leagueKey,limit:Number(process.env.WAIVER_CANDIDATE_LIMIT??30)});
   const pool=buildWaiverCandidatePool(raw,{source:'yahoo',limit:Number(process.env.WAIVER_CANDIDATE_LIMIT??30)});
   const team=snapshot.teams.find(t=>String(t.id)===String(plan.teamId));
-  const screen=prescreenWaiverScenarios(team,pool.candidates,{candidateLimit:Number(process.env.WAIVER_SCREEN_LIMIT??12),dropsPerCandidate:Number(process.env.WAIVER_DROPS_PER_CANDIDATE??3)});
-  const dropPlayerIds=[...new Set(Object.values(screen.dropMap).flat())];
-  const scenarioCount=Object.values(screen.dropMap).reduce((n,ids)=>n+ids.length,0);
+  if(!team)throw new Error(`Configured team not found for waiver scan: ${plan.teamId}`);
+  const dropPlayerIds=candidateDropPlayerIds(team,{limit:Number(process.env.WAIVER_DROP_LIMIT??8)});
   const d=pool.diagnostics;
   const sourceSummary=`${d.inputCount} input -> ${d.candidateCount} normalized; ${d.invalidCount} invalid, ${d.duplicateCount} duplicate, ${d.truncatedCount} beyond limit ${d.limit}`;
-  plan.scanAvailability.waivers={status:'available',source:pool.source,candidateCount:pool.candidates.length,screenedCandidateCount:screen.candidates.length,scenarioCount};
-  if(screen.candidates.length&&dropPlayerIds.length){
-   plan.waivers={source:pool.source,candidates:screen.candidates,dropPlayerIds,dropMap:screen.dropMap,weeks:plan.weeks,prescreen:{...screen,sourceDiagnostics:pool.diagnostics}};
-   console.error(`WAIVERS: ${pool.source} pool; ${sourceSummary}; ${screen.candidates.length} screened candidates / ${scenarioCount} candidate-specific add-drop scenarios.`);
-  }else console.error(`WAIVERS: no scenarios; ${sourceSummary}; ${screen.candidates.length} screened candidates, ${dropPlayerIds.length} possible drops.`);
+  plan.scanAvailability.waivers={status:'available',source:pool.source,candidateCount:pool.candidates.length,dropCandidateCount:dropPlayerIds.length};
+  if(pool.candidates.length&&dropPlayerIds.length){
+   // Keep the full Yahoo candidate set here.  Projection-aware screening happens later,
+   // after the weekly projection provider has loaded, so Yahoo players are not ranked on
+   // missing/zero projections before the model has usable information.
+   plan.waivers={source:pool.source,candidates:pool.candidates,dropPlayerIds,weeks:plan.weeks};
+   console.error(`WAIVERS: ${pool.source} pool; ${sourceSummary}; ${pool.candidates.length} candidates / ${dropPlayerIds.length} possible drops; projection screening deferred.`);
+  }else console.error(`WAIVERS: no scenarios; ${sourceSummary}; ${pool.candidates.length} candidates, ${dropPlayerIds.length} possible drops.`);
  }catch(error){plan.scanAvailability.waivers={status:'unavailable',reason:error.message};console.error(`WAIVERS: unavailable; ${error.message}; continuing without waiver recommendations.`);}
 }else{
  plan.scanAvailability.waivers={status:'unavailable',reason:yahooAuth.reason};
