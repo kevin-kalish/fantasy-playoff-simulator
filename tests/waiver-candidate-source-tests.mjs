@@ -16,11 +16,16 @@ const pool=buildWaiverCandidatePool([
  {playerId:'1',name:'Duplicate One',position:'RB'},
  {playerId:'2',fullName:'Two',position:'WR'},
  {id:'3'},
- {id:'4',name:'Four',position:'TE'}
+ {id:'4',name:'Four',position:'TE'},
+ {id:'5',name:'Five',position:'QB'}
 ],{source:'fixture',limit:3});
 assert.equal(pool.source,'fixture');
 assert.deepEqual(pool.candidates.map(p=>p.id),['1','2','4']);
-assert.equal(pool.diagnostics.inputCount,5);
+assert.equal(pool.diagnostics.inputCount,6);
 assert.equal(pool.diagnostics.candidateCount,3);
 assert.equal(pool.diagnostics.rejectedCount,2);
+assert.equal(pool.diagnostics.invalidCount,1);
+assert.equal(pool.diagnostics.duplicateCount,1);
+assert.equal(pool.diagnostics.truncatedCount,1);
+assert.equal(pool.diagnostics.limit,3);
 console.log('waiver-candidate-source-tests: all checks passed');
