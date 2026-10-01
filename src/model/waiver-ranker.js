@@ -5,6 +5,7 @@ const num=x=>Number.isFinite(Number(x))?Number(x):0;
 const pct=x=>`${x>=0?'+':''}${(100*x).toFixed(2)}%`;
 const wins=x=>`${x>=0?'+':''}${x.toFixed(3)}`;
 const pts=x=>`${x>=0?'+':''}${num(x).toFixed(1)}`;
+const normName=x=>String(x??'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
 
 function focusDelta(result,key){
  const focus=result?.focus;
@@ -14,6 +15,8 @@ function focusDelta(result,key){
  if(key==='averageWins')return num(focus.averageWinsDelta);
  return 0;
 }
+function projectionForCandidate(player,week,rows){const id=pid(player),name=normName(player?.name);const matches=(rows||[]).filter(r=>Number(r.week)===Number(week));const row=(id&&matches.find(r=>String(r.playerId??r.id??'')===id))||(name&&matches.find(r=>normName(r.name??r.playerName)===name));return row?num(row.projection):num(player?.projection);}
+function screenCandidates(candidates,week,rows,limit){const max=Math.max(1,Number(limit)||12);if(candidates.length<=max)return candidates;return [...candidates].sort((a,b)=>projectionForCandidate(b,week,rows)-projectionForCandidate(a,week,rows)||String(a.name??pid(a)).localeCompare(String(b.name??pid(b)))).slice(0,max);}
 function compareRows(a,b){return b.championshipDelta-a.championshipDelta||b.playoffDelta-a.playoffDelta||b.winsDelta-a.winsDelta||b.projectedPointDelta-a.projectedPointDelta||a.addPlayerName.localeCompare(b.addPlayerName)}
 function summary(row){return `Add ${row.addPlayerName}${row.dropPlayerName?` / Drop ${row.dropPlayerName}`:row.dropPlayerId?` / Drop ${row.dropPlayerId}`:''}: ${pts(row.projectedPointDelta)} projected pts, ${pct(row.playoffDelta)} playoff, ${pct(row.championshipDelta)} championship, ${wins(row.winsDelta)} wins`;}
 
@@ -21,9 +24,11 @@ export function rankWaiverCandidates(input,{teamId,candidates,dropPlayerIds=[nul
  if(!Array.isArray(candidates)||!candidates.length)throw new Error('candidates are required');
  if(!Array.isArray(dropPlayerIds)||!dropPlayerIds.length)dropPlayerIds=[null];
  const team=input.teams.find(t=>String(t.id)===String(teamId));if(!team)throw new Error(`Unknown team: ${teamId}`);
+ const focusWeek=Number(week??weeks?.[0]);
+ const screened=screenCandidates(candidates,focusWeek,projectionRows,options.maxWaiverCandidates??12);
  const nameById=new Map((team.roster||[]).map(p=>[pid(p),p.name??pid(p)]));
  const rows=[];let evaluatedScenarioCount=0,invalidScenarioCount=0;
- for(const addPlayer of candidates){
+ for(const addPlayer of screened){
   let best=null;
   const mapped=dropMap?.[pid(addPlayer)];
   const candidateDrops=Array.isArray(mapped)&&mapped.length?mapped:dropPlayerIds;
@@ -38,7 +43,7 @@ export function rankWaiverCandidates(input,{teamId,candidates,dropPlayerIds=[nul
   if(best)rows.push(best);
  }
  const ranked=rows.sort(compareRows).map((r,i)=>({...r,rank:i+1,summary:summary(r)}));
- Object.defineProperty(ranked,'diagnostics',{value:{candidateCount:candidates.length,evaluatedScenarioCount,invalidScenarioCount,candidateSpecificDrops:Boolean(dropMap)},enumerable:false});
+ Object.defineProperty(ranked,'diagnostics',{value:{candidateCount:candidates.length,screenedCandidateCount:screened.length,evaluatedScenarioCount,invalidScenarioCount,candidateSpecificDrops:Boolean(dropMap)},enumerable:false});
  return ranked;
 }
 
