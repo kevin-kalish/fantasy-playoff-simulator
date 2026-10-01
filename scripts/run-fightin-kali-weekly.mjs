@@ -12,6 +12,7 @@ if(!fs.existsSync(snapshotPath)) fail(`snapshot not found: ${snapshotPath}`);
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
 const snapshot=read(snapshotPath),config=read(configPath);
 let plan; try{plan=buildWeeklyRefreshPlan(snapshot,config,{week:weekArg});}catch(e){fail(e.message)}
+plan.scanAvailability={startSit:{status:'available'},waivers:{status:'unavailable',reason:'Yahoo waiver source not attempted.'},trades:{status:(plan.trades?.length?'available':'not-configured')}};
 
 if(process.env.YAHOO_ACCESS_TOKEN){
  try{
@@ -26,12 +27,14 @@ if(process.env.YAHOO_ACCESS_TOKEN){
   const scenarioCount=Object.values(screen.dropMap).reduce((n,ids)=>n+ids.length,0);
   const d=pool.diagnostics;
   const sourceSummary=`${d.inputCount} input -> ${d.candidateCount} normalized; ${d.invalidCount} invalid, ${d.duplicateCount} duplicate, ${d.truncatedCount} beyond limit ${d.limit}`;
+  plan.scanAvailability.waivers={status:'available',source:pool.source,candidateCount:pool.candidates.length,screenedCandidateCount:screen.candidates.length,scenarioCount};
   if(screen.candidates.length&&dropPlayerIds.length){
    plan.waivers={source:pool.source,candidates:screen.candidates,dropPlayerIds,dropMap:screen.dropMap,weeks:plan.weeks,prescreen:{...screen,sourceDiagnostics:pool.diagnostics}};
    console.error(`WAIVERS: ${pool.source} pool; ${sourceSummary}; ${screen.candidates.length} screened candidates / ${scenarioCount} candidate-specific add-drop scenarios.`);
   }else console.error(`WAIVERS: no scenarios; ${sourceSummary}; ${screen.candidates.length} screened candidates, ${dropPlayerIds.length} possible drops.`);
- }catch(error){console.error(`WAIVERS: unavailable; ${error.message}; continuing without waiver recommendations.`);}
+ }catch(error){plan.scanAvailability.waivers={status:'unavailable',reason:error.message};console.error(`WAIVERS: unavailable; ${error.message}; continuing without waiver recommendations.`);}
 }else{
+ plan.scanAvailability.waivers={status:'unavailable',reason:'Yahoo access token absent.'};
  console.error('WAIVERS: Yahoo access token absent; waiver scan skipped.');
 }
 
