@@ -3,6 +3,7 @@ import {buildWeeklyRefreshPlan} from '../src/model/weekly-refresh-plan.js';
 import {createYahooClient} from '../src/data/yahoo-client.js';
 import {loadYahooWaiverPool,prescreenWaiverScenarios} from '../src/data/yahoo-waivers.js';
 import {buildWaiverCandidatePool} from '../src/data/waiver-candidate-source.js';
+import {resolveYahooAccessToken} from '../src/data/yahoo-auth-session.js';
 
 const snapshotPath=process.argv[2]??'data/private/fightin-kali-current.json';
 const weekArg=process.argv[3]?Number(process.argv[3]):undefined;
@@ -14,11 +15,15 @@ const snapshot=read(snapshotPath),config=read(configPath);
 let plan; try{plan=buildWeeklyRefreshPlan(snapshot,config,{week:weekArg});}catch(e){fail(e.message)}
 plan.scanAvailability={startSit:{status:'available'},waivers:{status:'unavailable',reason:'Yahoo waiver source not attempted.'},trades:{status:(plan.trades?.length?'available':'not-configured')}};
 
-if(process.env.YAHOO_ACCESS_TOKEN){
+let yahooAuth;
+try{yahooAuth=await resolveYahooAccessToken();}
+catch(error){yahooAuth={accessToken:null,source:'unavailable',reason:error.message};}
+if(yahooAuth.accessToken){
  try{
+  if(yahooAuth.source==='refresh')console.error(`YAHOO AUTH: access token refreshed${yahooAuth.expiresIn?` (expires in ${yahooAuth.expiresIn}s)`:''}.`);
   const leagueKey=process.env.YAHOO_LEAGUE_KEY??snapshot.source?.leagueKey??config.leagueKey;
   if(!leagueKey)throw new Error('Yahoo league key is required.');
-  const get=createYahooClient({accessToken:process.env.YAHOO_ACCESS_TOKEN});
+  const get=createYahooClient({accessToken:yahooAuth.accessToken});
   const raw=await loadYahooWaiverPool(get,{leagueKey,limit:Number(process.env.WAIVER_CANDIDATE_LIMIT??30)});
   const pool=buildWaiverCandidatePool(raw,{source:'yahoo',limit:Number(process.env.WAIVER_CANDIDATE_LIMIT??30)});
   const team=snapshot.teams.find(t=>String(t.id)===String(plan.teamId));
@@ -34,8 +39,8 @@ if(process.env.YAHOO_ACCESS_TOKEN){
   }else console.error(`WAIVERS: no scenarios; ${sourceSummary}; ${screen.candidates.length} screened candidates, ${dropPlayerIds.length} possible drops.`);
  }catch(error){plan.scanAvailability.waivers={status:'unavailable',reason:error.message};console.error(`WAIVERS: unavailable; ${error.message}; continuing without waiver recommendations.`);}
 }else{
- plan.scanAvailability.waivers={status:'unavailable',reason:'Yahoo access token absent.'};
- console.error('WAIVERS: Yahoo access token absent; waiver scan skipped.');
+ plan.scanAvailability.waivers={status:'unavailable',reason:yahooAuth.reason};
+ console.error(`WAIVERS: ${yahooAuth.reason} Waiver scan skipped.`);
 }
 
 fs.mkdirSync('data/private',{recursive:true});
