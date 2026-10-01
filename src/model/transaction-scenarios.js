@@ -3,6 +3,7 @@ import {compareSimulationInputs} from './scenario-engine.js';
 
 const clone=x=>structuredClone(x);
 const pid=p=>String(p?.id??p?.playerId??'');
+const points=lineup=>(lineup||[]).reduce((sum,p)=>sum+Number(p?.projection??0),0);
 
 function team(input,teamId){const t=input.teams.find(x=>String(x.id)===String(teamId));if(!t)throw new Error(`Unknown team: ${teamId}`);return t}
 function weeksFor(input){return [...new Set([...(input.schedule||[]).map(x=>Number(x.week)),...(input.playoffWeeks||[]).map(Number)])].filter(Number.isFinite).sort((a,b)=>a-b)}
@@ -24,5 +25,13 @@ export function applyAddDropScenario(input,{teamId,addPlayer,dropPlayerId=null,p
 
 export function evaluateAddDropScenario(input,scenario,options={}){
  const scenarioInput=applyAddDropScenario(input,scenario);
- return {...compareSimulationInputs(input,scenarioInput,{teamId:scenario.teamId,...options}),transaction:{type:'add-drop',teamId:scenario.teamId,addPlayerId:pid(scenario.addPlayer),dropPlayerId:scenario.dropPlayerId??null}};
+ const comparison=compareSimulationInputs(input,scenarioInput,{teamId:scenario.teamId,...options});
+ const targetWeeks=scenario.weeks?.map(Number)??weeksFor(input);
+ const focusWeek=Number(scenario.week??targetWeeks[0]);
+ const beforeTeam=team(input,scenario.teamId),afterTeam=team(scenarioInput,scenario.teamId);
+ const beforePoints=points(beforeTeam.weeklyLineups?.[focusWeek]);
+ const afterPoints=points(afterTeam.weeklyLineups?.[focusWeek]);
+ const projectedPointDelta=afterPoints-beforePoints;
+ if(comparison.focus)comparison.focus.projectedPointDelta=projectedPointDelta;
+ return {...comparison,projectedPointDelta,focusWeek,transaction:{type:'add-drop',teamId:scenario.teamId,addPlayerId:pid(scenario.addPlayer),dropPlayerId:scenario.dropPlayerId??null}};
 }
