@@ -1,27 +1,24 @@
 const pid=p=>String(p?.id??p?.playerId??'');
 const num=x=>Number.isFinite(Number(x))?Number(x):0;
 const positions=p=>String(p?.position??'').split(/[\/,]/).map(x=>x.trim()).filter(Boolean);
+const primary=p=>positions(p).find(x=>!['FLEX','W/R/T','BN','IR'].includes(x))??positions(p)[0]??'';
 const projectionFor=(p,week,rows=[])=>{const id=pid(p),r=rows.find(x=>Number(x.week)===Number(week)&&(String(x.playerId??x.id??'')===id||(!id&&x.name===p.name)));return r?num(r.projection):num(p.projection);};
 const eligible=p=>pid(p)&&!positions(p).some(x=>['DEF','DST','K'].includes(x));
+function rosterValue(p,weeks,rows){const vals=weeks.map(w=>projectionFor(p,w,rows)).filter(Number.isFinite);return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:num(p.projection);}
+function replacementByPosition(players){const by={};for(const p of players){const pos=primary(p);(by[pos]??=[]).push(p._tradeValue);}for(const pos of Object.keys(by)){by[pos].sort((a,b)=>b-a);by[pos]=by[pos][Math.min(2,by[pos].length-1)]??0;}return by;}
+function rankTeam(team,weeks,rows,maxPlayers){const all=(team.roster||[]).filter(eligible).map(p=>({...p,_tradeValue:rosterValue(p,weeks,rows)}));const repl=replacementByPosition(all);return all.map(p=>({...p,_surplus:Math.max(0,p._tradeValue-num(repl[primary(p)])),_pos:primary(p)})).sort((a,b)=>b._tradeValue-a._tradeValue).slice(0,maxPlayers);}
+function needMap(players){const repl=replacementByPosition(players);const vals=Object.values(repl).filter(Number.isFinite),median=vals.length?[...vals].sort((a,b)=>a-b)[Math.floor(vals.length/2)]:0,out={};for(const [pos,v] of Object.entries(repl))out[pos]=Math.max(0,median-v);return out;}
+const combo=(arr,n)=>n===1?arr.map(x=>[x]):arr.flatMap((x,i)=>arr.slice(i+1).map(y=>[x,y]));
+const sum=(xs,key)=>xs.reduce((n,x)=>n+num(x[key]),0);
+const names=xs=>xs.map(x=>x.name).join(' + ');
 
-function rosterValue(p,weeks,rows){
- const vals=weeks.map(w=>projectionFor(p,w,rows)).filter(Number.isFinite);
- return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:num(p.projection);
-}
-
-export function discoverTradeCandidates(input,{teamId,projectionRows=[],weeks=[],maxPartners=9,maxPlayersPerTeam=7,maxScenarios=36,valueTolerance=.35}={}){
+export function discoverTradeCandidates(input,{teamId,projectionRows=[],weeks=[],maxPartners=9,maxPlayersPerTeam=7,maxScenarios=36,valueTolerance=.35,includePackages=true}={}){
  const focus=input.teams.find(t=>String(t.id)===String(teamId));if(!focus)throw new Error(`Unknown team: ${teamId}`);
  const targetWeeks=weeks.length?weeks.map(Number):[...new Set((input.schedule||[]).map(x=>Number(x.week)))].filter(Number.isFinite);
- const rank=t=>(t.roster||[]).filter(eligible).map(p=>({...p,_tradeValue:rosterValue(p,targetWeeks,projectionRows)})).sort((a,b)=>b._tradeValue-a._tradeValue).slice(0,maxPlayersPerTeam);
- const ours=rank(focus),partners=(input.teams||[]).filter(t=>String(t.id)!==String(teamId)).slice(0,maxPartners),scenarios=[];
- for(const partner of partners){
-  const theirs=rank(partner);
-  for(const give of ours)for(const get of theirs){
-   const hi=Math.max(give._tradeValue,get._tradeValue,1),gap=Math.abs(give._tradeValue-get._tradeValue)/hi;
-   if(gap>valueTolerance)continue;
-   scenarios.push({teamAId:focus.id,teamBId:partner.id,teamAGives:[pid(give)],teamBGives:[pid(get)],projectionRows,weeks:targetWeeks,label:`Trade ${give.name} for ${get.name}`,discovery:{partnerName:partner.name,giveName:give.name,getName:get.name,giveValue:give._tradeValue,getValue:get._tradeValue,valueGap:gap}});
-  }
- }
- scenarios.sort((a,b)=>a.discovery.valueGap-b.discovery.valueGap||b.discovery.getValue-a.discovery.getValue||String(a.label).localeCompare(String(b.label)));
- return {scenarios:scenarios.slice(0,maxScenarios),diagnostics:{partnerCount:partners.length,focusPlayerCount:ours.length,generatedScenarioCount:scenarios.length,evaluatedScenarioCount:Math.min(scenarios.length,maxScenarios),maxScenarios,valueTolerance}};
+ const ours=rankTeam(focus,targetWeeks,projectionRows,maxPlayersPerTeam),ourNeeds=needMap(ours),partners=(input.teams||[]).filter(t=>String(t.id)!==String(teamId)).slice(0,maxPartners),scenarios=[];
+ const add=(partner,give,get,kind)=>{const giveValue=sum(give,'_tradeValue'),getValue=sum(get,'_tradeValue'),hi=Math.max(giveValue,getValue,1),gap=Math.abs(giveValue-getValue)/hi;if(gap>valueTolerance)return;const needGain=sum(get.map(p=>({...p,_need:num(ourNeeds[p._pos])})),'_need'),surplusCost=sum(give,'_surplus'),fitScore=needGain-.15*surplusCost;scenarios.push({teamAId:focus.id,teamBId:partner.id,teamAGives:give.map(pid),teamBGives:get.map(pid),projectionRows,weeks:targetWeeks,label:`Trade ${names(give)} for ${names(get)}`,discovery:{kind,partnerName:partner.name,giveName:names(give),getName:names(get),giveValue,getValue,valueGap:gap,needGain,surplusCost,fitScore}});};
+ for(const partner of partners){const theirs=rankTeam(partner,targetWeeks,projectionRows,maxPlayersPerTeam);for(const give of ours)for(const get of theirs)add(partner,[give],[get],'1-for-1');if(includePackages){for(const give of ours)for(const get of combo(theirs.slice(0,5),2))add(partner,[give],get,'1-for-2');for(const give of combo(ours.slice(0,5),2))for(const get of theirs)add(partner,give,[get],'2-for-1');}}
+ scenarios.sort((a,b)=>b.discovery.fitScore-a.discovery.fitScore||a.discovery.valueGap-b.discovery.valueGap||b.discovery.getValue-a.discovery.getValue||String(a.label).localeCompare(String(b.label)));
+ const selected=[],perPartner=new Map();for(const s of scenarios){const n=perPartner.get(String(s.teamBId))??0;if(n>=Math.max(2,Math.ceil(maxScenarios/Math.max(1,partners.length))))continue;selected.push(s);perPartner.set(String(s.teamBId),n+1);if(selected.length>=maxScenarios)break;}
+ return {scenarios:selected,diagnostics:{version:'roster-fit-v2',partnerCount:partners.length,focusPlayerCount:ours.length,generatedScenarioCount:scenarios.length,evaluatedScenarioCount:selected.length,maxScenarios,valueTolerance,includePackages,packageScenarioCount:scenarios.filter(x=>x.discovery.kind!=='1-for-1').length}};
 }
