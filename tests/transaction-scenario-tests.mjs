@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {applyAddDropScenario,evaluateAddDropScenario} from '../src/model/transaction-scenarios.js';
-const p=(id,position,projection)=>({id,name:id,position,nflTeam:'BUF',projection});
+const p=(id,position,projection,name=id)=>({id,name,position,nflTeam:'BUF',projection});
 const base={lineupSlots:['QB','RB'],teams:[{id:'A',name:'A',wins:1,losses:0,points:100,roster:[p('QB1','QB',20),p('RB1','RB',10),p('RB2','RB',8)],weeklyLineups:{2:[p('QB1','QB',20),p('RB1','RB',10)],3:[p('QB1','QB',21),p('RB1','RB',10)]}},{id:'B',name:'B',wins:0,losses:1,points:90,roster:[p('QB2','QB',15),p('RB4','RB',7)],weeklyLineups:{2:[p('QB2','QB',15),p('RB4','RB',7)],3:[p('QB2','QB',15),p('RB4','RB',7)]}}],schedule:[{week:2,matchups:[['A','B']]}],playoffSpots:1,playoffWeeks:[3],simulations:200,seed:42,modelVariant:'baseline',nflGames:[]};
 const rows=[{week:2,playerId:'QB1',projection:20},{week:2,playerId:'RB2',projection:8},{week:2,playerId:'RB3',projection:16},{week:3,playerId:'QB1',projection:21},{week:3,playerId:'RB2',projection:9},{week:3,playerId:'RB3',projection:17}];
 const scenario={teamId:'A',addPlayer:p('RB3','RB',0),dropPlayerId:'RB1',projectionRows:rows,weeks:[2,3]};
@@ -13,5 +13,11 @@ const evaluated=evaluateAddDropScenario(base,scenario);
 assert.equal(evaluated.focusWeek,2);
 assert.equal(evaluated.projectedPointDelta,6);
 assert.equal(evaluated.focus.projectedPointDelta,6);
+// Yahoo and projection providers use different player IDs. Name matching must still
+// attach the provider projection to the live Yahoo waiver candidate.
+const yahooCandidate=p('449.p.12345','RB',0,'Waiver Runner');
+const providerRows=[...rows.filter(r=>r.playerId!=='RB3'),{week:2,playerId:'provider-999',name:'Waiver Runner',projection:16},{week:3,playerId:'provider-999',name:'Waiver Runner',projection:17}];
+const crossProvider=evaluateAddDropScenario(base,{teamId:'A',addPlayer:yahooCandidate,dropPlayerId:'RB1',projectionRows:providerRows,weeks:[2,3]});
+assert.equal(crossProvider.projectedPointDelta,6);
 assert.throws(()=>applyAddDropScenario(base,{teamId:'A',addPlayer:p('RB3','RB',10),dropPlayerId:'NOPE',projectionRows:rows}),/Drop player not found/);
 console.log('transaction-scenario-tests: all checks passed');
