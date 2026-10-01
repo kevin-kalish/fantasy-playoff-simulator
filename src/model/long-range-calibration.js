@@ -4,12 +4,15 @@ const DEFAULT_DECAYS=[.6,.7,.8,.9,1];
 const finite=v=>Number.isFinite(Number(v));
 const key=r=>`${r.season}:${r.playerId}`;
 
+// The live long-range model blends a season baseline with recent WEEKLY
+// projections. Historical calibration must use the same information type;
+// using prior actual fantasy points here would calibrate a different model.
 export function weightedRecentProjection(samples,{beforeWeek,decay=.8}={}){
- const eligible=(samples||[]).filter(r=>Number(r.week)<Number(beforeWeek)&&finite(r.actual));
+ const eligible=(samples||[]).filter(r=>Number(r.week)<Number(beforeWeek)&&finite(r.projection));
  if(!eligible.length)return null;
  const newest=Math.max(...eligible.map(r=>Number(r.week)));
  let total=0,weight=0;
- for(const row of eligible){const w=Math.pow(decay,newest-Number(row.week));total+=Number(row.actual)*w;weight+=w;}
+ for(const row of eligible){const w=Math.pow(decay,newest-Number(row.week));total+=Number(row.projection)*w;weight+=w;}
  return weight?total/weight:null;
 }
 
@@ -22,7 +25,7 @@ export function deriveSeasonBaselines(rows=[],{throughWeek=3,minWeeks=1}={}){
 export function evaluateLongRangeBlend(rows=[],{seasonBaselines=[],seasonWeights=DEFAULT_WEIGHTS,recencyDecays=DEFAULT_DECAYS,minHistory=1,minTargetWeek=2}={}){
  const baseline=new Map((seasonBaselines||[]).filter(r=>finite(r.projection)).map(r=>[key(r),Number(r.projection)]));
  const groups=new Map();
- for(const row of rows||[]){if(!finite(row.actual)||!row.playerId)continue;const k=key(row);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(row);}
+ for(const row of rows||[]){if(!finite(row.actual)||!finite(row.projection)||!row.playerId)continue;const k=key(row);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(row);}
  const results=[];
  for(const seasonWeight of seasonWeights)for(const recencyDecay of recencyDecays){
   let n=0,se=0,ae=0,bias=0;const byPosition=new Map();
