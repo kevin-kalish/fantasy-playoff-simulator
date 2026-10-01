@@ -31,12 +31,29 @@ export function normalizeWaiverCandidate(player, source='unknown') {
 export function buildWaiverCandidatePool(rows=[], {source='unknown', limit=30}={}) {
   const seen = new Set();
   const candidates = [];
+  let invalidCount = 0;
+  let duplicateCount = 0;
+  let truncatedCount = 0;
+  const effectiveLimit = Math.max(0, Number(limit) || 0);
   for (const row of rows) {
     const candidate = normalizeWaiverCandidate(row, source);
-    if (!candidate || seen.has(candidate.id)) continue;
+    if (!candidate) { invalidCount++; continue; }
+    if (seen.has(candidate.id)) { duplicateCount++; continue; }
     seen.add(candidate.id);
+    if (candidates.length >= effectiveLimit) { truncatedCount++; continue; }
     candidates.push(candidate);
-    if (candidates.length >= Math.max(0, Number(limit) || 0)) break;
   }
-  return {source, candidates, diagnostics:{inputCount:rows.length, candidateCount:candidates.length, rejectedCount:rows.length-candidates.length}};
+  return {
+    source,
+    candidates,
+    diagnostics:{
+      inputCount:rows.length,
+      candidateCount:candidates.length,
+      rejectedCount:invalidCount + duplicateCount,
+      invalidCount,
+      duplicateCount,
+      truncatedCount,
+      limit:effectiveLimit
+    }
+  };
 }
