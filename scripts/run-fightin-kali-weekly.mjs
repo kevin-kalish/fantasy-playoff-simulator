@@ -24,11 +24,15 @@ if(process.env.YAHOO_ACCESS_TOKEN){
   const screen=prescreenWaiverScenarios(team,pool.candidates,{candidateLimit:Number(process.env.WAIVER_SCREEN_LIMIT??12),dropsPerCandidate:Number(process.env.WAIVER_DROPS_PER_CANDIDATE??3)});
   const dropPlayerIds=[...new Set(Object.values(screen.dropMap).flat())];
   const scenarioCount=Object.values(screen.dropMap).reduce((n,ids)=>n+ids.length,0);
+  const d=pool.diagnostics;
+  const sourceSummary=`${d.inputCount} input -> ${d.candidateCount} normalized; ${d.invalidCount} invalid, ${d.duplicateCount} duplicate, ${d.truncatedCount} beyond limit ${d.limit}`;
   if(screen.candidates.length&&dropPlayerIds.length){
    plan.waivers={source:pool.source,candidates:screen.candidates,dropPlayerIds,dropMap:screen.dropMap,weeks:plan.weeks,prescreen:{...screen,sourceDiagnostics:pool.diagnostics}};
-   console.error(`WAIVERS: ${pool.source} pool; ${pool.diagnostics.inputCount} available -> ${screen.candidates.length} screened candidates / ${scenarioCount} candidate-specific add-drop scenarios.`);
-  }else console.error(`WAIVERS: no scenarios; ${pool.candidates.length} candidates, ${dropPlayerIds.length} possible drops.`);
+   console.error(`WAIVERS: ${pool.source} pool; ${sourceSummary}; ${screen.candidates.length} screened candidates / ${scenarioCount} candidate-specific add-drop scenarios.`);
+  }else console.error(`WAIVERS: no scenarios; ${sourceSummary}; ${screen.candidates.length} screened candidates, ${dropPlayerIds.length} possible drops.`);
  }catch(error){console.error(`WAIVERS: unavailable; ${error.message}; continuing without waiver recommendations.`);}
+}else{
+ console.error('WAIVERS: Yahoo access token absent; waiver scan skipped.');
 }
 
 fs.mkdirSync('data/private',{recursive:true});
