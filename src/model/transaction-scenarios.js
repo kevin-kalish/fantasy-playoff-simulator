@@ -9,6 +9,7 @@ function team(input,teamId){const t=input.teams.find(x=>String(x.id)===String(te
 function weeksFor(input){return [...new Set([...(input.schedule||[]).map(x=>Number(x.week)),...(input.playoffWeeks||[]).map(Number)])].filter(Number.isFinite).sort((a,b)=>a-b)}
 function projectionFor(player,week,projectionRows){const id=pid(player);const row=(projectionRows||[]).find(r=>Number(r.week)===Number(week)&&(String(r.playerId??r.id??'')===id||(!id&&r.name===player.name)));return row?Number(row.projection):Number(player.projection??0)}
 function projectedPlayer(player,week,projectionRows){return {...player,projection:projectionFor(player,week,projectionRows)}}
+function optimizedPoints(t,week,projectionRows,slots){const roster=(t.roster||[]).map(p=>projectedPlayer(p,week,projectionRows));const optimized=optimizeLineup(roster,slots);return points(optimized.lineup??optimized.players??optimized);}
 
 export function applyAddDropScenario(input,{teamId,addPlayer,dropPlayerId=null,projectionRows=[],weeks=null,lineupSlots=null}){
  if(!addPlayer)throw new Error('addPlayer is required');
@@ -28,8 +29,12 @@ export function evaluateAddDropScenario(input,scenario,options={}){
  const comparison=compareSimulationInputs(input,scenarioInput,{teamId:scenario.teamId,...options});
  const targetWeeks=scenario.weeks?.map(Number)??weeksFor(input);
  const focusWeek=Number(scenario.week??targetWeeks[0]);
+ const slots=scenario.lineupSlots??input.lineupSlots;
  const beforeTeam=team(input,scenario.teamId),afterTeam=team(scenarioInput,scenario.teamId);
- const beforePoints=points(beforeTeam.weeklyLineups?.[focusWeek]);
+ // Re-project and optimize both sides from the same projectionRows. The stored baseline
+ // lineup can contain stale projections, so comparing it directly to the newly optimized
+ // scenario lineup can overstate the transaction's immediate point impact.
+ const beforePoints=optimizedPoints(beforeTeam,focusWeek,scenario.projectionRows??[],slots);
  const afterPoints=points(afterTeam.weeklyLineups?.[focusWeek]);
  const projectedPointDelta=afterPoints-beforePoints;
  if(comparison.focus)comparison.focus.projectedPointDelta=projectedPointDelta;
