@@ -33,7 +33,10 @@ const calibrationPath=spec.calibrationPath??'data/private/ffpros-research-calibr
 const calibrationReport=calibrationPath&&fs.existsSync(calibrationPath)?read(calibrationPath):null;
 const minimumProjectionMatchRate=Number(spec.minimumProjectionMatchRate??process.env.MIN_PROJECTION_MATCH_RATE??.9);
 const simulations=Number(spec.simulations??process.env.SIMULATIONS??50000);
-const scenarioSimulations=Number(spec.scenarioSimulations??process.env.SCENARIO_SIMULATIONS??5000);
+// Candidate scenarios are a screening pass. Keep this smaller than the core season
+// Monte Carlo so a broad start/sit, waiver and trade scan stays interactive. The
+// recommendation validator will still mark sub-20k results as preview quality.
+const scenarioSimulations=Number(spec.scenarioSimulations??process.env.SCENARIO_SIMULATIONS??2000);
 const longRangeSeasonWeight=Number(spec.longRangeSeasonWeight??process.env.LONG_RANGE_SEASON_WEIGHT??.65);
 const prepared=prepareLeagueSimulation(snapshot,loaded.rows,{calibrationReport,simulations,seed:Number(spec.seed??process.env.SEED??20260923),modelVariant:spec.modelVariant??process.env.MODEL_VARIANT??'correlated',minimumProjectionMatchRate,weeks,season,seasonProjectionRows,longRangeSeasonWeight});
 prepared.input.metadata={...prepared.input.metadata,projectionProvider:loaded.trust};
@@ -57,7 +60,7 @@ else{
    console.error(`TRADES: projection-value discovery; ${discovered.diagnostics.partnerCount} partners / ${discovered.diagnostics.generatedScenarioCount} generated / ${discovered.scenarios.length} evaluated scenarios.`);
   }catch(error){spec.scanAvailability={...spec.scanAvailability,trades:{status:'unavailable',reason:error.message}};console.error(`TRADES: unavailable; ${error.message}; continuing without trade recommendations.`);}
  }
- console.error(`MONTE CARLO: running ${simulations.toLocaleString()} core simulations; scenario analyses use ${scenarioSimulations.toLocaleString()} each...`);
+ console.error(`MONTE CARLO: running ${simulations.toLocaleString()} core simulations; scenario screening uses ${scenarioSimulations.toLocaleString()} each...`);
  const started=Date.now();
  const report=buildLeagueIntelligenceReport(prepared.input,{...spec,week,projectionRows:loaded.rows,providerHealth:loaded.trust,trust:{requireProjectionCoverage:true,minimumProjectionMatchRate},scenarioSimulations});
  console.error(`MONTE CARLO: complete in ${((Date.now()-started)/1000).toFixed(1)}s.`);
