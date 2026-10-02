@@ -13,7 +13,7 @@ export async function resolveYahooAccessToken(env=process.env,{fetchImpl,session
  const clientId=env.YAHOO_CLIENT_ID;
  const clientSecret=env.YAHOO_CLIENT_SECRET;
  if(!refreshToken)return {accessToken:null,source:'unavailable',reason:'Yahoo access token absent; YAHOO_REFRESH_TOKEN not configured and no local Yahoo auth session found. Run npm run yahoo:auth.'};
- if(!clientId||!clientSecret)return {accessToken:null,source:'unavailable',reason:'Yahoo refresh token is configured, but YAHOO_CLIENT_ID/YAHOO_CLIENT_SECRET are missing.'};
+ if(!clientId)return {accessToken:null,source:'unavailable',reason:'Yahoo refresh token is configured, but YAHOO_CLIENT_ID is missing.'};
  const token=await refreshYahooAccessToken({refreshToken,clientId,clientSecret,redirectUri:env.YAHOO_REDIRECT_URI??'oob',fetchImpl});
  if(!token?.access_token)throw new Error('Yahoo OAuth refresh succeeded without an access token.');
  const nextRefreshToken=token.refresh_token??refreshToken;
