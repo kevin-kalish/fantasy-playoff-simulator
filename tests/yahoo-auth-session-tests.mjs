@@ -15,11 +15,13 @@ assert.match(result.reason,/YAHOO_CLIENT_ID/);
 
 let request;
 const fetchImpl=async(url,opts)=>{request={url,opts};return{ok:true,json:async()=>({access_token:'fresh-access',refresh_token:'fresh-refresh',expires_in:3600})}};
-result=await resolveYahooAccessToken({YAHOO_REFRESH_TOKEN:'refresh',YAHOO_CLIENT_ID:'id',YAHOO_CLIENT_SECRET:'secret'},{fetchImpl});
+result=await resolveYahooAccessToken({YAHOO_REFRESH_TOKEN:'refresh',YAHOO_CLIENT_ID:'id'},{fetchImpl});
 assert.equal(result.accessToken,'fresh-access');
 assert.equal(result.source,'refresh');
 assert.equal(result.expiresIn,3600);
 assert.equal(result.refreshToken,'fresh-refresh');
+assert.equal(request.opts.headers.Authorization,undefined);
+assert.ok(request.opts.body.toString().includes('client_id=id'));
 assert.ok(request.opts.body.toString().includes('grant_type=refresh_token'));
 
 console.log('yahoo-auth-session-tests: all checks passed');
