@@ -16,7 +16,7 @@ export function summarizeStability(samples,{maxHighSpread=.01,maxModerateSpread=
 
 export function validateRecommendation(action,{simulations=0,maxChampionshipDelta=.25,maxPlayoffDelta=.20,minSignalToNoise=2,recommendationQualitySimulations=20000}={}){
  const warnings=[];
- const n=Number(simulations)||0,championshipDelta=num(action.championshipDelta),playoffDelta=num(action.playoffDelta),winsDelta=num(action.winsDelta);
+ const n=Number(action?.simulations??simulations)||0,championshipDelta=num(action.championshipDelta),playoffDelta=num(action.playoffDelta),winsDelta=num(action.winsDelta);
  if(n<recommendationQualitySimulations)warnings.push({code:'LOW_SIMULATION_COUNT',message:`${n.toLocaleString()} simulations is below the ${recommendationQualitySimulations.toLocaleString()} recommendation-quality target.`});
  if(abs(championshipDelta)>maxChampionshipDelta)warnings.push({code:'LARGE_CHAMPIONSHIP_DELTA',message:`Championship probability changes by ${(100*abs(championshipDelta)).toFixed(2)} percentage points; verify projections and transaction scope.`});
  if(abs(playoffDelta)>maxPlayoffDelta)warnings.push({code:'LARGE_PLAYOFF_DELTA',message:`Playoff probability changes by ${(100*abs(playoffDelta)).toFixed(2)} percentage points; verify projections and transaction scope.`});
