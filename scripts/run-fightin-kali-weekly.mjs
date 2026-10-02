@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import {buildWeeklyRefreshPlan} from '../src/model/weekly-refresh-plan.js';
-import {createYahooClient} from '../src/data/yahoo-client.js';
+import {createYahooClient,discoverYahooNflLeagues} from '../src/data/yahoo-client.js';
 import {loadYahooWaiverPool,prescreenWaiverScenarios} from '../src/data/yahoo-waivers.js';
 import {buildWaiverCandidatePool} from '../src/data/waiver-candidate-source.js';
 import {resolveYahooAccessToken} from '../src/data/yahoo-auth-session.js';
@@ -22,9 +22,19 @@ catch(error){yahooAuth={accessToken:null,source:'unavailable',reason:error.messa
 if(yahooAuth.accessToken){
  try{
   if(yahooAuth.source==='refresh')console.error(`YAHOO AUTH: access token refreshed${yahooAuth.expiresIn?` (expires in ${yahooAuth.expiresIn}s)`:''}.`);
-  const leagueKey=process.env.YAHOO_LEAGUE_KEY??snapshot.source?.leagueKey??config.leagueKey;
-  if(!leagueKey)throw new Error('Yahoo league key is required.');
   const get=createYahooClient({accessToken:yahooAuth.accessToken});
+  let leagueKey=process.env.YAHOO_LEAGUE_KEY??snapshot.source?.leagueKey??config.leagueKey;
+  if(!leagueKey){
+   const leagues=await discoverYahooNflLeagues(get,{season:plan.season});
+   const configuredLeagueId=String(process.env.YAHOO_LEAGUE_ID??config.leagueId??'');
+   const matching=leagues.filter(league=>String(league.leagueId??league.leagueKey?.split('.').at(-1))===configuredLeagueId);
+   if(matching.length===1)leagueKey=matching[0].leagueKey;
+   else if(leagues.length===1)leagueKey=leagues[0].leagueKey;
+   else if(!leagues.length)throw new Error(`Yahoo league discovery returned no NFL leagues for ${plan.season}.`);
+   else throw new Error(`Yahoo league discovery found ${leagues.length} leagues and could not uniquely match league ID ${configuredLeagueId||'(not configured)'}. Set YAHOO_LEAGUE_KEY.`);
+   console.error(`YAHOO LEAGUE: discovered ${leagueKey}${configuredLeagueId?` for configured league ID ${configuredLeagueId}`:''}.`);
+   plan.yahoo={...(plan.yahoo??{}),leagueKey,leagueKeySource:'discovery'};
+  }else plan.yahoo={...(plan.yahoo??{}),leagueKey,leagueKeySource:process.env.YAHOO_LEAGUE_KEY?'environment':snapshot.source?.leagueKey?'snapshot':'config'};
   const raw=await loadYahooWaiverPool(get,{leagueKey,limit:Number(process.env.WAIVER_CANDIDATE_LIMIT??30)});
   const pool=buildWaiverCandidatePool(raw,{source:'yahoo',limit:Number(process.env.WAIVER_CANDIDATE_LIMIT??30)});
   const team=snapshot.teams.find(t=>String(t.id)===String(plan.teamId));
