@@ -16,23 +16,31 @@ const reference=JSON.parse(fs.readFileSync(referencePath,'utf8'));
 const get=createYahooClient({accessToken:yahooAuth.accessToken});
 let leagueKey=process.env.YAHOO_LEAGUE_KEY;
 if(!leagueKey){
- const leagues=await discoverYahooNflLeagues(get,{season});
- const configuredLeagueId=String(process.env.YAHOO_LEAGUE_ID??reference?.league?.leagueId??reference?.leagueId??'244897');
- const matching=leagues.filter(league=>String(league.leagueId??league.league_id??league.leagueKey?.split('.').at(-1))===configuredLeagueId);
- if(matching.length===1){
-  leagueKey=matching[0].leagueKey;
-  console.error(`YAHOO LEAGUE: discovered ${leagueKey} for league ID ${configuredLeagueId}.`);
- }else if(leagues.length===1){
-  leagueKey=leagues[0].leagueKey;
-  console.error(`YAHOO LEAGUE: discovered ${leagueKey}.`);
- }else{
-  console.error(JSON.stringify({message:'Set YAHOO_LEAGUE_KEY to one of these leagues.',configuredLeagueId,leagues},null,2));
-  process.exit(leagues.length?2:1);
+ try{
+  const leagues=await discoverYahooNflLeagues(get,{season});
+  const configuredLeagueId=String(process.env.YAHOO_LEAGUE_ID??reference?.league?.leagueId??reference?.leagueId??'244897');
+  const matching=leagues.filter(league=>String(league.leagueId??league.league_id??league.leagueKey?.split('.').at(-1))===configuredLeagueId);
+  if(matching.length===1){
+   leagueKey=matching[0].leagueKey;
+   console.error(`YAHOO LEAGUE: discovered ${leagueKey} for league ID ${configuredLeagueId}.`);
+  }else if(leagues.length===1){
+   leagueKey=leagues[0].leagueKey;
+   console.error(`YAHOO LEAGUE: discovered ${leagueKey}.`);
+  }else{
+   console.error(JSON.stringify({message:'Set YAHOO_LEAGUE_KEY to one of these leagues.',configuredLeagueId,leagues},null,2));
+   process.exitCode=leagues.length?2:1;
+  }
+ }catch(error){
+  console.error(`YAHOO LEAGUE DISCOVERY ERROR: ${error.message}`);
+  console.error('If OAuth refresh succeeded but Yahoo returned HTTP 403, the app is authenticated but Fantasy Sports API entitlement is not active yet.');
+  process.exitCode=1;
  }
 }
-const reportPath=process.env.AUDIT_OUT||`data/private/yahoo-audit-${leagueKey.replace(/[^a-z0-9._-]/gi,'_')}-week-${week}.json`;
-try{
- const {report}=await runYahooLeagueAudit(get,{leagueKey,season,week,reference,reportPath});
- console.log(formatYahooAuditReport(report));console.log(`Report: ${reportPath}`);
- if(!report.passed)process.exitCode=3;
-}catch(error){console.error(`YAHOO AUDIT ERROR: ${error.message}`);process.exitCode=1}
+if(leagueKey){
+ const reportPath=process.env.AUDIT_OUT||`data/private/yahoo-audit-${leagueKey.replace(/[^a-z0-9._-]/gi,'_')}-week-${week}.json`;
+ try{
+  const {report}=await runYahooLeagueAudit(get,{leagueKey,season,week,reference,reportPath});
+  console.log(formatYahooAuditReport(report));console.log(`Report: ${reportPath}`);
+  if(!report.passed)process.exitCode=3;
+ }catch(error){console.error(`YAHOO AUDIT ERROR: ${error.message}`);process.exitCode=1}
+}
