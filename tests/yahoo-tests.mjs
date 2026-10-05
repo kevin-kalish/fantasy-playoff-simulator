@@ -7,7 +7,12 @@ const player=yahooPlayer([{player_key:'461.p.1'},{name:{full:'Test Player'}},{ed
 assert.equal(player.name,'Test Player');assert.equal(player.position,'WR');assert.equal(player.nflTeam,'NE');
 const nestedPlayer=yahooPlayer([{player:[{player_key:'461.p.2'},{name:{full:'Nested Player'}},{editorial_team_abbr:'BUF'},{display_position:'QB'},{selected_position:[{position:'QB'}]}]}]);
 assert.equal(nestedPlayer.id,'461.p.2');assert.equal(nestedPlayer.name,'Nested Player');assert.equal(nestedPlayer.position,'QB');assert.equal(nestedPlayer.nflTeam,'BUF');assert.equal(nestedPlayer.lineupSlot,'QB');
+const liveShapePlayer=yahooPlayer([[{player_key:'470.p.40881'},{player_id:'40881'},{name:{full:'Drake Maye'}}],{selected_position:[{coverage_type:'week',week:'4'},{position:'QB'},{is_flex:0}]},{is_editable:0}]);
+assert.equal(liveShapePlayer.id,'470.p.40881');assert.equal(liveShapePlayer.name,'Drake Maye');assert.equal(liveShapePlayer.lineupSlot,'QB');
 assert.deepEqual(yahooStanding({team_standings:{outcome_totals:{wins:'7',losses:'3',ties:'0'}},team_points:{total:'1234.5'}}),{wins:7,losses:3,ties:0,points:1234.5});
+const liveShapeStanding=yahooStanding([[{team_key:'470.l.244897.t.1'},{name:'The Fightin’ Kali'}],{team_points:{total:'316.60'}},{team_standings:{rank:'8',outcome_totals:{wins:'1',losses:'2',ties:0},points_for:'316.60',points_against:344.62}}]);
+assert.deepEqual(liveShapeStanding,{wins:1,losses:2,ties:0,points:316.6,pointsAgainst:344.62,rank:8});
+assert.equal(yahooProperties([[{team_key:'470.l.244897.t.1'},{name:'The Fightin’ Kali'}],{team_standings:{rank:'8'}}]).team_key,'470.l.244897.t.1');
 const teamRows=yahooCollection({0:{team:[{team_key:'1'},{name:'A'}]},count:1},'team');assert.ok(Array.isArray(teamRows[0]));assert.equal(yahooProperties(teamRows[0]).name,'A');
 const objectRows=yahooCollection({0:{team:{team_key:'2',name:'B'}},count:1},'team');assert.equal(objectRows[0].name,'B');
 const snapshot=buildYahooSnapshot({source:{leagueId:'461.l.1',season:2025},teams:[{id:'1',name:'A',lineup:[player]},{id:'2',name:'B',lineup:[{...player,id:'2',name:'Other Player'}]}],schedule:[{week:11,matchups:[['1','2']]}],playoffSpots:2});
