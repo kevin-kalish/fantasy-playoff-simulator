@@ -16,7 +16,7 @@ function playoffStart(settings){return num(settings.playoff_start_week||settings
 function regularSeasonEnd(settings,currentWeek){const start=playoffStart(settings);return start>1?start-1:Math.max(Number(currentWeek)||1,14)}
 function normalizeYahooSlot(position){const p=String(val(position)||'').toUpperCase().replace(/\s+/g,'');if(p==='W/R/T'||p==='W/R/T/Q')return p==='W/R/T/Q'?'SUPERFLEX':'RB/WR/TE';if(p==='W/T')return'WR/TE';if(p==='W/R')return'RB/WR';if(p==='Q/W/R/T')return'SUPERFLEX';if(p==='DEF'||p==='D/ST')return'DEF';return p}
 function lineupSlots(settings){const raw=settings.roster_positions;if(!raw)return[];const rows=[];const visit=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){for(const x of node)visit(x);return}if('position' in node){const slot=normalizeYahooSlot(node.position),count=Math.max(1,num(node.count,1));if(!['BN','IR','IL','NA'].includes(slot))for(let i=0;i<count;i++)rows.push(slot);return}for(const x of Object.values(node))visit(x)};visit(raw);return rows}
-function playoffTiebreaker(settings){const raw=String(val(settings.playoff_tiebreaker||settings.playoff_tie_breaker)||'').trim().toLowerCase().replace(/[ _]+/g,'-');if(!raw)return'';if(raw==='higher-seed'||raw==='higherseed')return'higher-seed';return raw}
+function playoffTiebreaker(settings){const raw=String(val(settings.playoff_tiebreaker||settings.playoff_tie_breaker)||'').trim().toLowerCase().replace(/[ _]+/g,'-');if(!raw)return'higher-seed';if(raw==='higher-seed'||raw==='higherseed')return'higher-seed';return raw}
 
 export async function loadYahooLeagueSnapshot(get,{leagueKey,season,week,includeWeeklyLineups=true}={}){
  if(!leagueKey)throw new Error('Yahoo leagueKey is required.');const currentWeek=Number(week)||1;
