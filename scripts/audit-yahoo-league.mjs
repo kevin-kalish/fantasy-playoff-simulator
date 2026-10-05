@@ -37,6 +37,27 @@ if(!leagueKey){
  }
 }
 if(leagueKey){
+ if(process.env.YAHOO_DEBUG_ROSTER==='1'){
+  try{
+   const teamsJson=await get(`league/${leagueKey}/teams`);
+   const text=JSON.stringify(teamsJson);
+   const ownedMatch=text.match(/"team_key":"([^"]+)"[^]*?"is_owned_by_current_login":1/);
+   const teamKey=ownedMatch?.[1]||`${leagueKey}.t.1`;
+   const rosterJson=await get(`team/${teamKey}/roster;week=${week}`);
+   const summarize=(node,depth=0)=>{
+    if(depth>7)return '[max-depth]';
+    if(Array.isArray(node))return {type:'array',length:node.length,items:node.slice(0,2).map(x=>summarize(x,depth+1))};
+    if(node&&typeof node==='object'){
+     const out={};
+     for(const [k,v] of Object.entries(node))out[k]=summarize(v,depth+1);
+     return out;
+    }
+    return node;
+   };
+   console.error(`YAHOO ROSTER DEBUG: ${teamKey} week ${week}`);
+   console.error(JSON.stringify(summarize(rosterJson),null,2));
+  }catch(error){console.error(`YAHOO ROSTER DEBUG ERROR: ${error.message}`)}
+ }
  const reportPath=process.env.AUDIT_OUT||`data/private/yahoo-audit-${leagueKey.replace(/[^a-z0-9._-]/gi,'_')}-week-${week}.json`;
  try{
   const {report}=await runYahooLeagueAudit(get,{leagueKey,season,week,reference,reportPath});
