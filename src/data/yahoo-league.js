@@ -3,7 +3,7 @@ import {validateLeagueSnapshot} from './league-snapshot.js';
 const props=node=>yahooProperties(node),val=node=>yahooValue(node);const num=(v,fallback=0)=>{const n=Number(val(v));return Number.isFinite(n)?n:fallback};
 function findObject(node,key){if(!node||typeof node!=='object')return null;if(Array.isArray(node)){for(const x of node){const r=findObject(x,key);if(r)return r}return null}if(node[key])return Array.isArray(node[key])?props(node[key]):node[key];for(const x of Object.values(node)){const r=findObject(x,key);if(r)return r}return null}
 function teamsFrom(json){const league=findObject(json?.fantasy_content,'league');return yahooCollection(league?.teams,'team')}
-function playersFromRoster(json){const roster=findObject(json?.fantasy_content,'roster');return yahooCollection(roster?.players,'player').map(p=>yahooPlayer(Object.entries(p).map(([k,v])=>({[k]:v}))))}
+function playersFromRoster(json){const roster=findObject(json?.fantasy_content,'roster');return yahooCollection(roster?.players,'player').map(yahooPlayer)}
 function starters(players){return players.filter(p=>!['BN','IR','IL','NA'].includes(String(p.lineupSlot||'').toUpperCase()))}
 function teamProperties(t){if(!t)return{};if(Array.isArray(t))return props(t);if(typeof t!=='object')return{};if(Array.isArray(t.team))return props(t.team);if(t.team&&typeof t.team==='object')return teamProperties(t.team);return t}
 function teamKey(t){const p=teamProperties(t);return String(val(p.team_key)||val(p.team_id)||'')}
