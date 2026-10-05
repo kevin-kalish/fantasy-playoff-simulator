@@ -20,7 +20,7 @@ export function referenceTeamFromYahooSnapshot(snapshot,referenceTeamName){
 }
 
 export function yahooSnapshotAuditView(snapshot,reference){
- return {teamCount:snapshot.teams?.length||0,referenceTeam:referenceTeamFromYahooSnapshot(snapshot,reference.referenceTeam?.name)||{},roster:rosterShapeFromYahooSnapshot(snapshot),playoffs:{spots:snapshot.playoffSpots,weeks:snapshot.playoffWeeks,reseed:snapshot.reseed,tieBreaker:snapshot.playoffTiebreaker||snapshot.playoffTieBreaker||snapshot.tiebreaker}};
+ return {currentWeek:snapshot.currentWeek??snapshot.source?.currentWeek,teamCount:snapshot.teams?.length||0,referenceTeam:referenceTeamFromYahooSnapshot(snapshot,reference.referenceTeam?.name)||{},roster:rosterShapeFromYahooSnapshot(snapshot),playoffs:{spots:snapshot.playoffSpots,weeks:snapshot.playoffWeeks,reseed:snapshot.reseed,tieBreaker:snapshot.playoffTiebreaker||snapshot.playoffTieBreaker||snapshot.tiebreaker}};
 }
 
 export function auditImportedYahooLeague(snapshot,reference){
