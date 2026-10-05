@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import {buildWeeklyRefreshPlan} from '../src/model/weekly-refresh-plan.js';
 import {createYahooClient,discoverYahooNflLeagues} from '../src/data/yahoo-client.js';
 import {loadYahooLeagueSnapshot} from '../src/data/yahoo-league.js';
+import {runYahooLeagueAudit} from '../src/data/yahoo-live-audit.js';
 import {loadYahooWaiverPool,prescreenWaiverScenarios} from '../src/data/yahoo-waivers.js';
 import {buildWaiverCandidatePool} from '../src/data/waiver-candidate-source.js';
 import {resolveYahooAccessToken} from '../src/data/yahoo-auth-session.js';
@@ -16,7 +17,7 @@ const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
 let snapshot=read(snapshotPath);const config=read(configPath);
 let yahooAuth;
 try{yahooAuth=await resolveYahooAccessToken();}catch(error){yahooAuth={accessToken:null,source:'unavailable',reason:error.message};}
-let get=null,leagueKey=null;
+let get=null,leagueKey=null,sourceAudit=null;
 if(yahooAuth.accessToken){
  try{
   get=createYahooClient({accessToken:yahooAuth.accessToken});
@@ -28,13 +29,26 @@ if(yahooAuth.accessToken){
    if(matching.length===1)leagueKey=matching[0].leagueKey;else if(leagues.length===1)leagueKey=leagues[0].leagueKey;else throw new Error(`Could not uniquely discover Yahoo league ${configuredLeagueId}.`);
   }
   const liveWeek=weekArg??Number(process.env.WEEK??snapshot.currentWeek??snapshot.source?.currentWeek??1);
-  snapshot=applyFightinKaliConfig(await loadYahooLeagueSnapshot(get,{leagueKey,season:config.season,week:liveWeek}),config);
+  const referencePath=process.env.YAHOO_REFERENCE??'fixtures/yahoo-reference-2026-week3.json';
+  if(fs.existsSync(referencePath)){
+   const reference=read(referencePath);
+   const auditPath=`data/private/yahoo-audit-${leagueKey.replace(/[^a-z0-9._-]/gi,'_')}-week-${liveWeek}.json`;
+   const audited=await runYahooLeagueAudit(get,{leagueKey,season:config.season,week:liveWeek,reference,reportPath:auditPath});
+   sourceAudit={passed:audited.report.passed,failures:audited.report.failures,checks:audited.report.checks,generatedAt:audited.report.generatedAt,leagueKey,week:liveWeek};
+   if(!sourceAudit.passed)throw new Error(`Yahoo source audit failed (${sourceAudit.failures.length} reconciliation checks).`);
+   snapshot=applyFightinKaliConfig(audited.league,config);
+   console.error(`YAHOO AUDIT: PASS; ${sourceAudit.checks.length} source reconciliation checks.`);
+  }else{
+   snapshot=applyFightinKaliConfig(await loadYahooLeagueSnapshot(get,{leagueKey,season:config.season,week:liveWeek}),config);
+   console.error(`YAHOO AUDIT: unavailable; reference not found: ${referencePath}. Simulation trust gate will block Yahoo results.`);
+  }
   snapshot.source={...snapshot.source,leagueKey,currentWeek:liveWeek};snapshot.currentWeek=liveWeek;
   fs.mkdirSync('data/private',{recursive:true});fs.writeFileSync(snapshotPath,JSON.stringify(snapshot,null,2)+'\n');
   console.error(`YAHOO STATE: refreshed ${snapshot.teams.length} teams and ${snapshot.schedule.length} remaining schedule weeks for week ${liveWeek}.`);
  }catch(error){console.error(`YAHOO STATE: unavailable; ${error.message}; using existing snapshot.`);}
 }
 let plan;try{plan=buildWeeklyRefreshPlan(snapshot,config,{week:weekArg});}catch(e){fail(e.message)}
+if(sourceAudit)plan.sourceAudit=sourceAudit;
 plan.tradeDiscovery={enabled:true,maxPartners:Number(process.env.TRADE_MAX_PARTNERS??9),maxPlayersPerTeam:Number(process.env.TRADE_MAX_PLAYERS_PER_TEAM??7),maxScenarios:Number(process.env.TRADE_MAX_SCENARIOS??24),valueTolerance:Number(process.env.TRADE_VALUE_TOLERANCE??.35),includePackages:process.env.TRADE_INCLUDE_PACKAGES!=='false'};
 plan.scanAvailability={startSit:{status:'available'},waivers:{status:'unavailable',reason:'Yahoo waiver source not attempted.'},trades:{status:'not-configured',reason:'Trade discovery runs after projections are loaded.'}};
 if(leagueKey)plan.yahoo={leagueKey,leagueKeySource:'live-state'};
