@@ -22,6 +22,7 @@ export function scoreboard(week){const ids=teams.map(t=>t.team_key),matchups=[];
 export async function get(path){
  if(path===`league/${leagueKey}/settings`)return {fantasy_content:{league:[{league_key:leagueKey},{season:'2026'},{settings}]}};
  if(path===`league/${leagueKey}/teams`)return {fantasy_content:{league:[{}, {teams:collection('team',teams)}]}};
+ if(path===`league/${leagueKey}/standings`)return {fantasy_content:{league:[{}, {standings:{teams:collection('team',teams)}}]}};
  const sm=path.match(/scoreboard;week=(\d+)/);if(sm)return scoreboard(Number(sm[1]));
  const rm=path.match(/^team\/(.+)\/roster;week=(\d+)$/);if(rm)return rosterPayload(rosters[rm[1]]);
  throw new Error(`Unexpected fixture request: ${path}`);
