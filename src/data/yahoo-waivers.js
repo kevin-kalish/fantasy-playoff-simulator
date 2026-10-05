@@ -13,7 +13,7 @@ function findObject(node,key){
 }
 function playersFrom(json){
  const league=findObject(json?.fantasy_content,'league');
- return yahooCollection(league?.players,'player').map(p=>yahooPlayer(Object.entries(p).map(([k,v])=>({[k]:v}))));
+ return yahooCollection(league?.players,'player').map(yahooPlayer);
 }
 
 export async function loadYahooWaiverPool(get,{leagueKey,limit=30,status='A',sort='AR'}={}){
