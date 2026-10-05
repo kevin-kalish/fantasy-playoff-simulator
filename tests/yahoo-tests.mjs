@@ -5,6 +5,8 @@ import {enrichLeagueSnapshotProjections} from '../src/data/projection-enrichment
 
 const player=yahooPlayer([{player_key:'461.p.1'},{name:{full:'Test Player'}},{editorial_team_abbr:'NE'},{display_position:'WR'}]);
 assert.equal(player.name,'Test Player');assert.equal(player.position,'WR');assert.equal(player.nflTeam,'NE');
+const nestedPlayer=yahooPlayer([{player:[{player_key:'461.p.2'},{name:{full:'Nested Player'}},{editorial_team_abbr:'BUF'},{display_position:'QB'},{selected_position:[{position:'QB'}]}]}]);
+assert.equal(nestedPlayer.id,'461.p.2');assert.equal(nestedPlayer.name,'Nested Player');assert.equal(nestedPlayer.position,'QB');assert.equal(nestedPlayer.nflTeam,'BUF');assert.equal(nestedPlayer.lineupSlot,'QB');
 assert.deepEqual(yahooStanding({team_standings:{outcome_totals:{wins:'7',losses:'3',ties:'0'}},team_points:{total:'1234.5'}}),{wins:7,losses:3,ties:0,points:1234.5});
 const teamRows=yahooCollection({0:{team:[{team_key:'1'},{name:'A'}]},count:1},'team');assert.ok(Array.isArray(teamRows[0]));assert.equal(yahooProperties(teamRows[0]).name,'A');
 const objectRows=yahooCollection({0:{team:{team_key:'2',name:'B'}},count:1},'team');assert.equal(objectRows[0].name,'B');
