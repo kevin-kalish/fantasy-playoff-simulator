@@ -33,6 +33,7 @@ export function buildLeagueSimulationInput(snapshot,{calibrationReport=null,simu
   playoffWeeks:league.playoffWeeks,
   reseed:league.reseed,
   tiebreaker:league.tiebreaker||'points',
+  ...(league.lineupSlots?.length?{lineupSlots:[...league.lineupSlots]}:{}),
   simulations:Number(simulations),seed:Number(seed),modelVariant,calibration,
   metadata:{source:league.source,projectionCoverage,calibrationSource:calibration?.source??null}
  };
