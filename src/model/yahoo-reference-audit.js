@@ -6,16 +6,19 @@ export function auditYahooReference(reference,actual){
  const checks=[];
  const check=(code,pass,expected,observed)=>checks.push({code,pass:Boolean(pass),expected,observed});
  check('TEAM_COUNT',Number(actual.teamCount)===Number(reference.teamCount),reference.teamCount,actual.teamCount);
- const rr=reference.referenceTeam||{},ar=actual.referenceTeam||{};
- for(const f of ['wins','losses','ties','rank','waiverPriority','moves'])check(`REFERENCE_${f.toUpperCase()}`,Number(ar[f])===Number(rr[f]),rr[f],ar[f]);
- check('REFERENCE_POINTS_FOR',close(ar.pointsFor,rr.pointsFor),rr.pointsFor,ar.pointsFor);
- check('REFERENCE_POINTS_AGAINST',close(ar.pointsAgainst,rr.pointsAgainst),rr.pointsAgainst,ar.pointsAgainst);
- for(const [slot,count] of Object.entries(reference.roster||{}))check(`ROSTER_${slot.replaceAll('/','_')}`,Number(actual.roster?.[slot])===Number(count),count,actual.roster?.[slot]);
+ const referenceWeek=Number(reference.week),currentWeek=Number(actual.currentWeek),sameReferenceWeek=!referenceWeek||!currentWeek||referenceWeek===currentWeek;
+ if(sameReferenceWeek){
+  const rr=reference.referenceTeam||{},ar=actual.referenceTeam||{};
+  for(const f of ['wins','losses','ties','rank','waiverPriority','moves'])check(`REFERENCE_${f.toUpperCase()}`,Number(ar[f])===Number(rr[f]),rr[f],ar[f]);
+  check('REFERENCE_POINTS_FOR',close(ar.pointsFor,rr.pointsFor),rr.pointsFor,ar.pointsFor);
+  check('REFERENCE_POINTS_AGAINST',close(ar.pointsAgainst,rr.pointsAgainst),rr.pointsAgainst,ar.pointsAgainst);
+  for(const [slot,count] of Object.entries(reference.roster||{}))check(`ROSTER_${slot.replaceAll('/','_')}`,Number(actual.roster?.[slot])===Number(count),count,actual.roster?.[slot]);
+ }else check('REFERENCE_DYNAMIC_STATE',true,`reference week ${referenceWeek}`,`skipped for current week ${currentWeek}`);
  check('PLAYOFF_SPOTS',Number(actual.playoffs?.spots)===Number(reference.playoffs?.spots),reference.playoffs?.spots,actual.playoffs?.spots);
  check('PLAYOFF_WEEKS',sameArray(actual.playoffs?.weeks,reference.playoffs?.weeks),reference.playoffs?.weeks,actual.playoffs?.weeks);
  check('PLAYOFF_RESEED',actual.playoffs?.reseed===reference.playoffs?.reseed,reference.playoffs?.reseed,actual.playoffs?.reseed);
  check('PLAYOFF_TIEBREAKER',actual.playoffs?.tieBreaker===reference.playoffs?.tieBreaker,reference.playoffs?.tieBreaker,actual.playoffs?.tieBreaker);
- const games=reference.completedGames||[];
+ const rr=reference.referenceTeam||{},games=reference.completedGames||[];
  check('HISTORICAL_PF_RECONCILES',close(sum(games,'teamScore'),rr.pointsFor),rr.pointsFor,sum(games,'teamScore'));
  check('HISTORICAL_PA_RECONCILES',close(sum(games,'opponentScore'),rr.pointsAgainst),rr.pointsAgainst,sum(games,'opponentScore'));
  return {passed:checks.every(x=>x.pass),checks,failures:checks.filter(x=>!x.pass)};
