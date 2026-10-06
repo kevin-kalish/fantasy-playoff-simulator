@@ -8,9 +8,10 @@ let requested='';const fetchImpl=async(url,opts)=>{requested=String(url);assert.
 const direct=await new JerryGMClient({apiKey:'jgm-test',fetchImpl}).projections({season:2026,week:3,scoring:'HALF'});assert.equal(direct.players.length,2);assert.match(requested,/week=3/);assert.match(requested,/scoring=half/);
 const seasonPayload={season:2026,players:[{name:'Josh Allen',position:'QB',team:'BUF',projectedPPG:21.5,seasonTotal:365.5,ids:{gsis:'00-0034857',yahoo:'30977'}}]};
 let seasonRequested='';const seasonFetch=async(url)=>{seasonRequested=String(url);return{ok:true,status:200,text:async()=>JSON.stringify(seasonPayload)}};
-const seasonRaw=await new JerryGMClient({apiKey:'jgm-test',fetchImpl:seasonFetch}).seasonProjections({season:2026,scoring:'HALF',names:['Josh Allen']});
-assert.doesNotMatch(seasonRequested,/[?&]week=/);assert.match(seasonRequested,/names=Josh/);
+const seasonRaw=await new JerryGMClient({apiKey:'jgm-test',fetchImpl:seasonFetch}).seasonProjections({season:2026,scoring:'HALF'});
+assert.doesNotMatch(seasonRequested,/[?&]week=/);assert.doesNotMatch(seasonRequested,/[?&]names=/);
 const seasonRows=normalizeJerryGMSeasonProjections(seasonRaw,{season:2026});assert.equal(seasonRows.length,1);assert.equal(seasonRows[0].projection,21.5);assert.equal(seasonRows[0].seasonTotal,365.5);assert.equal(seasonRows[0].yahooId,'30977');assert.equal(seasonRows[0].source,'jerrygm-season');
+let fullBoardCalls=0;const fullBoardFetch=async url=>{fullBoardCalls++;assert.doesNotMatch(String(url),/[?&]names=/);return{ok:true,status:200,text:async()=>JSON.stringify(payload)}};await new JerryGMClient({apiKey:'jgm-test',fetchImpl:fullBoardFetch}).projections({season:2026,week:3,scoring:'HALF'});assert.equal(fullBoardCalls,1);
 const fallbackFetch=async(url)=>String(url).includes('fantasypros.com')?{ok:false,status:403,statusText:'Forbidden',text:async()=>'{"message":"Forbidden"}'}:{ok:true,status:200,text:async()=>JSON.stringify(payload)};
 const result=await loadWeeklyProjections({season:2026,week:3,minimumRows:2,apiKey:'fp-test',jerryGMApiKey:'jgm-test',cachePath:null,fetchImpl:fallbackFetch});assert.equal(result.provider,'jerrygm');assert.equal(result.rows.length,2);assert.equal(result.degraded,true);assert.equal(result.attempts[0].provider,'fantasypros');assert.equal(result.attempts[1].provider,'jerrygm');assert.equal(result.trust.ready,true);
 console.log('jerrygm-tests: all checks passed');
