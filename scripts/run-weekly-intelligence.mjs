@@ -17,16 +17,16 @@ if(!season||!week||!spec.teamId){console.error('weekly-spec.json requires teamId
 const weeks=spec.weeks?.length?spec.weeks:[week];
 const rosterNames=(snapshot.teams??[]).flatMap(team=>team.roster??team.lineup??[]).map(player=>String(player?.name??'').trim()).filter(Boolean);
 const waiverNames=(spec.waivers?.candidates??[]).map(player=>String(player?.name??'').trim()).filter(Boolean);
-const projectionNames=[...new Set([...rosterNames,...waiverNames])];
+const projectionNames=[...new Set([...rosterNames,...waiverNames])],projectionCachePath=process.env.PROJECTION_CACHE_PATH??'data/private/projection-cache.json',seasonCachePath=process.env.JERRYGM_SEASON_CACHE_PATH??`data/private/jerrygm-season-${season}.json`,forceProjectionRefresh=process.env.PROJECTION_REFRESH==='true';
 let loaded;
 try{loaded=await loadWeeklyProjectionHorizon({season,weeks,scoring:spec.scoring??'HALF',minimumRows:Number(spec.minimumProjectionRows??1),projectionNames,fixturePath:spec.projectionFixturePath??process.env.PROJECTION_FIXTURE_PATH??null});}
 catch(error){console.error(`PROJECTIONS: FAIL; ${error.message}`);process.exit(2)}
 let seasonProjectionRows=[];
 if(process.env.JERRYGM_API_KEY&&spec.useJerryGMSeasonBaseline!==false){
  try{
-  const payload=await new JerryGMClient({apiKey:process.env.JERRYGM_API_KEY}).seasonProjections({season,scoring:spec.scoring??'HALF',names:projectionNames});
+  let payload,seasonSource='jerrygm';if(!forceProjectionRefresh&&fs.existsSync(seasonCachePath)){payload=JSON.parse(fs.readFileSync(seasonCachePath,'utf8'));seasonSource='cache';}else{payload=await new JerryGMClient({apiKey:process.env.JERRYGM_API_KEY}).seasonProjections({season,scoring:spec.scoring??'HALF'});fs.mkdirSync('data/private',{recursive:true});fs.writeFileSync(seasonCachePath,JSON.stringify(payload,null,2)+'\n');}
   seasonProjectionRows=normalizeJerryGMSeasonProjections(payload,{season});
-  console.error(`SEASON BASELINE: jerrygm; ${seasonProjectionRows.length} projections.`);
+  console.error(`SEASON BASELINE: ${seasonSource}; ${seasonProjectionRows.length} projections.`);
  }catch(error){console.error(`SEASON BASELINE: unavailable; ${error.message}; continuing with horizon-only long-range model.`);}
 }
 const calibrationPath=spec.calibrationPath??'data/private/ffpros-research-calibration.json';
@@ -41,7 +41,7 @@ prepared.input.metadata={...prepared.input.metadata,projectionProvider:loaded.tr
 const fingerprint=simulationFingerprint(prepared.input);
 prepared.input.metadata.simulationFingerprint=fingerprint;
 const readiness=assessSimulationReadiness(prepared,{minimumProjectionMatchRate});
-console.error(`PROJECTIONS: ${loaded.provider}; ${loaded.rows.length} rows across weeks ${loaded.weeks.join(',')}; ${loaded.trust.degraded?'DEGRADED/FALLBACK':'PRIMARY'}.`);
+console.error(`PROJECTIONS: ${loaded.provider}; ${loaded.rows.length} rows across weeks ${loaded.weeks.join(',')}; ${loaded.trust.degraded?'DEGRADED/FALLBACK':'PRIMARY'}.`);console.error(`JERRYGM: ${loaded.provider==='cache'?'weekly cache HIT':'weekly board refreshed'}; ${loaded.provider==='cache'?'0':'up to '+loaded.weeks.length} weekly API calls this run${forceProjectionRefresh?' [FORCED REFRESH]':''}.`);
 if(seasonProjectionRows.length){const c=prepared.diagnostics.seasonProjectionCoverage;console.error(`LONG RANGE: ${prepared.diagnostics.longRangeProjectionMethod}; season weight ${(100*prepared.diagnostics.longRangeSeasonWeight).toFixed(0)}%; season coverage ${(100*c.matchRate).toFixed(1)}%.`);if(c.missing?.length)console.error(`SEASON BASELINE MISSES (${c.missing.length}): ${c.missing.slice(0,30).map(x=>x.name??x.playerName??x.id).join(', ')}${c.missing.length>30?' ...':''}`);}
 const confidence=prepared.diagnostics.longRangeConfidence;
 if(confidence){const derived=prepared.diagnostics.longRangeProjectionWeeks??[];if(derived.length){const first=derived[0],last=derived.at(-1);console.error(`HORIZON CONFIDENCE: W${first} ${(100*confidence.byWeek[first]).toFixed(0)}% -> W${last} ${(100*confidence.byWeek[last]).toFixed(0)}% (${confidence.method}; diagnostic only).`);}}
