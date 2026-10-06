@@ -8,7 +8,7 @@ Live development site: https://kevin-kalish.github.io/fantasy-playoff-simulator/
 
 The project has a working weekly intelligence pipeline for **The Fightin' Kali** with live Yahoo Fantasy Sports integration. Yahoo OAuth/API access is now operational and the weekly workflow refreshes league standings, remaining schedule, rosters, and current lineups before analysis. Yahoo is also the live waiver source. JerryGM supplies weekly player projections.
 
-The live Yahoo reconciliation audit validates league structure, dynamic standings/state, playoff settings, historical points reconciliation, roster population, current lineups, and week-specific lineups before the data is trusted for production analysis. The Week 4 live audit passes all reconciliation and roster-completeness checks.
+The live Yahoo reconciliation audit validates league structure, dynamic standings/state, playoff settings, historical points reconciliation, roster population, current lineups, and week-specific lineups before the data is trusted for production analysis. The Week 5 live audit passes all reconciliation and roster-completeness checks.
 
 Projection horizon is intentionally explicit:
 
