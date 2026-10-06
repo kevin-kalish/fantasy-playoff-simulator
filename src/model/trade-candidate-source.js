@@ -2,7 +2,7 @@ const pid=p=>String(p?.id??p?.playerId??'');
 const num=x=>Number.isFinite(Number(x))?Number(x):0;
 const positions=p=>String(p?.position??'').split(/[\/,]/).map(x=>x.trim()).filter(Boolean);
 const primary=p=>positions(p).find(x=>!['FLEX','W/R/T','BN','IR'].includes(x))??positions(p)[0]??'';
-const projectionFor=(p,week,rows=[])=>{const id=pid(p),r=rows.find(x=>Number(x.week)===Number(week)&&(String(x.playerId??x.id??'')===id||(!id&&x.name===p.name)));return r?num(r.projection):num(p.projection);};
+const projectionFor=(p,week,rows=[])=>{const id=pid(p),name=String(p?.name??'').trim().toLowerCase(),r=rows.find(x=>Number(x.week)===Number(week)&&(String(x.playerId??x.id??'')===id||String(x.yahooId??'')===id||(name&&String(x.name??'').trim().toLowerCase()===name)));return r?num(r.projection):num(p.projection);};
 const eligible=p=>pid(p)&&!positions(p).some(x=>['DEF','DST','K'].includes(x));
 function rosterValue(p,weeks,rows){const vals=weeks.map(w=>projectionFor(p,w,rows)).filter(Number.isFinite);return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:num(p.projection);}
 function replacementByPosition(players){const by={};for(const p of players){const pos=primary(p);(by[pos]??=[]).push(p._tradeValue);}for(const pos of Object.keys(by)){by[pos].sort((a,b)=>b-a);by[pos]=by[pos][Math.min(2,by[pos].length-1)]??0;}return by;}
