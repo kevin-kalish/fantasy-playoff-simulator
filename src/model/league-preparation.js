@@ -107,6 +107,17 @@ export function prepareLeagueSimulation(snapshot,projectionRows,{slots=null,week
  const modeled=addLongRangeProjections(enriched.league,directWeeks,{seasonProjectionRows,seasonWeight:longRangeSeasonWeight});
  const futureWeeks=[...new Set([...(modeled.schedule||[]).map(x=>Number(x.week)).filter(w=>Number.isInteger(w)&&w>=currentWeek),...(modeled.playoffWeeks||[]).map(Number).filter(Number.isInteger)])].sort((a,b)=>a-b);
  const optimized=buildFutureWeeklyLineups(modeled,{slots:activeSlots,weeks:futureWeeks,useRoster:true});
+ // The current-week Yahoo lineup is the submitted baseline. Future weeks are
+ // optimized from projections, but start/sit analysis must compare against what
+ // is actually starting now rather than an already-optimized synthetic lineup.
+ for(const team of optimized.teams||[]){
+  const live=(enriched.league.teams||[]).find(x=>String(x.id)===String(team.id))?.weeklyLineups?.[currentWeek];
+  if(live?.length){
+   team.weeklyLineups[currentWeek]=structuredClone(live);
+   const emptySlots=Math.max(0,activeSlots.length-live.length);
+   team.lineupDiagnostics={...(team.lineupDiagnostics||{}),[currentWeek]:{projectedPoints:live.reduce((n,p)=>n+(Number.isFinite(Number(p.projection))?Number(p.projection):0),0),emptySlots,complete:emptySlots===0,rosterPlayers:(team.roster||[]).length,source:'live-submitted'}};
+  }
+ }
  optimized.schedule=(optimized.schedule||[]).filter(row=>Number(row.week)>=currentWeek);
  const incomplete=[];
  for(const team of optimized.teams||[])for(const [week,d] of Object.entries(team.lineupDiagnostics||{}))if(!d.complete)incomplete.push({teamId:team.id,teamName:team.name,week:Number(week),emptySlots:d.emptySlots,projectedPoints:d.projectedPoints});
