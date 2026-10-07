@@ -35,7 +35,7 @@ for(let trial=0;trial<250;trial++){
  }
  const fast=optimizeLineup(players,{week:10,slots:auditSlots}),expected=exhaustiveScore(players,{week:10,slots:auditSlots});
  assert.ok(Math.abs(fast.projectedPoints-expected)<1e-9,`random audit trial ${trial}: memoized ${fast.projectedPoints} != exhaustive ${expected}`);
- assert.equal(fast.lineup.reduce((sum,x)=>sum+Number(x.projection||0),0),fast.projectedPoints,`random audit trial ${trial}: lineup score mismatch`);
+ assert.ok(Math.abs(fast.lineup.reduce((sum,x)=>sum+Number(x.projection||0),0)-fast.projectedPoints)<1e-9,`random audit trial ${trial}: lineup score mismatch`);
 }
 
 const snapshot={teams:[{id:'A',name:'A',lineup:roster}],schedule:[{week:10,matchups:[]}],playoffWeeks:[15]};const out=buildFutureWeeklyLineups(snapshot);assert.ok(out.teams[0].weeklyLineups[10]);assert.ok(out.teams[0].weeklyLineups[15]);assert.equal(out.teams[0].lineupDiagnostics[10].complete,true);
