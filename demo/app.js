@@ -1,4 +1,4 @@
-const app=document.querySelector('#app'),status=document.querySelector('#status'),trust=document.querySelector('#trust');
+const app=document.querySelector('#app'),status=document.querySelector('#status'),trust=document.querySelector('#trust'),teamName=document.querySelector('#team-name');
 let report=null,view='overview';
 const pct=x=>Number.isFinite(Number(x))?`${(100*Number(x)).toFixed(1)}%`:'—',num=x=>Number.isFinite(Number(x))?Number(x).toFixed(1):'—',esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const card=(label,value,sub='')=>`<section class="card"><div class="label">${esc(label)}</div><div class="metric">${esc(value)}</div><div class="sub">${esc(sub)}</div></section>`;
