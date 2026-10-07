@@ -15,7 +15,7 @@ export function optimizeLineup(players,{week=null,slots=DEFAULT_SLOTS}={}){
  const search=(i,usedMask)=>{
   if(i===n)return {score:0,picks:[]};
   const key=`${i}:${usedMask.toString()}`,cached=memo.get(key);if(cached)return cached;
-  const slot=activeSlots[i];let best={score:0,picks:[-1,...search(i+1,usedMask).picks]};
+  const slot=activeSlots[i],emptyTail=search(i+1,usedMask);let best={score:emptyTail.score,picks:[-1,...emptyTail.picks]};
   for(let j=0;j<pool.length;j++){
    const bit=1n<<BigInt(j);if((usedMask&bit)!==0n||!eligible(pool[j],slot))continue;
    const tail=search(i+1,usedMask|bit),score=value(pool[j])+tail.score;
