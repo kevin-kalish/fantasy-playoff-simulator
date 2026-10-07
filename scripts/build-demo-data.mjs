@@ -13,13 +13,14 @@ function latestWeeklyReport(){
 }
 
 const explicitWeek=process.argv[2]??process.env.WEEK;
-const selected=explicitWeek?{week:Number(explicitWeek),file:`data/private/fightin-kali-week-${Number(explicitWeek)}-report.json`}:latestWeeklyReport();
+const explicitSource=process.argv[3];
+const selected=explicitSource?{week:Number(explicitWeek),file:explicitSource}:explicitWeek?{week:Number(explicitWeek),file:`data/private/fightin-kali-week-${Number(explicitWeek)}-report.json`}:latestWeeklyReport();
 if(!selected||!Number.isFinite(selected.week)){
  console.error('DEMO BUILD: no weekly report found. Run npm run fightin-kali:weekly first.');
  process.exit(2);
 }
 const week=selected.week;
-const source=process.argv[3]??selected.file;
+const source=selected.file;
 const target=process.argv[4]??'demo/data.json';
 
 if(!fs.existsSync(source)){
