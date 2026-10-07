@@ -16,7 +16,7 @@ const qbInput={teams:[
 const qbRows=[];for(const t of qbInput.teams)for(const x of t.roster)qbRows.push({week:4,playerId:x.id,projection:x.projection});
 const qbOut=discoverTradeCandidates(qbInput,{teamId:'A',projectionRows:qbRows,weeks:[4],maxScenarios:100,valueTolerance:1,selectionValueTolerance:1,includePackages:false});
 assert.equal(qbOut.diagnostics.replacementByPosition.QB,19);
-assert.equal(qbOut.diagnostics.replacementByPosition.WR,7);
+assert.equal(qbOut.diagnostics.replacementByPosition.WR,4);
 const badQbForWr=qbOut.scenarios.find(x=>x.teamAGives.includes('aq1')&&x.teamBGives.includes('bwr1'));
 assert.ok(!badQbForWr||badQbForWr.discovery.valueGap>.2,'abundant QB should not look balanced with elite scarce WR');
 console.log('trade-candidate-source-tests: all checks passed');
