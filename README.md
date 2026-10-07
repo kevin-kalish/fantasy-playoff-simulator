@@ -25,7 +25,7 @@ Projection horizon is intentionally explicit:
 - Seeded, reproducible Monte Carlo season simulation with player volatility, availability, NFL-game correlation, and horizon uncertainty.
 - Full remaining regular-season simulation, standings, seed distributions, playoff qualification, playoff bracket/reseeding, and championship probability.
 - Weekly matchup win probability, playoff leverage/urgency, start-sit and GM recommendation infrastructure, and scenario analysis.
-- Automated waiver and trade candidate discovery with broad scenario screening followed by higher-simulation confirmation of promising actions.
+- Automated waiver and trade candidate discovery with broad scenario screening followed by higher-simulation confirmation of promising actions. Trade discovery uses league-wide, waiver-aware replacement levels, normalized VORP, position-relative roster needs, bilateral roster fit, package/consolidation costs, and a deterministic value prefilter before Monte Carlo evaluation.
 - Weekly league-intelligence report with current record/seed, projection trust, direct-vs-derived projection horizon, remaining-game counts, playoff/title probabilities, and league-wide Monte Carlo outlook.
 - JerryGM live weekly projection adapter with targeted player batching for Free-tier limits.
 - Interactive synthetic 10-team dashboard with team/week drill-down.
@@ -85,7 +85,7 @@ npm run fightin-kali:weekly
 
 The Yahoo audit is the explicit reconciliation gate. The weekly command then refreshes live Yahoo standings, remaining schedule, rosters, and lineups; persists the refreshed working snapshot; obtains the live waiver pool and configured projection source; builds direct and derived weekly lineups; applies readiness/trust gates; runs Monte Carlo and scenario analyses; and writes the weekly intelligence report under `data/private/`.
 
-The recommendation pipeline uses a two-stage simulation strategy: broad candidate scenarios are screened cheaply, while promising actions are rerun at higher simulation counts before being surfaced as recommendations.
+The recommendation pipeline uses a two-stage simulation strategy: broad candidate scenarios are screened cheaply, while promising actions are rerun at higher simulation counts before being surfaced as recommendations. Trade discovery currently values players from league-wide replacement levels and VORP, incorporates the live waiver pool when setting replacement baselines, and scores marginal positional need against league positional medians. The current Week 5 live benchmark evaluates 24 prefiltered trade scenarios inside an approximately 19-second end-to-end weekly run. No trade is published without clearing the final recommendation/confirmation gates.
 
 Environment credentials are intentionally kept outside source control. Current local development uses `JERRYGM_API_KEY` plus Yahoo OAuth configuration/token material. Secrets and access/refresh tokens must remain outside the repository.
 
@@ -119,6 +119,16 @@ npm run audit:yahoo
 The automated suite covers scoring, seeded randomness, schemas, standings/tiebreaks, availability/byes, playoff advancement, deterministic season simulation, NFL-game identity, forecast metrics, model variants, predictive-distribution calibration, historical ingestion/folds, rolling backtests, CSV/JSON imports, provider adapters, dataset readiness, source governance, current-state capture, weekly projection enrichment, lineup optimization, simulation readiness/trust, scenario analysis, recommendation screening/confirmation, Yahoo normalization, Yahoo waiver parsing, and GM recommendation logic.
 
 The live Yahoo audit separately verifies reference/dynamic league state, playoff configuration, historical point reconciliation, roster population, and current/week-specific lineups. The simulator also validates season structure before running: team IDs must be unique, scheduled teams must exist, self-matchups and duplicate same-week appearances are rejected, playoff-team counts must be valid, and remaining games are counted explicitly.
+
+## Current trade-model work
+
+The current `league-replacement-vorp` branch is the active trade-discovery hardening pass. Completed work includes league-wide replacement levels, waiver-aware replacement baselines, normalized cross-position VORP, full-roster need calculation before candidate truncation, position-relative league need benchmarks, duplicate-position package-need protection, bilateral roster-fit scoring, value-gap prefiltering, and diagnostic decomposition of value/need/surplus components. The Week 5 benchmark now surfaces substantially more plausible candidates and no longer promotes obviously imbalanced QB-for-elite-WR examples into the top diagnostic set.
+
+One trade-model refinement remains before this branch is considered complete: calculate roster need from the complete post-trade roster, so the need benefit of incoming players is offset by positional strength lost with outgoing players. After that change, strengthen the deterministic regression fixture, rerun the Week 5 benchmark, and reassess whether the current VORP coefficients require calibration rather than tuning them preemptively.
+
+## Front-end readiness
+
+The existing browser UI is still primarily a synthetic/demo dashboard. The simulation and weekly-intelligence backend are now sufficiently mature to begin reconnecting the front end after the current trade-model refinement is closed. Before treating the UI as a live production view, the remaining integration work is to expose the refreshed Yahoo/weekly report through a stable browser-facing data contract, render trust/projection-horizon and provisional-postseason states, surface recommendation/near-miss diagnostics without implying rejected scenarios are recommendations, and verify team/week drill-down against live league state.
 
 ## Development roadmap
 
