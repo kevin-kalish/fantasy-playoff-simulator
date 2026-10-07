@@ -60,7 +60,7 @@ if(get&&leagueKey){
   const screen=prescreenWaiverScenarios(team,pool.candidates,{candidateLimit:Number(process.env.WAIVER_SCREEN_LIMIT??12),dropsPerCandidate:Number(process.env.WAIVER_DROPS_PER_CANDIDATE??3)});
   const dropPlayerIds=[...new Set(Object.values(screen.dropMap).flat())],scenarioCount=Object.values(screen.dropMap).reduce((n,ids)=>n+ids.length,0);
   plan.scanAvailability.waivers={status:'available',source:pool.source,candidateCount:pool.candidates.length,screenedCandidateCount:screen.candidates.length,scenarioCount};
-  if(screen.candidates.length&&dropPlayerIds.length)plan.waivers={source:pool.source,candidates:screen.candidates,dropPlayerIds,dropMap:screen.dropMap,weeks:plan.weeks,prescreen:{...screen,sourceDiagnostics:pool.diagnostics}};
+  if(screen.candidates.length&&dropPlayerIds.length)plan.waivers={source:pool.source,candidates:screen.candidates,replacementCandidates:pool.candidates,dropPlayerIds,dropMap:screen.dropMap,weeks:plan.weeks,prescreen:{...screen,sourceDiagnostics:pool.diagnostics}};
  }catch(error){plan.scanAvailability.waivers={status:'unavailable',reason:error.message};console.error(`WAIVERS: unavailable; ${error.message}`);}
 }else plan.scanAvailability.waivers={status:'unavailable',reason:yahooAuth.reason??'Yahoo live state unavailable.'};
 fs.mkdirSync('data/private',{recursive:true});const specPath=`data/private/fightin-kali-week-${plan.week}-spec.json`;fs.writeFileSync(specPath,JSON.stringify(plan,null,2)+'\n');
