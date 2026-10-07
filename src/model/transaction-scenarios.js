@@ -25,8 +25,8 @@ export function applyAddDropScenario(input,{teamId,addPlayer,dropPlayerId=null,p
 }
 
 export function evaluateAddDropScenario(input,scenario,options={}){
- const scenarioInput=applyAddDropScenario(input,scenario);
- const comparison=compareSimulationInputs(input,scenarioInput,{teamId:scenario.teamId,...options});
+ const t0=performance.now(),scenarioInput=applyAddDropScenario(input,scenario),applySeconds=(performance.now()-t0)/1000,t1=performance.now();
+ const comparison=compareSimulationInputs(input,scenarioInput,{teamId:scenario.teamId,...options}),simulationSeconds=(performance.now()-t1)/1000;
  const targetWeeks=scenario.weeks?.map(Number)??weeksFor(input);
  const focusWeek=Number(scenario.week??targetWeeks[0]);
  const slots=scenario.lineupSlots??input.lineupSlots;
@@ -38,5 +38,5 @@ export function evaluateAddDropScenario(input,scenario,options={}){
  const afterPoints=points(afterTeam.weeklyLineups?.[focusWeek]);
  const projectedPointDelta=afterPoints-beforePoints;
  if(comparison.focus)comparison.focus.projectedPointDelta=projectedPointDelta;
- return {...comparison,projectedPointDelta,focusWeek,transaction:{type:'add-drop',teamId:scenario.teamId,addPlayerId:pid(scenario.addPlayer),dropPlayerId:scenario.dropPlayerId??null}};
+ return {...comparison,projectedPointDelta,focusWeek,timing:{applySeconds,simulationSeconds},transaction:{type:'add-drop',teamId:scenario.teamId,addPlayerId:pid(scenario.addPlayer),dropPlayerId:scenario.dropPlayerId??null}};
 }
