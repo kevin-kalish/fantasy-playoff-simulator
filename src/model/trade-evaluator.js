@@ -20,8 +20,8 @@ export function applyTradeScenario(input,{teamAId,teamBId,teamAGives=[],teamBGiv
 }
 
 export function evaluateTradeScenario(input,trade,options={}){
- const scenarioInput=applyTradeScenario(input,trade),comparison=compareSimulationInputs(input,scenarioInput,options);
+ const t0=performance.now(),scenarioInput=applyTradeScenario(input,trade),applySeconds=(performance.now()-t0)/1000,t1=performance.now(),comparison=compareSimulationInputs(input,scenarioInput,options),simulationSeconds=(performance.now()-t1)/1000;
  const teamA=comparison.deltas.find(x=>String(x.id)===String(trade.teamAId)),teamB=comparison.deltas.find(x=>String(x.id)===String(trade.teamBId));
  const summarize=x=>({teamId:x.id,teamName:x.name,playoffDelta:x.playoffProbabilityDelta,championshipDelta:x.championshipProbabilityDelta,winsDelta:x.averageWinsDelta});
- return {...comparison,trade:{type:'trade',teamAId:trade.teamAId,teamBId:trade.teamBId,teamAGives:trade.teamAGives.map(String),teamBGives:trade.teamBGives.map(String)},teams:{A:summarize(teamA),B:summarize(teamB)}};
+ return {...comparison,timing:{applySeconds,simulationSeconds},trade:{type:'trade',teamAId:trade.teamAId,teamBId:trade.teamBId,teamAGives:trade.teamAGives.map(String),teamBGives:trade.teamBGives.map(String)},teams:{A:summarize(teamA),B:summarize(teamB)}};
 }
