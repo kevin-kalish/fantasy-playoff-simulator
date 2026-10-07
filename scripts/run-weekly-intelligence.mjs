@@ -52,7 +52,7 @@ else{
  const tradeDiscovery=spec.tradeDiscovery;
  if(tradeDiscovery?.enabled&&!(spec.trades?.length)){
   try{
-   const discovered=discoverTradeCandidates(prepared.input,{teamId:spec.teamId,projectionRows:loaded.rows,weeks,freeAgents:spec.waivers?.candidates??[],maxPartners:Number(tradeDiscovery.maxPartners??9),maxPlayersPerTeam:Number(tradeDiscovery.maxPlayersPerTeam??7),maxScenarios:Number(tradeDiscovery.maxScenarios??36),valueTolerance:Number(tradeDiscovery.valueTolerance??.35)});
+   const discovered=discoverTradeCandidates(prepared.input,{teamId:spec.teamId,projectionRows:loaded.rows,weeks,freeAgents:spec.waivers?.replacementCandidates??spec.waivers?.candidates??[],maxPartners:Number(tradeDiscovery.maxPartners??9),maxPlayersPerTeam:Number(tradeDiscovery.maxPlayersPerTeam??7),maxScenarios:Number(tradeDiscovery.maxScenarios??36),valueTolerance:Number(tradeDiscovery.valueTolerance??.35)});
    spec.trades=discovered.scenarios;
    spec.scanAvailability={...spec.scanAvailability,trades:{status:'available',source:'projection-value-screen',scenarioCount:discovered.scenarios.length,diagnostics:discovered.diagnostics}};
    console.error(`TRADES: VORP roster-fit discovery; ${discovered.diagnostics.partnerCount} partners / ${discovered.diagnostics.generatedScenarioCount} generated / ${discovered.scenarios.length} evaluated scenarios; ${discovered.diagnostics.freeAgentCount} free agents informed replacement.`);for(const candidate of discovered.scenarios.slice(0,5)){const d=candidate.discovery??{};console.error(`TRADE CANDIDATE: ${candidate.label}; value ${Number(d.giveValue??0).toFixed(1)} -> ${Number(d.getValue??0).toFixed(1)}; gap ${(100*Number(d.valueGap??0)).toFixed(1)}%; fit ${Number(d.fitScore??0).toFixed(1)}.`);}
