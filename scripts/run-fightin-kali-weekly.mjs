@@ -10,11 +10,13 @@ import {applyFightinKaliConfig} from '../src/data/fightin-kali-snapshot.js';
 
 const snapshotPath=process.argv[2]??'data/private/fightin-kali-current.json';
 const weekArg=process.argv[3]?Number(process.argv[3]):undefined;
+const focusTeamArg=process.argv[4]??process.env.FOCUS_TEAM_NAME;
 const configPath='config/fightin-kali-2026.json';
 const fail=m=>{console.error(`WEEKLY REFRESH: FAIL; ${m}`);process.exit(2)};
 if(!fs.existsSync(snapshotPath)) fail(`snapshot not found: ${snapshotPath}`);
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
-let snapshot=read(snapshotPath);const config=read(configPath);
+let snapshot=read(snapshotPath);const config=read(configPath);const runConfig=focusTeamArg?{...config,teamName:focusTeamArg,teamAliases:[focusTeamArg]}:config;
+const slug=s=>String(s??'team').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 let yahooAuth;
 try{yahooAuth=await resolveYahooAccessToken();}catch(error){yahooAuth={accessToken:null,source:'unavailable',reason:error.message};}
 let get=null,leagueKey=null,sourceAudit=null;
@@ -47,7 +49,7 @@ if(yahooAuth.accessToken){
   console.error(`YAHOO STATE: refreshed ${snapshot.teams.length} teams and ${snapshot.schedule.length} remaining schedule weeks for week ${liveWeek}.`);
  }catch(error){console.error(`YAHOO STATE: unavailable; ${error.message}; using existing snapshot.`);}
 }
-let plan;try{plan=buildWeeklyRefreshPlan(snapshot,config,{week:weekArg});}catch(e){fail(e.message)}
+let plan;try{const outputPath=focusTeamArg?`data/private/${slug(focusTeamArg)}-week-${weekArg??Number(process.env.WEEK??snapshot.currentWeek??snapshot.source?.currentWeek??1)}-report.json`:undefined;plan=buildWeeklyRefreshPlan(snapshot,runConfig,{week:weekArg,outputPath});}catch(e){fail(e.message)}
 if(sourceAudit)plan.sourceAudit=sourceAudit;
 plan.tradeDiscovery={enabled:true,maxPartners:Number(process.env.TRADE_MAX_PARTNERS??9),maxPlayersPerTeam:Number(process.env.TRADE_MAX_PLAYERS_PER_TEAM??7),maxScenarios:Number(process.env.TRADE_MAX_SCENARIOS??24),valueTolerance:Number(process.env.TRADE_VALUE_TOLERANCE??.35),includePackages:process.env.TRADE_INCLUDE_PACKAGES!=='false'};
 plan.scanAvailability={startSit:{status:'available'},waivers:{status:'unavailable',reason:'Yahoo waiver source not attempted.'},trades:{status:'not-configured',reason:'Trade discovery runs after projections are loaded.'}};
@@ -63,6 +65,6 @@ if(get&&leagueKey){
   if(screen.candidates.length&&dropPlayerIds.length)plan.waivers={source:pool.source,candidates:screen.candidates,replacementCandidates:pool.candidates,dropPlayerIds,dropMap:screen.dropMap,weeks:plan.weeks,prescreen:{...screen,sourceDiagnostics:pool.diagnostics}};
  }catch(error){plan.scanAvailability.waivers={status:'unavailable',reason:error.message};console.error(`WAIVERS: unavailable; ${error.message}`);}
 }else plan.scanAvailability.waivers={status:'unavailable',reason:yahooAuth.reason??'Yahoo live state unavailable.'};
-fs.mkdirSync('data/private',{recursive:true});const specPath=`data/private/fightin-kali-week-${plan.week}-spec.json`;fs.writeFileSync(specPath,JSON.stringify(plan,null,2)+'\n');
+fs.mkdirSync('data/private',{recursive:true});const specPath=focusTeamArg?`data/private/${slug(focusTeamArg)}-week-${plan.week}-spec.json`:`data/private/fightin-kali-week-${plan.week}-spec.json`;fs.writeFileSync(specPath,JSON.stringify(plan,null,2)+'\n');
 console.error(`WEEKLY REFRESH: season ${plan.season} week ${plan.week}; team ${plan.teamId}; modeled weeks ${plan.weeks.join(',')}.`);
 const originalArgv=process.argv;try{process.argv=[process.execPath,'scripts/run-weekly-intelligence.mjs',snapshotPath,specPath];await import('./run-weekly-intelligence.mjs');}catch(error){fail(error?.message??String(error))}finally{process.argv=originalArgv}
