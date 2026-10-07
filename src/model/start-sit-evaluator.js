@@ -4,7 +4,8 @@ import {compareSimulationInputs} from './scenario-engine.js';
 const clone=x=>structuredClone(x);
 const pid=p=>String(p?.id??p?.playerId??'');
 const eligible=(p,slot)=>{const m={QB:['QB'],RB:['RB'],WR:['WR'],TE:['TE'],K:['K'],DEF:['DEF'],FLEX:['RB','WR','TE'],'RB/WR':['RB','WR'],'WR/TE':['WR','TE'],'RB/WR/TE':['RB','WR','TE'],SUPERFLEX:['QB','RB','WR','TE']};return (m[String(slot).toUpperCase()]||[String(slot).toUpperCase()]).includes(String(p.position||'').toUpperCase())};
-const rowFor=(rows,p,w)=>(rows||[]).find(r=>Number(r.week)===Number(w)&&(String(r.playerId??r.id??'')===pid(p)||(!pid(p)&&r.name===p.name)));
+const norm=s=>String(s??'').trim().toLowerCase();
+const rowFor=(rows,p,w)=>{const id=pid(p),name=norm(p?.name);return (rows||[]).find(r=>Number(r.week)===Number(w)&&(String(r.playerId??r.id??'')===id||String(r.yahooId??'')===id||(name&&norm(r.name)===name)));};
 const projected=(rows,p,w)=>{const r=rowFor(rows,p,w);return r?Number(r.projection):Number(p.projection??0)};
 function teamResult(cmp,id){const d=cmp.deltas.find(x=>String(x.id)===String(id));return {teamId:d.id,teamName:d.name,playoffDelta:d.playoffProbabilityDelta,championshipDelta:d.championshipProbabilityDelta,winsDelta:d.averageWinsDelta};}
 
