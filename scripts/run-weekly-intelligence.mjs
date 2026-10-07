@@ -17,23 +17,23 @@ if(!season||!week||!spec.teamId){console.error('weekly-spec.json requires teamId
 const weeks=spec.weeks?.length?spec.weeks:[week];
 const rosterNames=(snapshot.teams??[]).flatMap(team=>team.roster??team.lineup??[]).map(player=>String(player?.name??'').trim()).filter(Boolean);
 const waiverNames=(spec.waivers?.candidates??[]).map(player=>String(player?.name??'').trim()).filter(Boolean);
-const projectionNames=[...new Set([...rosterNames,...waiverNames])];
+const projectionNames=[...new Set([...rosterNames,...waiverNames])],projectionCachePath=process.env.PROJECTION_CACHE_PATH??'data/private/projection-cache.json',seasonCachePath=process.env.JERRYGM_SEASON_CACHE_PATH??`data/private/jerrygm-season-${season}.json`,forceProjectionRefresh=process.env.PROJECTION_REFRESH==='true';
 let loaded;
 try{loaded=await loadWeeklyProjectionHorizon({season,weeks,scoring:spec.scoring??'HALF',minimumRows:Number(spec.minimumProjectionRows??1),projectionNames,fixturePath:spec.projectionFixturePath??process.env.PROJECTION_FIXTURE_PATH??null});}
 catch(error){console.error(`PROJECTIONS: FAIL; ${error.message}`);process.exit(2)}
 let seasonProjectionRows=[];
 if(process.env.JERRYGM_API_KEY&&spec.useJerryGMSeasonBaseline!==false){
  try{
-  const payload=await new JerryGMClient({apiKey:process.env.JERRYGM_API_KEY}).seasonProjections({season,scoring:spec.scoring??'HALF',names:projectionNames});
+  let payload,seasonSource='jerrygm';if(!forceProjectionRefresh&&fs.existsSync(seasonCachePath)){payload=JSON.parse(fs.readFileSync(seasonCachePath,'utf8'));seasonSource='cache';}else{payload=await new JerryGMClient({apiKey:process.env.JERRYGM_API_KEY}).seasonProjections({season,scoring:spec.scoring??'HALF'});fs.mkdirSync('data/private',{recursive:true});fs.writeFileSync(seasonCachePath,JSON.stringify(payload,null,2)+'\n');}
   seasonProjectionRows=normalizeJerryGMSeasonProjections(payload,{season});
-  console.error(`SEASON BASELINE: jerrygm; ${seasonProjectionRows.length} projections.`);
+  console.error(`SEASON BASELINE: ${seasonSource}; ${seasonProjectionRows.length} projections.`);
  }catch(error){console.error(`SEASON BASELINE: unavailable; ${error.message}; continuing with horizon-only long-range model.`);}
 }
 const calibrationPath=spec.calibrationPath??'data/private/ffpros-research-calibration.json';
 const calibrationReport=calibrationPath&&fs.existsSync(calibrationPath)?read(calibrationPath):null;
 const minimumProjectionMatchRate=Number(spec.minimumProjectionMatchRate??process.env.MIN_PROJECTION_MATCH_RATE??.9);
 const simulations=Number(spec.simulations??process.env.SIMULATIONS??50000);
-const scenarioSimulations=Number(spec.scenarioSimulations??process.env.SCENARIO_SIMULATIONS??2000);
+const scenarioSimulations=Number(spec.scenarioSimulations??process.env.SCENARIO_SIMULATIONS??250);
 const confirmationSimulations=Number(spec.confirmationSimulations??process.env.CONFIRMATION_SIMULATIONS??20000);
 const longRangeSeasonWeight=Number(spec.longRangeSeasonWeight??process.env.LONG_RANGE_SEASON_WEIGHT??.65);
 const prepared=prepareLeagueSimulation(snapshot,loaded.rows,{calibrationReport,simulations,seed:Number(spec.seed??process.env.SEED??20260923),modelVariant:spec.modelVariant??process.env.MODEL_VARIANT??'correlated',minimumProjectionMatchRate,weeks,season,seasonProjectionRows,longRangeSeasonWeight});
@@ -41,7 +41,7 @@ prepared.input.metadata={...prepared.input.metadata,projectionProvider:loaded.tr
 const fingerprint=simulationFingerprint(prepared.input);
 prepared.input.metadata.simulationFingerprint=fingerprint;
 const readiness=assessSimulationReadiness(prepared,{minimumProjectionMatchRate});
-console.error(`PROJECTIONS: ${loaded.provider}; ${loaded.rows.length} rows across weeks ${loaded.weeks.join(',')}; ${loaded.trust.degraded?'DEGRADED/FALLBACK':'PRIMARY'}.`);
+console.error(`PROJECTIONS: ${loaded.provider}; ${loaded.rows.length} rows across weeks ${loaded.weeks.join(',')}; ${loaded.trust.degraded?'DEGRADED/FALLBACK':'PRIMARY'}.`);console.error(`PROJECTION SOURCE: ${loaded.provider}; ${loaded.trust.weekResults.map(x=>`W${x.week}=${x.provider}`).join(', ')}${forceProjectionRefresh?' [REFRESH REQUESTED]':''}.`);
 if(seasonProjectionRows.length){const c=prepared.diagnostics.seasonProjectionCoverage;console.error(`LONG RANGE: ${prepared.diagnostics.longRangeProjectionMethod}; season weight ${(100*prepared.diagnostics.longRangeSeasonWeight).toFixed(0)}%; season coverage ${(100*c.matchRate).toFixed(1)}%.`);if(c.missing?.length)console.error(`SEASON BASELINE MISSES (${c.missing.length}): ${c.missing.slice(0,30).map(x=>x.name??x.playerName??x.id).join(', ')}${c.missing.length>30?' ...':''}`);}
 const confidence=prepared.diagnostics.longRangeConfidence;
 if(confidence){const derived=prepared.diagnostics.longRangeProjectionWeeks??[];if(derived.length){const first=derived[0],last=derived.at(-1);console.error(`HORIZON CONFIDENCE: W${first} ${(100*confidence.byWeek[first]).toFixed(0)}% -> W${last} ${(100*confidence.byWeek[last]).toFixed(0)}% (${confidence.method}; diagnostic only).`);}}
@@ -65,7 +65,8 @@ else{
  const report=buildLeagueIntelligenceReport(prepared.input,{...spec,week,projectionRows:loaded.rows,providerHealth:loaded.trust,trust:simulationTrust,scenarioSimulations,confirmationSimulations});
  console.error(`MONTE CARLO: complete in ${((Date.now()-started)/1000).toFixed(1)}s.`);
  const t=report.timing;console.error(`TIMING: core ${t.coreMonteCarloSeconds.toFixed(1)}s | scenario baseline ${t.scenarioBaselineSeconds.toFixed(1)}s | matchup ${t.matchupSeconds.toFixed(1)}s | recommendations ${t.recommendationsSeconds.toFixed(1)}s | total ${t.totalSeconds.toFixed(1)}s.`);
- const c=report.recommendations?.confirmation;if(c)console.error(`CONFIRMATION: ${c.confirmedCount}/${c.candidateCount} promising screen candidate${c.candidateCount===1?'':'s'} confirmed at ${c.simulations.toLocaleString()} simulations each.`);
+ const rt=report.recommendations?.diagnostics?.timing;if(rt){const ts=x=>Number(x??0).toFixed(1);console.error(`RECOMMENDATION TIMING: setup ${ts(rt.setupSeconds)}s | waivers ${ts(rt.waiverSeconds)}s (apply ${ts(rt.waiverApplySeconds)}s, simulate ${ts(rt.waiverSimulationSeconds)}s) | start/sit ${ts(rt.startSitSeconds)}s | trade screen ${ts(rt.tradeScreenSeconds)}s (apply ${ts(rt.tradeApplySeconds)}s, simulate ${ts(rt.tradeSimulationSeconds)}s) | confirmation ${ts(rt.confirmationSeconds)}s | finalize ${ts(rt.finalizeSeconds)}s.`);}
+const c=report.recommendations?.confirmation;if(c){const staged=c.precheckCount?`${c.precheckPassedCount}/${c.precheckCount} trade candidates passed the ${c.precheckSimulations.toLocaleString()}-simulation precheck; `:'';console.error(`CONFIRMATION: ${staged}${c.evaluatedCount??c.confirmedCount}/${c.finalCandidateCount??c.candidateCount} finalists re-evaluated at ${c.simulations.toLocaleString()} simulations each; ${c.passedCount??0} passed the final recommendation gate.`);}
  console.log(formatWeeklyIntelligence(report,{maxActions:Number(spec.maxActions??5)}));
  if(spec.outputPath){fs.writeFileSync(spec.outputPath,JSON.stringify({readiness,report},null,2));console.error(`REPORT JSON: ${spec.outputPath}`);}
  if(spec.includeJson) console.log(JSON.stringify({readiness,report},null,2));

@@ -22,7 +22,7 @@ export function rankWaiverCandidates(input,{teamId,candidates,dropPlayerIds=[nul
  if(!Array.isArray(dropPlayerIds)||!dropPlayerIds.length)dropPlayerIds=[null];
  const team=input.teams.find(t=>String(t.id)===String(teamId));if(!team)throw new Error(`Unknown team: ${teamId}`);
  const nameById=new Map((team.roster||[]).map(p=>[pid(p),p.name??pid(p)]));
- const rows=[];let evaluatedScenarioCount=0,invalidScenarioCount=0;
+ const rows=[];let evaluatedScenarioCount=0,invalidScenarioCount=0,applySeconds=0,simulationSeconds=0;
  for(const addPlayer of candidates){
   let best=null;
   const mapped=dropMap?.[pid(addPlayer)];
@@ -31,6 +31,7 @@ export function rankWaiverCandidates(input,{teamId,candidates,dropPlayerIds=[nul
    try{
     evaluatedScenarioCount++;
     const result=evaluateAddDropScenario(input,{teamId,addPlayer,dropPlayerId,projectionRows,weeks,lineupSlots,week},options);
+    applySeconds+=num(result.timing?.applySeconds);simulationSeconds+=num(result.timing?.simulationSeconds);
     const row={addPlayerId:pid(addPlayer),addPlayerName:addPlayer.name??pid(addPlayer),dropPlayerId:dropPlayerId??null,dropPlayerName:dropPlayerId?nameById.get(String(dropPlayerId))??String(dropPlayerId):null,projectedPointDelta:num(result.projectedPointDelta),focusWeek:result.focusWeek??null,playoffDelta:focusDelta(result,'playoffProbability'),championshipDelta:focusDelta(result,'championshipProbability'),winsDelta:focusDelta(result,'averageWins'),result};
     if(!best||compareRows(row,best)<0)best=row;
    }catch(error){invalidScenarioCount++;if(options.throwOnInvalid)throw error}
@@ -38,7 +39,7 @@ export function rankWaiverCandidates(input,{teamId,candidates,dropPlayerIds=[nul
   if(best)rows.push(best);
  }
  const ranked=rows.sort(compareRows).map((r,i)=>({...r,rank:i+1,summary:summary(r)}));
- Object.defineProperty(ranked,'diagnostics',{value:{candidateCount:candidates.length,evaluatedScenarioCount,invalidScenarioCount,candidateSpecificDrops:Boolean(dropMap)},enumerable:false});
+ Object.defineProperty(ranked,'diagnostics',{value:{candidateCount:candidates.length,evaluatedScenarioCount,invalidScenarioCount,candidateSpecificDrops:Boolean(dropMap),applySeconds,simulationSeconds},enumerable:false});
  return ranked;
 }
 

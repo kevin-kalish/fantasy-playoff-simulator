@@ -7,7 +7,7 @@ const points=lineup=>(lineup||[]).reduce((sum,p)=>sum+Number(p?.projection??0),0
 
 function team(input,teamId){const t=input.teams.find(x=>String(x.id)===String(teamId));if(!t)throw new Error(`Unknown team: ${teamId}`);return t}
 function weeksFor(input){return [...new Set([...(input.schedule||[]).map(x=>Number(x.week)),...(input.playoffWeeks||[]).map(Number)])].filter(Number.isFinite).sort((a,b)=>a-b)}
-function projectionFor(player,week,projectionRows){const id=pid(player);const row=(projectionRows||[]).find(r=>Number(r.week)===Number(week)&&(String(r.playerId??r.id??'')===id||(!id&&r.name===player.name)));return row?Number(row.projection):Number(player.projection??0)}
+function projectionFor(player,week,projectionRows){const id=pid(player),name=String(player?.name??'').trim().toLowerCase();const row=(projectionRows||[]).find(r=>Number(r.week)===Number(week)&&(String(r.playerId??r.id??'')===id||String(r.yahooId??'')===id||(name&&String(r.name??'').trim().toLowerCase()===name)));return row?Number(row.projection):Number(player.projection??0)}
 function projectedPlayer(player,week,projectionRows){return {...player,projection:projectionFor(player,week,projectionRows)}}
 function optimizedPoints(t,week,projectionRows,slots){const roster=(t.roster||[]).map(p=>projectedPlayer(p,week,projectionRows));const optimized=optimizeLineup(roster,slots);return points(optimized.lineup??optimized.players??optimized);}
 
@@ -25,8 +25,8 @@ export function applyAddDropScenario(input,{teamId,addPlayer,dropPlayerId=null,p
 }
 
 export function evaluateAddDropScenario(input,scenario,options={}){
- const scenarioInput=applyAddDropScenario(input,scenario);
- const comparison=compareSimulationInputs(input,scenarioInput,{teamId:scenario.teamId,...options});
+ const t0=performance.now(),scenarioInput=applyAddDropScenario(input,scenario),applySeconds=(performance.now()-t0)/1000,t1=performance.now();
+ const comparison=compareSimulationInputs(input,scenarioInput,{teamId:scenario.teamId,...options}),simulationSeconds=(performance.now()-t1)/1000;
  const targetWeeks=scenario.weeks?.map(Number)??weeksFor(input);
  const focusWeek=Number(scenario.week??targetWeeks[0]);
  const slots=scenario.lineupSlots??input.lineupSlots;
@@ -38,5 +38,5 @@ export function evaluateAddDropScenario(input,scenario,options={}){
  const afterPoints=points(afterTeam.weeklyLineups?.[focusWeek]);
  const projectedPointDelta=afterPoints-beforePoints;
  if(comparison.focus)comparison.focus.projectedPointDelta=projectedPointDelta;
- return {...comparison,projectedPointDelta,focusWeek,transaction:{type:'add-drop',teamId:scenario.teamId,addPlayerId:pid(scenario.addPlayer),dropPlayerId:scenario.dropPlayerId??null}};
+ return {...comparison,projectedPointDelta,focusWeek,timing:{applySeconds,simulationSeconds},transaction:{type:'add-drop',teamId:scenario.teamId,addPlayerId:pid(scenario.addPlayer),dropPlayerId:scenario.dropPlayerId??null}};
 }

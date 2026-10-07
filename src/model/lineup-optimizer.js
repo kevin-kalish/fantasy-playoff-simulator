@@ -11,19 +11,21 @@ const starterSlots=slots=>(slots||DEFAULT_SLOTS).map(normalizeSlot).filter(slot=
 const eligible=(p,slot)=>(ELIGIBLE[normalizeSlot(slot)]||[normalizeSlot(slot)]).includes(normalizePosition(p.position));
 
 export function optimizeLineup(players,{week=null,slots=DEFAULT_SLOTS}={}){
- const activeSlots=starterSlots(slots);
- const pool=(players||[]).filter(p=>usable(p,week));let best=null,bestScore=-Infinity;
- const search=(i,used,lineup,score)=>{
-  if(i===activeSlots.length){if(score>bestScore){bestScore=score;best=lineup.slice()}return}
-  const slot=activeSlots[i];
-  for(let j=0;j<pool.length;j++)if(!used.has(j)&&eligible(pool[j],slot)){
-   used.add(j);lineup.push({...pool[j],lineupSlot:slot});search(i+1,used,lineup,score+value(pool[j]));lineup.pop();used.delete(j);
+ const activeSlots=starterSlots(slots),pool=(players||[]).filter(p=>usable(p,week)),n=activeSlots.length,memo=new Map();
+ const search=(i,usedMask)=>{
+  if(i===n)return {score:0,picks:[]};
+  const key=`${i}:${usedMask.toString()}`,cached=memo.get(key);if(cached)return cached;
+  const slot=activeSlots[i],emptyTail=search(i+1,usedMask);let best={score:emptyTail.score,picks:[-1,...emptyTail.picks]};
+  for(let j=0;j<pool.length;j++){
+   const bit=1n<<BigInt(j);if((usedMask&bit)!==0n||!eligible(pool[j],slot))continue;
+   const tail=search(i+1,usedMask|bit),score=value(pool[j])+tail.score;
+   if(score>best.score)best={score,picks:[j,...tail.picks]};
   }
-  lineup.push({id:`EMPTY-${i}`,name:'Empty slot',position:String(slot),projection:0,status:'EMPTY',lineupSlot:slot});search(i+1,used,lineup,score);lineup.pop();
+  memo.set(key,best);return best;
  };
- search(0,new Set(),[],0);
- const empty=(best||[]).filter(p=>p.status==='EMPTY').length;
- return {lineup:best||[],projectedPoints:Math.max(0,bestScore),emptySlots:empty,complete:empty===0};
+ const result=search(0,0n),lineup=result.picks.map((j,i)=>j<0?{id:`EMPTY-${i}`,name:'Empty slot',position:String(activeSlots[i]),projection:0,status:'EMPTY',lineupSlot:activeSlots[i]}:{...pool[j],lineupSlot:activeSlots[i]});
+ const empty=lineup.filter(p=>p.status==='EMPTY').length;
+ return {lineup,projectedPoints:Math.max(0,result.score),emptySlots:empty,complete:empty===0};
 }
 
 export function buildFutureWeeklyLineups(snapshot,{slots=DEFAULT_SLOTS,weeks=null,useRoster=true}={}){
