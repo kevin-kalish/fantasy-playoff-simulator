@@ -8,6 +8,12 @@ const rows=[{week:1,playerId:'A-RB',projection:10},{week:1,playerId:'A-BRB',proj
 const choices=enumerateStartSitChoices(input,{teamId:'A',week:1,projectionRows:rows,slot:'RB'});assert.equal(choices.length,1);assert.equal(choices[0].projectedPointDelta,10);
 const changed=applyStartSitChoice(input,{teamId:'A',week:1,startPlayerId:'A-BRB',sitPlayerId:'A-RB',projectionRows:rows});assert.equal(changed.teams[0].weeklyLineups[1][1].id,'A-BRB');
 const ranked=evaluateStartSitChoices(input,{teamId:'A',week:1,projectionRows:rows,slot:'RB'});assert.equal(ranked[0].rank,1);assert.equal(ranked[0].startPlayerId,'A-BRB');assert.ok(ranked[0].winsDelta>=0);
+const yahooIdInput=structuredClone(input);
+yahooIdInput.teams[0].roster.push(p('yahoo-bench','Provider Bench','RB',0));
+const yahooRows=[{week:1,playerId:'provider-bench',yahooId:'yahoo-bench',name:'Provider Bench',projection:16},{week:1,playerId:'provider-starter',yahooId:'A-RB',name:'Starter RB',projection:10}];
+const yahooChoices=enumerateStartSitChoices(yahooIdInput,{teamId:'A',week:1,projectionRows:yahooRows,slot:'RB'});
+const providerChoice=yahooChoices.find(x=>x.startPlayerId==='yahoo-bench'&&x.sitPlayerId==='A-RB');
+assert.equal(providerChoice?.projectedPointDelta,6,'start/sit point delta must use provider rows matched through Yahoo IDs');
 const liveSnapshot={source:{provider:'fixture',season:2026},currentWeek:5,lineupSlots:['RB','WR','RB/WR/TE'],playoffSpots:2,playoffWeeks:[5],teams:[
  {id:'K',name:"The Fightin' Kali",wins:1,losses:3,roster:[p('mont','David Montgomery','RB',0,'RB'),p('gold','Matthew Golden','WR',0,'WR'),p('hend','TreVeyon Henderson','RB',0,'RB/WR/TE'),p('egb','Emeka Egbuka','WR',0,'BN')],weeklyLineups:{5:[p('mont','David Montgomery','RB',0,'RB'),p('gold','Matthew Golden','WR',0,'WR'),p('hend','TreVeyon Henderson','RB',0,'RB/WR/TE')]}},
  {id:'B',name:'Bravo',wins:2,losses:2,roster:[p('br1','B RB','RB',0,'RB'),p('bw1','B WR','WR',0,'WR'),p('br2','B Flex','RB',0,'RB/WR/TE')],weeklyLineups:{5:[p('br1','B RB','RB',0,'RB'),p('bw1','B WR','WR',0,'WR'),p('br2','B Flex','RB',0,'RB/WR/TE')]}}
