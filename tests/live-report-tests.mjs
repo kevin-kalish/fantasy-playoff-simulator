@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {renderLiveReport} from '../src/ui/live-report.js';
+const root={innerHTML:''};
+renderLiveReport(root,{report:{team:{id:'A',name:"The Fightin' Kali",record:{wins:1,losses:3},currentSeed:9},league:{outlook:[{id:'A',name:"The Fightin' Kali",record:{wins:1,losses:3},currentSeed:9,averageWins:5.3,playoffProbability:.529,championshipProbability:.035}]},outlook:{playoffProbability:.529,championshipProbability:.035,averageWins:5.3,remainingGames:10,simulations:50000,seed:20260923},matchup:{week:5,simulated:{winProbability:.422}},recommendations:{actionCount:0,strategy:{posture:'UPSIDE'},items:[],diagnostics:{nearMisses:[]},scanAvailability:{}},roster:{starters:[{name:'Player One',position:'QB',slot:'QB',projection:20}]},trust:{trusted:true,projections:{directWeeks:[5,6,7],longRangeWeeks:[8,9],coverage:{matchRate:.993}},postseason:{trusted:false,reason:'Provisional'}}}});
+assert.match(root.innerHTML,/The Fightin&#39; Kali/);
+assert.match(root.innerHTML,/52\.9%/);
+assert.match(root.innerHTML,/42\.2%/);
+assert.match(root.innerHTML,/PROVISIONAL/);
+assert.match(root.innerHTML,/No positive modeled moves/);
+console.log('live-report-tests: all checks passed');
