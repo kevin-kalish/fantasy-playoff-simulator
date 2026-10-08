@@ -3,3 +3,5 @@ node_modules/
 .env.*
 data/private/
 *.log
+# Locally generated league dashboard snapshots (do not commit private league data)
+demo/data.json

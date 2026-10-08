@@ -1,3 +1,4 @@
+import {renderDashboardV1} from './live-dashboard-v1.js';
 import {renderWeeklyIntelligence} from './intelligence-panel.js';
 
 const pct=x=>Number.isFinite(Number(x))?`${(100*Number(x)).toFixed(1)}%`:'—';
@@ -22,6 +23,6 @@ export function renderLiveReport(root,payload){
  <div class="race-panel"><div class="eyebrow">League Monte Carlo</div><h3>Playoff race</h3>${leagueTable(r)}${post.trusted?'':'<p class="demo-disclaimer">* Championship probabilities are provisional until playoff-week projections are available.</p>'}</div>`;
 }
 export async function renderLiveDashboard(root,{url='./demo/data.json',fallback}={}){
- try{const res=await fetch(url,{cache:'no-store'});if(!res.ok)throw new Error(`HTTP ${res.status}`);renderLiveReport(root,await res.json())}
- catch(error){console.warn('Live dashboard data unavailable; using synthetic demo.',error);if(fallback)return fallback();root.innerHTML='<p>Live weekly report is unavailable.</p>'}
+ try{const res=await fetch(url,{cache:'no-store'});if(!res.ok)throw new Error(`HTTP ${res.status}`);{const payload=await res.json();if(payload?.schemaVersion===1)renderDashboardV1(root,payload);else renderLiveReport(root,payload)}}
+ catch(error){console.warn('Live dashboard data unavailable; using explicitly labeled synthetic demo.',error);if(fallback){fallback();root.insertAdjacentHTML('afterbegin','<p class="demo-disclaimer"><strong>SYNTHETIC DEMO — NOT LIVE LEAGUE DATA.</strong></p>');return;}root.innerHTML='<p>Live weekly report is unavailable.</p>'}
 }

@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {auditWeeklyReport} from '../scripts/review-production-readiness.mjs';
+const base={readiness:{ready:true,projectionCoverage:{matchRate:1},incompleteLineups:[],warnings:[]},report:{schemaVersion:11,generatedAt:'2026-10-08T18:00:00Z',trust:{trusted:true,postseason:{trusted:false}},league:{teamCount:2,outlook:[{playoffProbability:.8,championshipProbability:.6},{playoffProbability:.7,championshipProbability:.4}]},outlook:{simulations:50000,championshipTrusted:false},recommendations:{confirmation:{passedCount:0,evaluatedCount:1}}}};
+const review=auditWeeklyReport(base);
+assert.equal(review.status,'REVIEW_REQUIRED');
+assert.equal(review.summary.failed,0);
+assert.equal(review.findings.find(x=>x.id==='championship-mass').status,'PASS');
+assert.equal(review.findings.find(x=>x.id==='postseason-direct').status,'WARN');
+assert.equal(auditWeeklyReport({...base,readiness:{...base.readiness,projectionCoverage:{matchRate:.4}}}).status,'FAIL');
+assert.equal(auditWeeklyReport({...base,report:{...base.report,league:{...base.report.league,outlook:[{playoffProbability:.8,championshipProbability:.8},{playoffProbability:.7,championshipProbability:.4}]}}}).status,'FAIL');
+assert.equal(auditWeeklyReport({...base,report:{...base.report,outlook:{...base.report.outlook,championshipTrusted:true}}}).status,'FAIL');
+console.log('production-readiness-review-tests: all checks passed');

@@ -1,12 +1,22 @@
 import assert from 'node:assert/strict';
 import {buildWeeklyGMRecommendations} from '../src/model/gm-recommendation-engine.js';
+import {evaluateTradeScenario} from '../src/model/trade-evaluator.js';
+import {evaluateStartSitChoices} from '../src/model/start-sit-evaluator.js';
+import {rankWaiverCandidates} from '../src/model/waiver-ranker.js';
+import {simulateLeague} from '../src/simulator.js';
 const p=(id,name,pos,projection,slot=null)=>({id,name,position:pos,projection,...(slot?{lineupSlot:slot}:{})});
 const aq=p('A-QB','Alpha QB','QB',15),ar=p('A-RB','Alpha RB','RB',10),ab=p('A-BRB','Alpha Bench RB','RB',20),bq=p('B-QB','Bravo QB','QB',14),br=p('B-RB','Bravo RB','RB',14);
 const input={simulations:1000,seed:88,modelVariant:'baseline',lineupSlots:['QB','RB'],playoffSpots:2,playoffWeeks:[3],teams:[{id:'A',name:'Alpha',wins:2,losses:0,points:200,roster:[aq,ar,ab],weeklyLineups:{1:[p('A-QB','Alpha QB','QB',15,'QB'),p('A-RB','Alpha RB','RB',10,'RB')],2:[p('A-QB','Alpha QB','QB',15,'QB'),p('A-RB','Alpha RB','RB',10,'RB')],3:[p('A-QB','Alpha QB','QB',15,'QB'),p('A-RB','Alpha RB','RB',10,'RB')]}},{id:'B',name:'Bravo',wins:1,losses:1,points:180,roster:[bq,br],weeklyLineups:{1:[p('B-QB','Bravo QB','QB',14,'QB'),p('B-RB','Bravo RB','RB',14,'RB')],2:[p('B-QB','Bravo QB','QB',14,'QB'),p('B-RB','Bravo RB','RB',14,'RB')],3:[p('B-QB','Bravo QB','QB',14,'QB'),p('B-RB','Bravo RB','RB',14,'RB')]}}],schedule:[{week:1,matchups:[['A','B']]},{week:2,matchups:[['B','A']]}]};
 const rows=[{week:1,playerId:'A-RB',projection:10},{week:1,playerId:'A-BRB',projection:20}];
 const report=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:rows,startSit:{slot:'RB'},trades:[],waivers:null});
-assert.equal(report.teamId,'A');assert.equal(report.week,1);assert.equal(report.actionCount,1);assert.equal(report.recommendations[0].type,'start-sit');assert.equal(report.recommendations[0].details.startPlayerId,'A-BRB');assert.equal(report.recommendations[0].projectedPointDelta,10);assert.equal(report.recommendations[0].rank,1);assert.match(report.recommendations[0].summary,/\+10\.0 projected pts/);assert.match(report.recommendations[0].explanation,/playoff/);
-assert.ok(report.diagnostics.evaluatedActionCount>=report.actionCount);assert.equal(report.diagnostics.beneficialActionCount,report.actionCount);assert.equal(report.diagnostics.rejectedActionCount,report.diagnostics.evaluatedActionCount-report.actionCount);assert.ok(Array.isArray(report.diagnostics.nearMisses));assert.ok(report.diagnostics.nearMisses.length<=3);assert.equal(report.diagnostics.noActionExplanation,null);
+assert.equal(report.teamId,'A');assert.equal(report.week,1);assert.equal(report.actionCount,1);assert.equal(report.recommendations[0].type,'start-sit');assert.equal(report.recommendations[0].details.startPlayerId,'A-BRB');assert.equal(report.recommendations[0].projectedPointDelta,10);assert.equal(report.recommendations[0].rank,1);assert.equal(report.recommendations[0].decisionReadiness,'REVIEW_REQUIRED');assert.ok(['INCONCLUSIVE','POSITIVE_SIGNAL','NEGATIVE_SIGNAL','UNAVAILABLE'].includes(report.recommendations[0].championshipSignal.status));assert.match(report.recommendations[0].summary,/\+10\.0 projected pts/);assert.match(report.recommendations[0].explanation,/playoff/);
+assert.equal(report.diagnostics.readinessCounts.REVIEW_REQUIRED,1);assert.ok(report.diagnostics.evaluatedActionCount>=report.actionCount);assert.equal(report.diagnostics.beneficialActionCount,report.actionCount);assert.equal(report.diagnostics.rejectedActionCount,report.diagnostics.evaluatedActionCount-report.actionCount);assert.ok(Array.isArray(report.diagnostics.nearMisses));assert.ok(report.diagnostics.nearMisses.length<=3);assert.equal(report.diagnostics.noActionExplanation,null);
+const replicated=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:rows,startSit:{slot:'RB'},trades:[],waivers:null},{replicateTopRecommendationSeeds:1});
+assert.equal(replicated.recommendations[0].seedStability.requestedReplications,2);
+assert.ok(replicated.diagnostics.timing.seedReplicationSeconds>=0);
+assert.equal(replicated.recommendations[0].seedStability.missingReplications,0);
+assert.equal(replicated.recommendations[0].seedStability.replications,2);
+assert.ok(['CONSISTENT_POSITIVE','CONSISTENT_NEGATIVE','MIXED_OR_INCONCLUSIVE','INSUFFICIENT_REPLICATIONS'].includes(replicated.recommendations[0].seedStability.status));
 const noneRows=[{week:1,playerId:'A-RB',projection:10},{week:1,playerId:'A-BRB',projection:5}];
 const none=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:noneRows,startSit:{slot:'RB',choices:[{slot:'RB',startPlayerId:'A-BRB',sitPlayerId:'A-RB',startPlayerName:'Alpha Bench RB',sitPlayerName:'Alpha RB',projectedPointDelta:-5}]},trades:[],waivers:null});
 assert.equal(none.actionCount,0);assert.equal(none.diagnostics.evaluatedActionCount,1);assert.equal(none.diagnostics.rejectedActionCount,1);assert.equal(none.diagnostics.nearMisses.length,1);assert.ok(none.diagnostics.nearMisses[0].reason);assert.match(none.diagnostics.nearMisses[0].explanation,/-5\.0 projected pts/);assert.match(none.diagnostics.nearMisses[0].explanation,/not positive/);assert.equal(none.diagnostics.coverage.startSitEvaluated,1);assert.equal(none.diagnostics.coverage.startSitTotal,1);assert.equal(none.diagnostics.bestRejectedByType['start-sit'].label,'Start Alpha Bench RB / Sit Alpha RB');assert.equal(none.diagnostics.bestRejectedByType.waiver,null);assert.equal(none.diagnostics.bestRejectedByType.trade,null);assert.equal(none.diagnostics.coverage.constrained,false);assert.match(none.diagnostics.noActionExplanation,/No beneficial move was found within the evaluated scan/);
@@ -16,7 +26,44 @@ assert.equal(expanded.diagnostics.startSit.expanded,false);assert.equal(expanded
 const constrained=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:noneRows,startSit:{slot:'RB',choices},trades:[],waivers:null},{maxStartSitScenarios:1,expandStartSit:false});
 assert.equal(constrained.diagnostics.startSit.expanded,false);assert.equal(constrained.diagnostics.startSit.evaluatedChoices,1);assert.equal(constrained.diagnostics.coverage.constrained,true);assert.match(constrained.diagnostics.noActionExplanation,/not evidence that no beneficial move exists/);
 
+const waiverCandidate=p('FREE-QB','Free Agent QB','QB',35);
+const waiverReport=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:rows,startSit:false,trades:[],waivers:{candidates:[waiverCandidate],dropPlayerIds:['A-QB']}},{replicateTopRecommendationSeeds:1});
+assert.equal(waiverReport.recommendations[0]?.type,'waiver');
+assert.equal(waiverReport.recommendations[0].seedStability.replications,2);
+assert.equal(waiverReport.recommendations[0].seedStability.missingReplications,0);
 const tradeRows=[];for(const week of [1,2,3])for(const t of input.teams)for(const x of t.roster)tradeRows.push({week,playerId:x.id,projection:x.projection});
 const lopsided=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:tradeRows,startSit:false,waivers:null,trades:[{teamAId:'A',teamBId:'B',teamAGives:['A-RB'],teamBGives:['B-RB'],projectionRows:tradeRows,label:'Lopsided trade'}]},{confirmationSimulations:0});
 assert.equal(lopsided.actionCount,0);assert.equal(lopsided.diagnostics.rejectionCounts['unrealistic-counterparty'],1);assert.equal(lopsided.diagnostics.bestRejectedByType.trade.tradeFeasibility?.status??lopsided.diagnostics.bestRejectedByType.trade.reason,'unrealistic-counterparty');
+const tradeFixture={teamAId:'A',teamBId:'B',teamAGives:['A-RB'],teamBGives:['B-RB'],projectionRows:tradeRows,label:'Lopsided trade'};
+for(const seed of [88,100091]){
+ const seeded={...input,seed},baseline=simulateLeague({...seeded,simulations:1000});
+ const tradeResult=evaluateTradeScenario(seeded,tradeFixture,{simulations:1000,baselineResults:baseline});
+ assert.equal(tradeResult.trade.teamAId,'A');
+ assert.equal(tradeResult.trade.teamBId,'B');
+ assert.deepEqual(tradeResult.trade.teamAGives,['A-RB']);
+ assert.deepEqual(tradeResult.trade.teamBGives,['B-RB']);
+ assert.ok(Number.isFinite(tradeResult.teams.A.championshipDelta));
+ assert.ok(Number.isFinite(tradeResult.teams.B.championshipDelta));
+ const repeated=evaluateTradeScenario(seeded,tradeFixture,{simulations:1000,baselineResults:baseline});
+ assert.equal(repeated.teams.A.championshipDelta,tradeResult.teams.A.championshipDelta);
+ assert.equal(repeated.teams.B.championshipDelta,tradeResult.teams.B.championshipDelta);
+}
+
+// Nonzero outcome regression: an improved week-one starter must change a modeled outcome,
+// and the selected-action evaluation must agree with the independent seeded baseline.
+const nonzeroInput={...input,seed:2401,simulations:2000};
+const nonzeroBaseline=simulateLeague(nonzeroInput);
+const nonzeroChoice={slot:'RB',startPlayerId:'A-BRB',startPlayerName:'Alpha Bench RB',sitPlayerId:'A-RB',sitPlayerName:'Alpha RB',projectedPointDelta:10};
+const nonzeroStart=evaluateStartSitChoices(nonzeroInput,{teamId:'A',week:1,projectionRows:rows,choices:[nonzeroChoice]},{simulations:2000,baselineResults:nonzeroBaseline})[0];
+assert.ok([nonzeroStart.winsDelta,nonzeroStart.playoffDelta,nonzeroStart.championshipDelta].some(x=>Math.abs(x)>1e-9),'Strong starter upgrade should change a simulated outcome');
+const nonzeroRepeat=evaluateStartSitChoices(nonzeroInput,{teamId:'A',week:1,projectionRows:rows,choices:[nonzeroChoice]},{simulations:2000,baselineResults:nonzeroBaseline})[0];
+for(const key of ['winsDelta','playoffDelta','championshipDelta'])assert.equal(nonzeroRepeat[key],nonzeroStart[key]);
+
+// Verify the exact waiver transaction, not just that a recommendation was ranked.
+const waiverBaseline=simulateLeague({...input,seed:100091,simulations:1000});
+const waiverReplica=rankWaiverCandidates({...input,seed:100091},{teamId:'A',candidates:[waiverCandidate],dropPlayerIds:['A-QB'],projectionRows:rows,week:1},{simulations:1000,baselineResults:waiverBaseline});
+assert.equal(waiverReplica[0].addPlayerId,waiverReport.recommendations[0].details.addPlayerId);
+assert.equal(waiverReplica[0].dropPlayerId,waiverReport.recommendations[0].details.dropPlayerId);
+assert.ok(Number.isFinite(waiverReplica[0].championshipDelta));
+
 console.log('gm-recommendation-engine-tests: all checks passed');

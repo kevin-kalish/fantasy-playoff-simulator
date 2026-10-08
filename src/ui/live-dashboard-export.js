@@ -1,0 +1,93 @@
+export function weeklyReportToDashboardV1(report) {
+  if (report?.schemaVersion !== 11 || !report.trust?.trusted) throw new Error('Untrusted weekly report');
+  const probability = (value) => {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) throw new Error('Invalid probability');
+    return value;
+  };
+  if (!Array.isArray(report.league?.outlook) || !report.league.outlook.length) throw new Error('Missing league outlook');
+  if (!Number.isFinite(Date.parse(report.generatedAt))) throw new Error('Invalid report timestamp');
+  const teams = report.league.outlook.map(team => ({
+    id: String(team.id),
+    name: String(team.name),
+    record: { wins: Number(team.record?.wins), losses: Number(team.record?.losses), ties: Number(team.record?.ties) },
+    currentSeed: team.currentSeed,
+    playoffProbability: probability(team.playoffProbability),
+    championshipProbability: probability(team.championshipProbability),
+    averageWins: team.averageWins,
+    remainingGames: team.remainingGames,
+    seedDistribution: (team.seedDistribution ?? []).map(seed => ({ seed: seed.seed, probability: probability(seed.probability) }))
+  }));
+  if (new Set(teams.map(team => team.id)).size !== teams.length) throw new Error('Duplicate team IDs');
+  if (!teams.some(team => team.id === String(report.team?.id))) throw new Error('Focus team missing');
+  const directWeeks = report.trust.projections?.directWeeks ?? [];
+  const derivedWeeks = report.trust.projections?.longRangeWeeks ?? [];
+  const rosterPlayer = player => ({ id: String(player.id ?? ''), name: String(player.name ?? ''), position: String(player.position ?? ''), slot: player.slot == null ? null : String(player.slot), projection: Number.isFinite(player.projection) ? player.projection : null });
+  const roster = { teamId: String(report.team.id), starters: (report.roster?.starters ?? []).map(rosterPlayer), bench: (report.roster?.bench ?? []).map(rosterPlayer) };
+  const matchup = report.matchup && (() => {
+    const source = report.matchup;
+    if (String(source.teamId) !== String(report.team.id)) throw new Error('Matchup team mismatch');
+    if (!teams.some(team => team.id === String(source.opponentId))) throw new Error('Unknown matchup opponent');
+    const outcome = value => ({
+      playoffProbability: probability(value?.playoffProbability),
+      championshipProbability: probability(value?.championshipProbability),
+      averageWins: Number.isFinite(value?.averageWins) ? value.averageWins : null
+    });
+    const impact = source.impact;
+    return {
+      week: Number(source.week), teamId: String(source.teamId),
+      opponentId: String(source.opponentId),
+      opponentName: String(source.opponentName ?? ''),
+      winProbability: probability(source.simulated?.winProbability),
+      simulatedMean: Number.isFinite(source.simulated?.teamMean) ? source.simulated.teamMean : null,
+      opponentMean: Number.isFinite(source.simulated?.opponentMean) ? source.simulated.opponentMean : null,
+      impact: impact ? { win: outcome(impact.win), loss: outcome(impact.loss), simulations: Number(impact.simulations) } : null
+    };
+  })();
+  const gm = report.recommendations ?? {};
+  const diagnostics = gm.diagnostics ?? {};
+  const finite = value => typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const count = value => Number.isInteger(value) && value >= 0 ? value : 0;
+  const rejected = candidate => candidate && ({
+    type: ['start-sit','waiver','trade'].includes(candidate.type) ? candidate.type : 'other',
+    label: String(candidate.label ?? ''),
+    reason: String(candidate.reason ?? 'unconfirmed'),
+    explanation: String(candidate.explanation ?? ''),
+    confidence: String(candidate.confidence ?? 'unknown'),
+    playoffDelta: finite(candidate.playoffDelta),
+    championshipDelta: finite(candidate.championshipDelta),
+    winsDelta: finite(candidate.winsDelta),
+    projectedPointDelta: finite(candidate.projectedPointDelta)
+  });
+  const gmDiagnostics = {
+    evaluated: count(diagnostics.evaluatedActionCount),
+    rejected: count(diagnostics.rejectedActionCount),
+    approved: count(gm.actionCount),
+    rejectionCounts: Object.fromEntries(Object.entries(diagnostics.rejectionCounts ?? {}).filter(([reason,value]) => /^[a-z0-9-]+$/i.test(reason) && Number.isInteger(value) && value >= 0)),
+    coverageConstrained: Boolean(diagnostics.coverage?.constrained),
+    noActionExplanation: String(diagnostics.noActionExplanation ?? ''),
+    nearMisses: (diagnostics.nearMisses ?? []).slice(0,5).map(rejected),
+    bestRejectedByType: Object.fromEntries(Object.entries(diagnostics.bestRejectedByType ?? {}).filter(([type]) => ['start-sit','waiver','trade'].includes(type)).map(([type,candidate]) => [type,rejected(candidate)])),
+    confirmation: {
+      evaluated: count(gm.confirmation?.evaluatedCount),
+      passed: count(gm.confirmation?.passedCount),
+      simulations: count(gm.confirmation?.simulations)
+    }
+  };
+  return {
+    schemaVersion: 1,
+    generatedAt: report.generatedAt,
+    mode: 'live',
+    league: { teamCount: teams.length, playoffTeamCount: report.league.playoffSpots, userTeamId: String(report.team.id) },
+    model: { simulations: report.outlook.simulations, seed: report.outlook.seed, championshipStatus: report.trust.postseason.trusted ? 'direct' : 'provisional', directWeeks: [...directWeeks], derivedWeeks: [...derivedWeeks] },
+    teams,
+    roster,
+    matchup: matchup ?? null,
+    remainingSchedule: (report.remainingSchedule ?? []).map(game => {
+      if (!Number.isInteger(game.week) || !teams.some(team => team.id === String(game.opponentId))) throw new Error('Invalid remaining schedule');
+      return {week: game.week, opponentId: String(game.opponentId), opponentName: String(game.opponentName), ...(game.winProbability == null ? {} : {winProbability: probability(game.winProbability), simulations: Number(game.simulations), projectionSource: game.projectionSource === 'direct' ? 'direct' : 'derived'}), ...(game.playoffImpact ? {playoffImpact: {ifWin: probability(game.playoffImpact.ifWin), ifLoss: probability(game.playoffImpact.ifLoss), swing: Number(game.playoffImpact.swing), ...(game.playoffImpact.championshipSwing == null ? {} : {championshipIfWin:probability(game.playoffImpact.championshipIfWin),championshipIfLoss:probability(game.playoffImpact.championshipIfLoss),championshipSwing:Number(game.playoffImpact.championshipSwing)}), simulations: Number(game.playoffImpact.simulations)}} : {})};
+    }),
+    recommendations: [],
+    gmDiagnostics,
+    warnings: report.trust.postseason.trusted ? [] : [report.trust.postseason.reason]
+  };
+}
