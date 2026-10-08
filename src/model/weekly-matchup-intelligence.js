@@ -22,3 +22,33 @@ export function buildWeeklyMatchupIntelligence(input,{teamId,week,simulations=nu
  const baseline=focus(baselineResults??simulateLeague(impactInput),teamId),win=focus(simulateLeague({...forceWinner(input,week,found.pair,team.id),simulations:impactN}),teamId),loss=focus(simulateLeague({...forceWinner(input,week,found.pair,opponent.id),simulations:impactN}),teamId);
  return {week:Number(week),teamId:team.id,opponentId:opponent.id,opponentName:opponent.name,projected:{team:sumProjection(team,week),opponent:sumProjection(opponent,week),margin:sumProjection(team,week)-sumProjection(opponent,week)},simulated:{teamMean:teamScore/n,opponentMean:opponentScore/n,winProbability:(wins+ties*.5)/n,simulations:n,seed:Number(seed??input.seed)},impact:{baseline:{playoffProbability:baseline.playoffProbability,championshipProbability:baseline.championshipProbability,averageWins:baseline.averageWins},win:{playoffProbability:win.playoffProbability,championshipProbability:win.championshipProbability,averageWins:win.averageWins,delta:delta(baseline,win)},loss:{playoffProbability:loss.playoffProbability,championshipProbability:loss.championshipProbability,averageWins:loss.averageWins,delta:delta(baseline,loss)},simulations:impactN},trust:gate};
 }
+
+/** Lightweight schedule forecasts; no conditional playoff-impact simulations. */
+export function forecastRemainingMatchups(input,{teamId,week,simulations=1000}={}){
+ const team=input.teams.find(t=>String(t.id)===String(teamId));
+ if(!team)throw new Error('Unknown forecast team');
+ const n=Math.max(1,Math.min(5000,Math.floor(Number(simulations)||1000)));
+ const direct=new Set(input.metadata?.directProjectionWeeks??[]);
+ const variant=getModelVariant(input.modelVariant||'correlated');
+ const nflGameIndex=buildNFLGameIndex(input.nflGames||[]);
+ return (input.schedule??[]).filter(row=>Number(row.week)>=Number(week))
+  .sort((a,b)=>Number(a.week)-Number(b.week)).flatMap(row=>(row.matchups??[])
+   .filter(pair=>Array.isArray(pair)&&pair.length===2&&pair.some(id=>String(id)===String(teamId)))
+   .map(pair=>{
+    const opponentId=String(pair[0])===String(teamId)?String(pair[1]):String(pair[0]);
+    const opponent=input.teams.find(t=>String(t.id)===opponentId);
+    if(!opponent)throw new Error('Unknown forecast opponent');
+    const targetWeek=Number(row.week);
+    const rng=createSeededRng(Number(input.seed??1)+targetWeek*1009);
+    let wins=0,ties=0;
+    for(let i=0;i<n;i++){
+     const correlationContext=variant.correlation?createCorrelationContext(rng):null;
+     const opts={firstWeek:targetWeek,nflGameIndex,correlationContext,variant,calibration:input.calibration||null};
+     const a=simulateTeamScore(team,targetWeek,rng,opts),b=simulateTeamScore(opponent,targetWeek,rng,opts);
+     if(a>b)wins++;else if(a===b)ties++;
+    }
+    return {week:targetWeek,opponentId,opponentName:String(opponent.name),
+     winProbability:(wins+ties*.5)/n,simulations:n,
+     projectionSource:direct.has(targetWeek)?'direct':'derived'};
+   }));
+}
