@@ -17,4 +17,6 @@ jobs:
         run: npm run benchmark:schedule -- 100
 
       - name: Benchmark synthetic GM targeted replication
-        run: npm run benchmark:gm -- 100
+        run: npm run benchmark:gm -- 100 3
+      - name: Benchmark GM targeted replication at higher simulation count
+        run: npm run benchmark:gm -- 1000 3
