@@ -29,15 +29,17 @@ const targeted=measure(()=>{
 });
 const same=full.value.recommendations.find(r=>r.label===selected.label);
 if(!same||!targeted.value)throw new Error('Comparison could not find selected action');
-if(Math.abs(same.championshipDelta-targeted.value.championshipDelta)>1e-12)throw new Error('Targeted and full championship deltas differ');
+for(const key of ['championshipDelta','playoffDelta','winsDelta'])if(Math.abs(same[key]-targeted.value[key])>1e-12)throw new Error(`Targeted and full ${key} differ`);
 const integrated=measure(()=>buildWeeklyGMRecommendations(input,spec,{simulations,replicateTopRecommendationSeeds:1}));
 const samples=Array.from({length:repetitions},()=>{
  const f=measure(()=>buildWeeklyGMRecommendations(alternate,spec,{simulations}));
  const t=measure(()=>{const baseline=simulateLeague({...alternate,simulations});const d=selected.details;return evaluateStartSitChoices(alternate,{teamId:'T0',week:1,projectionRows,choices:[{slot:d.slot,startPlayerId:d.startPlayerId,startPlayerName:d.startPlayerName,sitPlayerId:d.sitPlayerId,sitPlayerName:d.sitPlayerName,projectedPointDelta:d.projectedPointDelta}]},{simulations,baselineResults:baseline})[0];});
- if(Math.abs(f.value.recommendations.find(r=>r.label===selected.label).championshipDelta-t.value.championshipDelta)>1e-12)throw new Error('Replicated comparison differs');
+ const expected=f.value.recommendations.find(r=>r.label===selected.label);
+ if(!expected)throw new Error('Selected action missing in repeated full rescan');
+ for(const key of ['championshipDelta','playoffDelta','winsDelta'])if(Math.abs(expected[key]-t.value[key])>1e-12)throw new Error(`Repeated ${key} differs`);
  return {fullMs:f.ms,targetedMs:t.ms};
 });
 const median=xs=>[...xs].sort((a,b)=>a-b)[Math.floor(xs.length/2)];
 const integratedStability=integrated.value.recommendations[0]?.seedStability;
 if(integratedStability?.replications!==2||integratedStability.missingReplications!==0)throw new Error('Integrated targeted replication did not complete');
-console.log(JSON.stringify({benchmark:'synthetic-gm-targeted-vs-full',simulations,repetitions,medianFullMs:median(samples.map(x=>x.fullMs)),medianTargetedMs:median(samples.map(x=>x.targetedMs)),fullRescanMs:full.ms,targetedMs:targeted.ms,integratedMs:integrated.ms,integratedExtraMs:integrated.value.diagnostics.timing.seedReplicationSeconds*1000,ratio:targeted.ms?Number((full.ms/targeted.ms).toFixed(2)):null,championshipDelta:targeted.value.championshipDelta,scope:'Four-player synthetic RB roster, one selected start/sit action and one seed; timings are not generalizable'},null,2));
+console.log(JSON.stringify({benchmark:'synthetic-gm-targeted-vs-full',simulations,repetitions,medianFullMs:median(samples.map(x=>x.fullMs)),medianTargetedMs:median(samples.map(x=>x.targetedMs)),fullRescanMs:full.ms,targetedMs:targeted.ms,integratedMs:integrated.ms,integratedExtraMs:integrated.value.diagnostics.timing.seedReplicationSeconds*1000,ratio:targeted.ms?Number((full.ms/targeted.ms).toFixed(2)):null,championshipDelta:targeted.value.championshipDelta,playoffDelta:targeted.value.playoffDelta,winsDelta:targeted.value.winsDelta,nonzeroImpact:['championshipDelta','playoffDelta','winsDelta'].some(key=>Math.abs(targeted.value[key])>1e-12),scope:'Four-player synthetic RB roster, one selected start/sit action and one seed; timings are not generalizable'},null,2));
