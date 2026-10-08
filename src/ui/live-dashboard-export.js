@@ -4,20 +4,25 @@ export function weeklyReportToDashboardV1(report) {
     if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) throw new Error('Invalid probability');
     return value;
   };
+  if (!Array.isArray(report.league?.outlook) || !report.league.outlook.length) throw new Error('Missing league outlook');
+  if (!Number.isFinite(Date.parse(report.generatedAt))) throw new Error('Invalid report timestamp');
   const teams = report.league.outlook.map(team => ({
     id: String(team.id),
     name: String(team.name),
-    record: { ...team.record },
+    record: { wins: Number(team.record?.wins), losses: Number(team.record?.losses), ties: Number(team.record?.ties) },
     currentSeed: team.currentSeed,
     playoffProbability: probability(team.playoffProbability),
     championshipProbability: probability(team.championshipProbability),
     averageWins: team.averageWins,
     remainingGames: team.remainingGames,
-    seedDistribution: team.seedDistribution.map(seed => ({ seed: seed.seed, probability: probability(seed.probability) }))
+    seedDistribution: (team.seedDistribution ?? []).map(seed => ({ seed: seed.seed, probability: probability(seed.probability) }))
   }));
   if (new Set(teams.map(team => team.id)).size !== teams.length) throw new Error('Duplicate team IDs');
-  const directWeeks = report.trust.projections.directWeeks;
-  const derivedWeeks = report.trust.projections.longRangeWeeks;
+  if (!teams.some(team => team.id === String(report.team?.id))) throw new Error('Focus team missing');
+  const directWeeks = report.trust.projections?.directWeeks ?? [];
+  const derivedWeeks = report.trust.projections?.longRangeWeeks ?? [];
+  const rosterPlayer = player => ({ id: String(player.id ?? ''), name: String(player.name ?? ''), position: String(player.position ?? ''), slot: player.slot == null ? null : String(player.slot), projection: Number.isFinite(player.projection) ? player.projection : null });
+  const roster = { teamId: String(report.team.id), starters: (report.roster?.starters ?? []).map(rosterPlayer), bench: (report.roster?.bench ?? []).map(rosterPlayer) };
   return {
     schemaVersion: 1,
     generatedAt: report.generatedAt,
@@ -25,6 +30,7 @@ export function weeklyReportToDashboardV1(report) {
     league: { teamCount: teams.length, playoffTeamCount: report.league.playoffSpots, userTeamId: String(report.team.id) },
     model: { simulations: report.outlook.simulations, seed: report.outlook.seed, championshipStatus: report.trust.postseason.trusted ? 'direct' : 'provisional', directWeeks: [...directWeeks], derivedWeeks: [...derivedWeeks] },
     teams,
+    roster,
     recommendations: [],
     warnings: report.trust.postseason.trusted ? [] : [report.trust.postseason.reason]
   };
