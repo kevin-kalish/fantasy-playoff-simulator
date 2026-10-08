@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import {buildWeeklyRefreshPlan} from '../src/model/weekly-refresh-plan.js';
 import {createYahooClient,discoverYahooNflLeagues} from '../src/data/yahoo-client.js';
 import {loadYahooLeagueSnapshot} from '../src/data/yahoo-league.js';
+import {fetchYahooCurrentWeek} from '../src/data/yahoo-current-week.js';
 import {runYahooLeagueAudit} from '../src/data/yahoo-live-audit.js';
 import {loadYahooWaiverPool,prescreenWaiverScenarios} from '../src/data/yahoo-waivers.js';
 import {buildWaiverCandidatePool} from '../src/data/waiver-candidate-source.js';
@@ -30,7 +31,8 @@ if(yahooAuth.accessToken){
    const matching=leagues.filter(x=>String(x.leagueId??x.leagueKey?.split('.').at(-1))===configuredLeagueId);
    if(matching.length===1)leagueKey=matching[0].leagueKey;else if(leagues.length===1)leagueKey=leagues[0].leagueKey;else throw new Error(`Could not uniquely discover Yahoo league ${configuredLeagueId}.`);
   }
-  const liveWeek=weekArg??Number(process.env.WEEK??snapshot?.currentWeek??snapshot?.source?.currentWeek??1);
+  const liveWeek=weekArg??(process.env.WEEK?Number(process.env.WEEK):await fetchYahooCurrentWeek(get,leagueKey));
+  if(!Number.isInteger(liveWeek)||liveWeek<1||liveWeek>18)throw new Error('Invalid requested Yahoo fantasy week.');
   const referencePath=process.env.YAHOO_REFERENCE??'fixtures/yahoo-reference-2026-week3.json';
   if(fs.existsSync(referencePath)){
    const reference=read(referencePath);
