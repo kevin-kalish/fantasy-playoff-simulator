@@ -143,3 +143,8 @@ The existing browser UI is still primarily a synthetic/demo dashboard. The simul
 ## Important status note
 
 The application is a development prototype. The live league pipeline now uses Yahoo API data for current league state and Yahoo waiver availability plus live JerryGM projections. Long-range and postseason forecasts still contain derived model inputs. Playoff probabilities should be treated as developmental forecasts, and championship probabilities remain explicitly provisional until dedicated playoff-week projections are available and the broader model is historically calibrated.
+
+
+### Optional GM seed-stability diagnostic
+
+`buildWeeklyGMRecommendations(input, spec, {replicateTopRecommendationSeeds: 1})` checks the top eligible action with one additional independent random seed (maximum two additional seeds). Each repeat simulates a fresh baseline and **only the selected start/sit, waiver, or trade scenario**, rather than rescanning the whole GM candidate set. The option is disabled by default. The returned top recommendation includes `seedStability` with `status`, `replications`, `requestedReplications`, and `missingReplications`; `diagnostics.timing.seedReplicationSeconds` measures extra wall-clock time. A missing replication does not count as evidence of agreement. These results are independent-seed sensitivity checks, **not** calibrated confidence intervals or a substitute for projection quality and trade feasibility review. The private intelligence panel may display the result; it is not exported to the public live dashboard.
