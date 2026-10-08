@@ -3,7 +3,6 @@ import {FantasyProsClient,normalizeFantasyProsProjections} from './fantasypros.j
 import {JerryGMClient,normalizeJerryGMProjections} from './jerrygm.js';
 import {createProjectionProvider,loadProjectionRows,projectionProviderTrust} from './projection-provider.js';
 import {mergeProjectionCache,writeProjectionCache} from './projection-cache.js';
-import {enrichWeeklyProjections} from './weekly-projection-enrichment.js';
 
 const readRows=path=>{const raw=JSON.parse(fs.readFileSync(path,'utf8'));return Array.isArray(raw)?raw:(raw.rows||raw.projections||[])};
 const sameWeek=(row,{season,week})=>Number(row?.season??row?.year)===Number(season)&&Number(row?.week??row?.wk)===Number(week);
