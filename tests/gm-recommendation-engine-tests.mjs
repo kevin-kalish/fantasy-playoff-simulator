@@ -9,6 +9,8 @@ assert.equal(report.teamId,'A');assert.equal(report.week,1);assert.equal(report.
 assert.equal(report.diagnostics.readinessCounts.REVIEW_REQUIRED,1);assert.ok(report.diagnostics.evaluatedActionCount>=report.actionCount);assert.equal(report.diagnostics.beneficialActionCount,report.actionCount);assert.equal(report.diagnostics.rejectedActionCount,report.diagnostics.evaluatedActionCount-report.actionCount);assert.ok(Array.isArray(report.diagnostics.nearMisses));assert.ok(report.diagnostics.nearMisses.length<=3);assert.equal(report.diagnostics.noActionExplanation,null);
 const replicated=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:rows,startSit:{slot:'RB'},trades:[],waivers:null},{replicateTopRecommendationSeeds:1});
 assert.equal(replicated.recommendations[0].seedStability.requestedReplications,2);
+assert.ok(replicated.diagnostics.timing.seedReplicationSeconds>=0);
+assert.equal(replicated.recommendations[0].seedStability.missingReplications,2-replicated.recommendations[0].seedStability.replications);
 assert.ok(['CONSISTENT_POSITIVE','CONSISTENT_NEGATIVE','MIXED_OR_INCONCLUSIVE','INSUFFICIENT_REPLICATIONS'].includes(replicated.recommendations[0].seedStability.status));
 const noneRows=[{week:1,playerId:'A-RB',projection:10},{week:1,playerId:'A-BRB',projection:5}];
 const none=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:noneRows,startSit:{slot:'RB',choices:[{slot:'RB',startPlayerId:'A-BRB',sitPlayerId:'A-RB',startPlayerName:'Alpha Bench RB',sitPlayerName:'Alpha RB',projectedPointDelta:-5}]},trades:[],waivers:null});
