@@ -17,9 +17,10 @@ export function buildWeeklyProjectionProviders({apiKey=process.env.FANTASYPROS_A
 }
 export async function loadWeeklyProjections({season,week,scoring='HALF',minimumRows=1,projectionNames=[],apiKey=process.env.FANTASYPROS_API_KEY,jerryGMApiKey=process.env.JERRYGM_API_KEY,fixturePath=null,cachePath=process.env.PROJECTION_CACHE_PATH??'data/private/projection-cache.json',fetchImpl=globalThis.fetch,preferCache=process.env.PROJECTION_REFRESH!=='true'}={}){
  const providers=buildWeeklyProjectionProviders({apiKey,jerryGMApiKey,fixturePath,cachePath,fetchImpl});
- // Cache is only authoritative when no live projection provider is configured.
- // A top-100 cache must never shadow targeted roster-wide JerryGM retrieval.
- if(preferCache&&cachePath&&!apiKey&&!jerryGMApiKey){const cache=providers.find(p=>p.name==='cache');if(cache)cache.priority=1000;}
+ // Untargeted requests may reuse an existing cache without making API calls.
+ // Targeted roster-wide requests must prefer live data: a partial top-100 cache
+ // cannot establish coverage for the requested names.
+ if(preferCache&&cachePath&&(!Array.isArray(projectionNames)||projectionNames.length===0)){const cache=providers.find(p=>p.name==='cache');if(cache)cache.priority=1000;}
 
  if(!providers.length)throw new Error('No weekly projection providers configured. Set FANTASYPROS_API_KEY or JERRYGM_API_KEY, provide a projection cache, or provide fixturePath.');
  const result=await loadProjectionRows(providers,{season,week,scoring,projectionNames},{minimumRows});
