@@ -1,5 +1,7 @@
 // Private, read-only acceptance review. Never uploads or republishes report data.
 import fs from 'node:fs';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
 export function auditWeeklyReport(document) {
  const report=document?.report??document;
  const readiness=document?.readiness;
@@ -30,7 +32,7 @@ export function auditWeeklyReport(document) {
  check('browser-acceptance',false,'Private live browser smoke test still required','warning');
  return {status:findings.some(x=>x.status==='FAIL')?'FAIL':findings.some(x=>x.status==='WARN')?'REVIEW_REQUIRED':'PASS',findings,summary:{passed:findings.filter(x=>x.status==='PASS').length,failed:findings.filter(x=>x.status==='FAIL').length,warnings:findings.filter(x=>x.status==='WARN').length},generatedAt:report?.generatedAt??null};
 }
-if(process.argv[1]&&import.meta.url===new URL('file://'+process.argv[1].replace(/\\/g,'/')).href){
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const path=process.argv[2];if(!path)throw new Error('Usage: npm run review:readiness -- data/private/fightin-kali-week-5-report.json');
  const review=auditWeeklyReport(JSON.parse(fs.readFileSync(path,'utf8')));
  for(const f of review.findings)console.log(`${f.status.padEnd(5)} ${f.id}: ${f.detail}`);
