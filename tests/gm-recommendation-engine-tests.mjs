@@ -22,6 +22,11 @@ assert.equal(expanded.diagnostics.startSit.expanded,false);assert.equal(expanded
 const constrained=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:noneRows,startSit:{slot:'RB',choices},trades:[],waivers:null},{maxStartSitScenarios:1,expandStartSit:false});
 assert.equal(constrained.diagnostics.startSit.expanded,false);assert.equal(constrained.diagnostics.startSit.evaluatedChoices,1);assert.equal(constrained.diagnostics.coverage.constrained,true);assert.match(constrained.diagnostics.noActionExplanation,/not evidence that no beneficial move exists/);
 
+const waiverCandidate=p('FREE-QB','Free Agent QB','QB',35);
+const waiverReport=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:rows,startSit:false,trades:[],waivers:{candidates:[waiverCandidate],dropPlayerIds:['A-QB']}},{replicateTopRecommendationSeeds:1});
+assert.equal(waiverReport.recommendations[0]?.type,'waiver');
+assert.equal(waiverReport.recommendations[0].seedStability.replications,2);
+assert.equal(waiverReport.recommendations[0].seedStability.missingReplications,0);
 const tradeRows=[];for(const week of [1,2,3])for(const t of input.teams)for(const x of t.roster)tradeRows.push({week,playerId:x.id,projection:x.projection});
 const lopsided=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:tradeRows,startSit:false,waivers:null,trades:[{teamAId:'A',teamBId:'B',teamAGives:['A-RB'],teamBGives:['B-RB'],projectionRows:tradeRows,label:'Lopsided trade'}]},{confirmationSimulations:0});
 assert.equal(lopsided.actionCount,0);assert.equal(lopsided.diagnostics.rejectionCounts['unrealistic-counterparty'],1);assert.equal(lopsided.diagnostics.bestRejectedByType.trade.tradeFeasibility?.status??lopsided.diagnostics.bestRejectedByType.trade.reason,'unrealistic-counterparty');
