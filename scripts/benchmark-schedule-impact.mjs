@@ -32,4 +32,4 @@ const informative=nonZeroSwings>0;
 if(!informative)console.error('WARNING: No nonzero playoff swings; ranking agreement is uninformative.');
 
 if(impact.result.length!==7||impact.result.some(g=>!Number.isFinite(g.playoffImpact.swing)))throw new Error('Invalid impact output');
-console.log(JSON.stringify({benchmark:'synthetic-10-team',simulations,matchups:impact.result.length,focusTeam,nonZeroSwings,informative,forecastMs:forecasts.ms,impactMs:impact.ms,rankedWeeks:impact.result.map(g=>g.week),stability:{replications:4,additionalMs:stability.ms,topWeekAgreement:topWeekAgreement+1,topWeekTotal:4,largestSwingRange:Math.max(...ranges.map(x=>x.range)),byWeek:ranges}},null,2));
+console.log(JSON.stringify({benchmark:'synthetic-10-team',simulations,matchups:impact.result.length,focusTeam,nonZeroSwings,informative,forecastMs:forecasts.ms,impactMs:impact.ms,rankedWeeks:impact.result.map(g=>g.week),stability:{replications:4,additionalMs:stability.ms,topWeekAgreement:informative?topWeekAgreement+1:null,topWeekTotal:4,largestSwingRange:Math.max(...ranges.map(x=>x.range)),byWeek:ranges}},null,2));
