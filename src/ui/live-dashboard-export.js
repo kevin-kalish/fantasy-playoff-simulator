@@ -23,6 +23,26 @@ export function weeklyReportToDashboardV1(report) {
   const derivedWeeks = report.trust.projections?.longRangeWeeks ?? [];
   const rosterPlayer = player => ({ id: String(player.id ?? ''), name: String(player.name ?? ''), position: String(player.position ?? ''), slot: player.slot == null ? null : String(player.slot), projection: Number.isFinite(player.projection) ? player.projection : null });
   const roster = { teamId: String(report.team.id), starters: (report.roster?.starters ?? []).map(rosterPlayer), bench: (report.roster?.bench ?? []).map(rosterPlayer) };
+  const matchup = report.matchup && (() => {
+    const source = report.matchup;
+    if (String(source.teamId) !== String(report.team.id)) throw new Error('Matchup team mismatch');
+    if (!teams.some(team => team.id === String(source.opponentId))) throw new Error('Unknown matchup opponent');
+    const outcome = value => ({
+      playoffProbability: probability(value?.playoffProbability),
+      championshipProbability: probability(value?.championshipProbability),
+      averageWins: Number.isFinite(value?.averageWins) ? value.averageWins : null
+    });
+    const impact = source.impact;
+    return {
+      week: Number(source.week), teamId: String(source.teamId),
+      opponentId: String(source.opponentId),
+      opponentName: String(source.opponentName ?? ''),
+      winProbability: probability(source.simulated?.winProbability),
+      simulatedMean: Number.isFinite(source.simulated?.teamMean) ? source.simulated.teamMean : null,
+      opponentMean: Number.isFinite(source.simulated?.opponentMean) ? source.simulated.opponentMean : null,
+      impact: impact ? { win: outcome(impact.win), loss: outcome(impact.loss), simulations: Number(impact.simulations) } : null
+    };
+  })();
   return {
     schemaVersion: 1,
     generatedAt: report.generatedAt,
@@ -31,6 +51,7 @@ export function weeklyReportToDashboardV1(report) {
     model: { simulations: report.outlook.simulations, seed: report.outlook.seed, championshipStatus: report.trust.postseason.trusted ? 'direct' : 'provisional', directWeeks: [...directWeeks], derivedWeeks: [...derivedWeeks] },
     teams,
     roster,
+    matchup: matchup ?? null,
     recommendations: [],
     warnings: report.trust.postseason.trusted ? [] : [report.trust.postseason.reason]
   };
