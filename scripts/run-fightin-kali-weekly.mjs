@@ -45,6 +45,8 @@ if(yahooAuth.accessToken){
    console.error(`YAHOO AUDIT: unavailable; reference not found: ${referencePath}. Simulation trust gate will block Yahoo results.`);
   }
   snapshot.source={...snapshot.source,leagueKey,currentWeek:liveWeek};snapshot.currentWeek=liveWeek;
+  // Persist only after the live reconciliation gate passes.
+  if(!sourceAudit?.passed)throw new Error('Yahoo reference audit is unavailable or did not pass.');
   fs.mkdirSync('data/private',{recursive:true});fs.writeFileSync(snapshotPath,JSON.stringify(snapshot,null,2)+'\n');
   console.error(`YAHOO STATE: refreshed ${snapshot.teams.length} teams and ${snapshot.schedule.length} remaining schedule weeks for week ${liveWeek}.`);
  }catch(error){fail(`Yahoo API refresh or reconciliation failed: ${error.message}. Refusing to simulate stale league data.`);}
