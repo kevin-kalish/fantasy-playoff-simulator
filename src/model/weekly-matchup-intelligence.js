@@ -54,7 +54,7 @@ export function forecastRemainingMatchups(input,{teamId,week,simulations=1000}={
 }
 
 /** Conditional qualification impact of each future scheduled result.
- * Uses common seeded simulations for baseline, forced win and forced loss.
+ * Uses common seeded simulations for forced win and forced loss.
  * Scores are scenario estimates; do not interpret as causal guarantees.
  */
 export function rankRemainingMatchupImpact(input,{teamId,week,simulations=500}={}){
