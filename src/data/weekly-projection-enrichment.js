@@ -105,7 +105,8 @@ export function enrichWeeklyProjections(snapshot,projectionRows,{weeks=null,seas
     total++;
     const row=find(index,p,season,week);
     const median=medianDefense.get(week);
-    const imputed=!row&&pos(p)==='DEF'&&Number.isFinite(median);
+    const conflictingDefense=(projectionRows||[]).some(candidate=>Number(candidate.week)===Number(week)&&Number(candidate.season??season)===Number(season)&&pos(candidate)==='DEF'&&key(candidate.name||candidate.playerName)===key(p.name||p.playerName)&&team(candidate)&&team(p)&&team(candidate)!==team(p));
+    const imputed=!row&&!conflictingDefense&&pos(p)==='DEF'&&Number.isFinite(median);
     const out=imputed?{...p,projection:median,projectionStatus:'imputed-defense',projectionSource:'weekly-defense-median',projectionConfidence:0.5}:apply(p,row,week);
     if(imputed)imputations.push({teamId:team.id,teamName:team.name,week,playerId:id(p),name:p.name,projection:median,method:'weekly-defense-median'});
     if(out.projectionStatus==='matched'||imputed)matched++;
