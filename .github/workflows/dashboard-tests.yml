@@ -13,3 +13,5 @@ jobs:
           node-version: '22'
       - run: npm run test:dashboard
       - run: npm test
+      - name: Benchmark synthetic 10-team schedule impact
+        run: npm run benchmark:schedule -- 100
