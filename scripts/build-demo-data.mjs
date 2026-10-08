@@ -33,6 +33,10 @@ if(!payload?.report?.team||!payload?.report?.outlook) {
  console.error('DEMO BUILD: source does not contain a usable weekly intelligence report.');
  process.exit(2);
 }
+if(Number(payload.report.schemaVersion)<11){
+ console.error(`DEMO BUILD: report schema ${payload.report.schemaVersion??'unknown'} is outdated; dashboard requires schema 11. Regenerate the weekly report before building.`);
+ process.exit(2);
+}
 fs.mkdirSync(path.dirname(target),{recursive:true});
 fs.writeFileSync(target,JSON.stringify(payload,null,2)+'\n');
 console.log(`DEMO BUILD: week ${week}; ${source} -> ${target}`);
