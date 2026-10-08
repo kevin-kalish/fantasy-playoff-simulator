@@ -57,17 +57,18 @@ export function forecastRemainingMatchups(input,{teamId,week,simulations=1000}={
  * Uses common seeded simulations for forced win and forced loss.
  * Scores are scenario estimates; do not interpret as causal guarantees.
  */
-export function rankRemainingMatchupImpact(input,{teamId,week,simulations=500}={}){
+export function rankRemainingMatchupImpact(input,{teamId,week,simulations=500,seed=input.seed}={}){
  const n=Math.max(1,Math.min(2000,Math.floor(Number(simulations)||500)));
  if(!input.teams.some(team=>String(team.id)===String(teamId)))throw new Error('Unknown impact team');
- const forecasts=forecastRemainingMatchups(input,{teamId,week,simulations:Math.min(n,1000)});
+ const seededInput={...input,seed};
+ const forecasts=forecastRemainingMatchups(seededInput,{teamId,week,simulations:Math.min(n,1000)});
  const teamsById=new Map(input.teams.map(team=>[String(team.id),team]));
  const impacts=forecasts.map(game=>{
   const row=(input.schedule??[]).find(entry=>Number(entry.week)===game.week);
   const pair=row?.matchups?.find(ids=>ids.some(id=>String(id)===String(teamId))&&ids.some(id=>String(id)===game.opponentId));
   if(!pair)throw new Error('Missing schedule pair');
-  const win=focus(simulateLeague({...forceWinner(input,game.week,pair,teamsById.get(String(teamId)).id),simulations:n}),teamId);
-  const loss=focus(simulateLeague({...forceWinner(input,game.week,pair,teamsById.get(game.opponentId).id),simulations:n}),teamId);
+  const win=focus(simulateLeague({...forceWinner(seededInput,game.week,pair,teamsById.get(String(teamId)).id),simulations:n}),teamId);
+  const loss=focus(simulateLeague({...forceWinner(seededInput,game.week,pair,teamsById.get(game.opponentId).id),simulations:n}),teamId);
   return {...game,playoffImpact:{
    ifWin:win.playoffProbability,ifLoss:loss.playoffProbability,
    swing:win.playoffProbability-loss.playoffProbability,
