@@ -86,9 +86,10 @@ export function buildWeeklyGMRecommendations(input,{teamId,week,projectionRows=[
  if(replicationCount&&ranked.length){
   const target=ranked[0],samples=[target],baseSeed=Number(input.seed??2026);
   for(let i=1;i<=replicationCount;i++){
-   const alternate={...input,seed:baseSeed+i*100003},baseline=simulateLeague({...alternate,simulations:target.simulations}),replicaOptions={...options,simulations:target.simulations,baselineResults:baseline};
+   const alternate={...input,seed:baseSeed+i*100003};
    let matched=null;
    try{
+    const baseline=simulateLeague({...alternate,simulations:target.simulations}),replicaOptions={...options,simulations:target.simulations,baselineResults:baseline};
     if(target.type==='start-sit'){
      const d=target.details;
      const evaluated=evaluateStartSitChoices(alternate,{teamId,week,projectionRows,choices:[{slot:d.slot,startPlayerId:d.startPlayerId,startPlayerName:d.startPlayerName,sitPlayerId:d.sitPlayerId,sitPlayerName:d.sitPlayerName,projectedPointDelta:d.projectedPointDelta}]},replicaOptions)[0];
