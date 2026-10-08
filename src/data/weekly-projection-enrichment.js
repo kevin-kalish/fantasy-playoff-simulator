@@ -71,9 +71,12 @@ function defenseMedians(rows,season,weeks){
 }
 const UNAVAILABLE=new Set(['OUT','O','IR','IR-R','PUP','PUP-R','SUSP','SUSPENDED','NA','INACTIVE']);
 const normalizedStatus=s=>String(s||'').trim().toUpperCase();
-function apply(p,row,week){
+function apply(p,row,week,{currentWeek=week}={}){
  if(!row){const status=normalizedStatus(p.status);return UNAVAILABLE.has(status)?{...p,status,projection:0,projectionStatus:'unavailable',availabilitySource:'yahoo-roster',rawProjection:null}:{...p,projection:null,projectionStatus:'missing'};}
- const rosterStatus=normalizedStatus(p.status),providerStatus=normalizedStatus(row.status);
+ const rosterStatus=Number(week)===Number(currentWeek)?normalizedStatus(p.status):'';
+ const providerStatus=normalizedStatus(row.status);
+ const currentOnlyStatus=normalizedStatus(p.status);
+ const unresolvedFuture=Number(week)>Number(currentWeek)&&UNAVAILABLE.has(currentOnlyStatus)&&!providerStatus;
  const unavailable=UNAVAILABLE.has(rosterStatus)||UNAVAILABLE.has(providerStatus);
  const status=unavailable?(UNAVAILABLE.has(rosterStatus)?rosterStatus:providerStatus):(rosterStatus&&rosterStatus!=='ACTIVE'?rosterStatus:providerStatus||'ACTIVE');
  const byeWeek=Number(row.byeWeek??p.byeWeek);
@@ -82,6 +85,7 @@ function apply(p,row,week){
   ...p,
   projection:bye||unavailable?0:Number(row.projection??row.projectedPoints),
   ...(unavailable?{rawProjection:Number(row.projection??row.projectedPoints),availabilitySource:UNAVAILABLE.has(rosterStatus)?'yahoo-roster':'projection-provider'}:{}),
+  ...(unresolvedFuture?{availabilityUncertain:true,availabilitySource:'prior-week-yahoo-status'}:{}),
   status:bye?'BYE':status,
   ...(Number.isInteger(byeWeek)?{byeWeek}:{}),
   projectionStatus:bye?'bye':unavailable?'unavailable':'matched'
@@ -113,8 +117,8 @@ export function enrichWeeklyProjections(snapshot,projectionRows,{weeks=null,seas
     const conflictingDefense=(projectionRows||[]).some(candidate=>Number(candidate.week)===Number(week)&&Number(candidate.season??season)===Number(season)&&pos(candidate)==='DEF'&&key(candidate.name||candidate.playerName)===key(p.name||p.playerName)&&team(candidate)&&team(p)&&team(candidate)!==team(p));
     const peerCount=(projectionRows||[]).filter(candidate=>Number(candidate.week)===Number(week)&&Number(candidate.season??season)===Number(season)&&pos(candidate)==='DEF'&&Number.isFinite(Number(candidate.projection??candidate.projectedPoints))).length;
     const imputed=!row&&!conflictingDefense&&pos(p)==='DEF'&&peerCount>=2&&Number.isFinite(median);
-    const out=imputed?{...p,projection:median,projectionStatus:'imputed-defense',projectionSource:'weekly-defense-median',projectionConfidence:0.5}:apply(p,row,week);
-    if(out.projectionStatus==='unavailable'||['QUESTIONABLE','DOUBTFUL','Q','D'].includes(normalizedStatus(out.status)))availabilityAudit.push({teamId:team.id,teamName:team.name,week,playerId:id(p),name:p.name,status:out.status,source:out.availabilitySource??'yahoo-roster',rawProjection:out.rawProjection??out.projection});
+    const out=imputed?{...p,projection:median,projectionStatus:'imputed-defense',projectionSource:'weekly-defense-median',projectionConfidence:0.5}:apply(p,row,week,{currentWeek:Number(snapshot.currentWeek??snapshot.source?.currentWeek??Math.min(...targetWeeks))});
+    if(out.projectionStatus==='unavailable'||out.availabilityUncertain||['QUESTIONABLE','DOUBTFUL','Q','D'].includes(normalizedStatus(out.status)))availabilityAudit.push({teamId:team.id,teamName:team.name,week,playerId:id(p),name:p.name,status:out.status,source:out.availabilitySource??'yahoo-roster',uncertain:Boolean(out.availabilityUncertain||['QUESTIONABLE','DOUBTFUL','Q','D'].includes(normalizedStatus(out.status))),rawProjection:out.rawProjection??out.projection});
     if(imputed)imputations.push({teamId:team.id,teamName:team.name,week,playerId:id(p),name:p.name,projection:median,method:'weekly-defense-median'});
     if(out.projectionStatus==='matched'||out.projectionStatus==='unavailable'||imputed)matched++;
     else if(out.projectionStatus==='bye')bye++;
