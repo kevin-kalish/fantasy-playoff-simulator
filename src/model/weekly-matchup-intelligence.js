@@ -72,6 +72,8 @@ export function rankRemainingMatchupImpact(input,{teamId,week,simulations=500,se
   return {...game,playoffImpact:{
    ifWin:win.playoffProbability,ifLoss:loss.playoffProbability,
    swing:win.playoffProbability-loss.playoffProbability,
+   championshipIfWin:win.championshipProbability,championshipIfLoss:loss.championshipProbability,
+   championshipSwing:win.championshipProbability-loss.championshipProbability,
    simulations:n
   }};
  });
