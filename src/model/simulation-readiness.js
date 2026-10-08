@@ -7,6 +7,8 @@ export function assessSimulationReadiness(prepared,{minimumProjectionMatchRate=.
  const currentWeek=Number(prepared?.diagnostics?.currentWeek??input.metadata?.currentWeek);
  const currentUnavailable=audit.filter(x=>Number(x.week)===currentWeek&&!x.uncertain);
  const uncertain=audit.filter(x=>x.uncertain);
+ const heuristic=audit.filter(x=>x.playProbability!=null);
+ if(heuristic.length)warnings.push(`${heuristic.length} player-week projection(s) use uncalibrated heuristic play probabilities; validate against injury news before lineup decisions.`);
  if(currentUnavailable.length)warnings.push(`${currentUnavailable.length} current-week unavailable roster player(s) excluded from lineup optimization.`);
  if(uncertain.length)warnings.push(`${uncertain.length} player-week availability observation(s) require confirmation (questionable/doubtful or unresolved future status).`);
  const starters=(prepared?.league?.teams||[]).flatMap(t=>(t.weeklyLineups?.[currentWeek]||[]).filter(p=>['OUT','O','IR','IR-R','PUP','PUP-R','SUSP','SUSPENDED','NA','INACTIVE','BYE'].includes(String(p.status||'').toUpperCase())).map(p=>`${t.name}: ${p.name} (${p.status})`));
