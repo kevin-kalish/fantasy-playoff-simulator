@@ -10,7 +10,7 @@ const payload = {
     {id: 'B', name: 'Bravo', record: {wins: 2, losses: 2, ties: 0}, currentSeed: 2, averageWins: 6.1, playoffProbability: .6, championshipProbability: .1}
   ]
 };
-payload.remainingSchedule = [{week:6,opponentName:'Bravo',opponentId:'B',winProbability:.65,projectionSource:'derived',simulations:1000,playoffImpact:{ifWin:.8,ifLoss:.5,swing:.3,simulations:500}}];
+payload.remainingSchedule = [{week:6,opponentName:'Bravo',opponentId:'B',winProbability:.65,projectionSource:'derived',simulations:1000,playoffImpact:{ifWin:.8,ifLoss:.5,swing:.3,championshipIfWin:.3,championshipIfLoss:.2,championshipSwing:.1,simulations:500}}];
 payload.matchup = {week:5,opponentName:'Bravo',winProbability:.6,simulatedMean:105,opponentMean:100,impact:{win:{playoffProbability:.8},loss:{playoffProbability:.5},simulations:5000}};
 const root = {innerHTML: '', querySelector() {return {set innerHTML(value) {root.detailHTML=value;}};}};
 renderDashboardV1(root, payload);
@@ -21,6 +21,7 @@ assert.match(root.innerHTML, /Remaining schedule/);
 assert.match(root.innerHTML, /Week 6/);
 assert.match(root.innerHTML, /65.0%/);
 assert.match(root.innerHTML, /Playoff swing 30.0 pp/);
+assert.match(root.innerHTML, /Championship swing 10.0 pp/);
 assert.match(root.innerHTML, /derived/);
 const closePayload={...payload,remainingSchedule:[payload.remainingSchedule[0],{...payload.remainingSchedule[0],week:7,playoffImpact:{ifWin:.79,ifLoss:.50,swing:.29,simulations:500}}]};
 renderDashboardV1(root,closePayload);
