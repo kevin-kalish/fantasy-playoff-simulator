@@ -57,10 +57,9 @@ export function forecastRemainingMatchups(input,{teamId,week,simulations=1000}={
  * Uses common seeded simulations for baseline, forced win and forced loss.
  * Scores are scenario estimates; do not interpret as causal guarantees.
  */
-export function rankRemainingMatchupImpact(input,{teamId,week,simulations=500,baselineResults=null}={}){
+export function rankRemainingMatchupImpact(input,{teamId,week,simulations=500}={}){
  const n=Math.max(1,Math.min(2000,Math.floor(Number(simulations)||500)));
- const baseline=focus(baselineResults??simulateLeague({...input,simulations:n}),teamId);
- if(!baseline)throw new Error('Missing baseline team');
+ if(!input.teams.some(team=>String(team.id)===String(teamId)))throw new Error('Unknown impact team');
  const forecasts=forecastRemainingMatchups(input,{teamId,week,simulations:Math.min(n,1000)});
  const teamsById=new Map(input.teams.map(team=>[String(team.id),team]));
  const impacts=forecasts.map(game=>{
