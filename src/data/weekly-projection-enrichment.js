@@ -69,17 +69,22 @@ function defenseMedians(rows,season,weeks){
  }
  return medians;
 }
+const UNAVAILABLE=new Set(['OUT','O','IR','IR-R','PUP','PUP-R','SUSP','SUSPENDED','NA','INACTIVE']);
+const normalizedStatus=s=>String(s||'').trim().toUpperCase();
 function apply(p,row,week){
  if(!row)return {...p,projection:null,projectionStatus:'missing'};
- const status=String(row.status??p.status??'ACTIVE').toUpperCase();
+ const rosterStatus=normalizedStatus(p.status),providerStatus=normalizedStatus(row.status);
+ const unavailable=UNAVAILABLE.has(rosterStatus)||UNAVAILABLE.has(providerStatus);
+ const status=unavailable?(UNAVAILABLE.has(rosterStatus)?rosterStatus:providerStatus):(rosterStatus&&rosterStatus!=='ACTIVE'?rosterStatus:providerStatus||'ACTIVE');
  const byeWeek=Number(row.byeWeek??p.byeWeek);
  const bye=status==='BYE'||byeWeek===week;
  return {
   ...p,
-  projection:bye?0:Number(row.projection??row.projectedPoints),
+  projection:bye||unavailable?0:Number(row.projection??row.projectedPoints),
+  ...(unavailable?{rawProjection:Number(row.projection??row.projectedPoints),availabilitySource:UNAVAILABLE.has(rosterStatus)?'yahoo-roster':'projection-provider'}:{}),
   status:bye?'BYE':status,
   ...(Number.isInteger(byeWeek)?{byeWeek}:{}),
-  projectionStatus:bye?'bye':'matched'
+  projectionStatus:bye?'bye':unavailable?'unavailable':'matched'
  };
 }
 
@@ -91,7 +96,7 @@ export function enrichWeeklyProjections(snapshot,projectionRows,{weeks=null,seas
 
  const index=indexRows(projectionRows);
  const medianDefense=defenseMedians(projectionRows,season,targetWeeks);
- const imputations=[];
+ const imputations=[],availabilityAudit=[];
  let matched=0,missing=0,bye=0,total=0;
  const missingPlayers=[];
 
@@ -109,8 +114,9 @@ export function enrichWeeklyProjections(snapshot,projectionRows,{weeks=null,seas
     const peerCount=(projectionRows||[]).filter(candidate=>Number(candidate.week)===Number(week)&&Number(candidate.season??season)===Number(season)&&pos(candidate)==='DEF'&&Number.isFinite(Number(candidate.projection??candidate.projectedPoints))).length;
     const imputed=!row&&!conflictingDefense&&pos(p)==='DEF'&&peerCount>=2&&Number.isFinite(median);
     const out=imputed?{...p,projection:median,projectionStatus:'imputed-defense',projectionSource:'weekly-defense-median',projectionConfidence:0.5}:apply(p,row,week);
+    if(out.projectionStatus==='unavailable'||['QUESTIONABLE','DOUBTFUL','Q','D'].includes(normalizedStatus(out.status)))availabilityAudit.push({teamId:team.id,teamName:team.name,week,playerId:id(p),name:p.name,status:out.status,source:out.availabilitySource??'yahoo-roster',rawProjection:out.rawProjection??out.projection});
     if(imputed)imputations.push({teamId:team.id,teamName:team.name,week,playerId:id(p),name:p.name,projection:median,method:'weekly-defense-median'});
-    if(out.projectionStatus==='matched'||imputed)matched++;
+    if(out.projectionStatus==='matched'||out.projectionStatus==='unavailable'||imputed)matched++;
     else if(out.projectionStatus==='bye')bye++;
     else{
      missing++;
@@ -133,6 +139,6 @@ export function enrichWeeklyProjections(snapshot,projectionRows,{weeks=null,seas
 
  return {
   league:{...snapshot,teams},
-  coverage:{total,matched,bye,missing,usable:matched+bye,matchRate:total?(matched+bye)/total:0,weeks:targetWeeks,missingPlayers,imputations,imputedCount:imputations.length}
+  coverage:{total,matched,bye,missing,usable:matched+bye,matchRate:total?(matched+bye)/total:0,weeks:targetWeeks,missingPlayers,imputations,imputedCount:imputations.length,availabilityAudit,unavailableCount:availabilityAudit.filter(x=>UNAVAILABLE.has(x.status)).length}
  };
 }
