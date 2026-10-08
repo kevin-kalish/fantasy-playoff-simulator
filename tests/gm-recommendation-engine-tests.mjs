@@ -42,5 +42,8 @@ for(const seed of [88,100091]){
  assert.deepEqual(tradeResult.trade.teamBGives,['B-RB']);
  assert.ok(Number.isFinite(tradeResult.teams.A.championshipDelta));
  assert.ok(Number.isFinite(tradeResult.teams.B.championshipDelta));
+ const repeated=evaluateTradeScenario(seeded,tradeFixture,{simulations:1000,baselineResults:baseline});
+ assert.equal(repeated.teams.A.championshipDelta,tradeResult.teams.A.championshipDelta);
+ assert.equal(repeated.teams.B.championshipDelta,tradeResult.teams.B.championshipDelta);
 }
 console.log('gm-recommendation-engine-tests: all checks passed');
