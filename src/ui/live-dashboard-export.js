@@ -43,6 +43,36 @@ export function weeklyReportToDashboardV1(report) {
       impact: impact ? { win: outcome(impact.win), loss: outcome(impact.loss), simulations: Number(impact.simulations) } : null
     };
   })();
+  const gm = report.recommendations ?? {};
+  const diagnostics = gm.diagnostics ?? {};
+  const finite = value => typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const count = value => Number.isInteger(value) && value >= 0 ? value : 0;
+  const rejected = candidate => candidate && ({
+    type: ['start-sit','waiver','trade'].includes(candidate.type) ? candidate.type : 'other',
+    label: String(candidate.label ?? ''),
+    reason: String(candidate.reason ?? 'unconfirmed'),
+    explanation: String(candidate.explanation ?? ''),
+    confidence: String(candidate.confidence ?? 'unknown'),
+    playoffDelta: finite(candidate.playoffDelta),
+    championshipDelta: finite(candidate.championshipDelta),
+    winsDelta: finite(candidate.winsDelta),
+    projectedPointDelta: finite(candidate.projectedPointDelta)
+  });
+  const gmDiagnostics = {
+    evaluated: count(diagnostics.evaluatedActionCount),
+    rejected: count(diagnostics.rejectedActionCount),
+    approved: count(gm.actionCount),
+    rejectionCounts: Object.fromEntries(Object.entries(diagnostics.rejectionCounts ?? {}).filter(([reason,value]) => /^[a-z0-9-]+$/i.test(reason) && Number.isInteger(value) && value >= 0)),
+    coverageConstrained: Boolean(diagnostics.coverage?.constrained),
+    noActionExplanation: String(diagnostics.noActionExplanation ?? ''),
+    nearMisses: (diagnostics.nearMisses ?? []).slice(0,5).map(rejected),
+    bestRejectedByType: Object.fromEntries(Object.entries(diagnostics.bestRejectedByType ?? {}).filter(([type]) => ['start-sit','waiver','trade'].includes(type)).map(([type,candidate]) => [type,rejected(candidate)])),
+    confirmation: {
+      evaluated: count(gm.confirmation?.evaluatedCount),
+      passed: count(gm.confirmation?.passedCount),
+      simulations: count(gm.confirmation?.simulations)
+    }
+  };
   return {
     schemaVersion: 1,
     generatedAt: report.generatedAt,
@@ -57,6 +87,7 @@ export function weeklyReportToDashboardV1(report) {
       return {week: game.week, opponentId: String(game.opponentId), opponentName: String(game.opponentName), ...(game.winProbability == null ? {} : {winProbability: probability(game.winProbability), simulations: Number(game.simulations), projectionSource: game.projectionSource === 'direct' ? 'direct' : 'derived'}), ...(game.playoffImpact ? {playoffImpact: {ifWin: probability(game.playoffImpact.ifWin), ifLoss: probability(game.playoffImpact.ifLoss), swing: Number(game.playoffImpact.swing), ...(game.playoffImpact.championshipSwing == null ? {} : {championshipIfWin:probability(game.playoffImpact.championshipIfWin),championshipIfLoss:probability(game.playoffImpact.championshipIfLoss),championshipSwing:Number(game.playoffImpact.championshipSwing)}), simulations: Number(game.playoffImpact.simulations)}} : {})};
     }),
     recommendations: [],
+    gmDiagnostics,
     warnings: report.trust.postseason.trusted ? [] : [report.trust.postseason.reason]
   };
 }
