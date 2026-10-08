@@ -3,12 +3,12 @@ import {buildFutureWeeklyLineups,DEFAULT_SLOTS} from './lineup-optimizer.js';
 import {buildLeagueSimulationInput} from './league-simulation-input.js';
 
 const playerId=p=>String(p?.id??p?.playerId??'');
-const usableProjection=p=>p?.projectionStatus!=='missing'&&String(p?.status||'ACTIVE').toUpperCase()!=='BYE'&&Number.isFinite(Number(p?.projection));
+const usableProjection=p=>!['missing','unavailable','bye'].includes(p?.projectionStatus)&&!['OUT','O','IR','IR-R','PUP','PUP-R','SUSP','SUSPENDED','NA','INACTIVE','BYE'].includes(String(p?.status||'ACTIVE').toUpperCase())&&Number.isFinite(Number(p?.projection));
 const LONG_RANGE_RECENCY_DECAY=.8;
 const LONG_RANGE_SEASON_WEIGHT=.65;
 const LONG_RANGE_CONFIDENCE_DECAY=.94;
 const LONG_RANGE_CONFIDENCE_FLOOR=.55;
-const TRANSIENT_STATUSES=new Set(['PROBABLE','QUESTIONABLE','DOUBTFUL','OUT','BYE']);
+const TRANSIENT_STATUSES=new Set(['PROBABLE','QUESTIONABLE','DOUBTFUL','OUT','O','BYE']);
 const NAME_SUFFIXES=new Set(['jr','sr','ii','iii','iv','v']);
 const normalizeName=value=>String(value||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
 const normalizePersonName=value=>String(value||'').trim().toLowerCase().replace(/[.'’-]/g,' ').split(/\s+/).filter(Boolean).filter(part=>!NAME_SUFFIXES.has(part)).join('');
@@ -122,6 +122,6 @@ export function prepareLeagueSimulation(snapshot,projectionRows,{slots=null,week
  const incomplete=[];
  for(const team of optimized.teams||[])for(const [week,d] of Object.entries(team.lineupDiagnostics||{}))if(!d.complete)incomplete.push({teamId:team.id,teamName:team.name,week:Number(week),emptySlots:d.emptySlots,projectedPoints:d.projectedPoints});
  const input=buildLeagueSimulationInput(optimized,{calibrationReport,simulations,seed,modelVariant,minimumProjectionMatchRate});
- input.metadata={...input.metadata,currentWeek,directProjectionWeeks:directWeeks,longRangeProjectionWeeks:modeled.longRangeProjectionWeeks,longRangeProjectionMethod:modeled.longRangeProjectionMethod,longRangeRecencyDecay:modeled.longRangeRecencyDecay,longRangeSeasonWeight:modeled.longRangeSeasonWeight,longRangeConfidence:modeled.longRangeConfidence,seasonProjectionCoverage:modeled.seasonProjectionCoverage,lineupSlots:activeSlots,rosterProjectionCoverage:enriched.coverage,incompleteLineups:incomplete};
+ input.metadata={...input.metadata,currentWeek,directProjectionWeeks:directWeeks,longRangeProjectionWeeks:modeled.longRangeProjectionWeeks,longRangeProjectionMethod:modeled.longRangeProjectionMethod,longRangeRecencyDecay:modeled.longRangeRecencyDecay,longRangeSeasonWeight:modeled.longRangeSeasonWeight,longRangeConfidence:modeled.longRangeConfidence,seasonProjectionCoverage:modeled.seasonProjectionCoverage,lineupSlots:activeSlots,rosterProjectionCoverage:enriched.coverage,availabilityAudit:enriched.coverage.availabilityAudit,incompleteLineups:incomplete};
  return {league:optimized,input,diagnostics:{currentWeek,directProjectionWeeks:directWeeks,longRangeProjectionWeeks:modeled.longRangeProjectionWeeks,longRangeProjectionMethod:modeled.longRangeProjectionMethod,longRangeRecencyDecay:modeled.longRangeRecencyDecay,longRangeSeasonWeight:modeled.longRangeSeasonWeight,longRangeConfidence:modeled.longRangeConfidence,seasonProjectionCoverage:modeled.seasonProjectionCoverage,lineupSlots:activeSlots,projectionCoverage:enriched.coverage,incompleteLineups:incomplete}};
 }
