@@ -52,3 +52,27 @@ export function forecastRemainingMatchups(input,{teamId,week,simulations=1000}={
      projectionSource:direct.has(targetWeek)?'direct':'derived'};
    }));
 }
+
+/** Conditional qualification impact of each future scheduled result.
+ * Uses common seeded simulations for baseline, forced win and forced loss.
+ * Scores are scenario estimates; do not interpret as causal guarantees.
+ */
+export function rankRemainingMatchupImpact(input,{teamId,week,simulations=500,baselineResults=null}={}){
+ const n=Math.max(1,Math.min(2000,Math.floor(Number(simulations)||500)));
+ const baseline=focus(baselineResults??simulateLeague({...input,simulations:n}),teamId);
+ if(!baseline)throw new Error('Missing baseline team');
+ const forecasts=forecastRemainingMatchups(input,{teamId,week,simulations:Math.min(n,1000)});
+ const impacts=forecasts.map(game=>{
+  const row=(input.schedule??[]).find(entry=>Number(entry.week)===game.week);
+  const pair=row?.matchups?.find(ids=>ids.some(id=>String(id)===String(teamId))&&ids.some(id=>String(id)===game.opponentId));
+  if(!pair)throw new Error('Missing schedule pair');
+  const win=focus(simulateLeague({...forceWinner(input,game.week,pair,teamId),simulations:n}),teamId);
+  const loss=focus(simulateLeague({...forceWinner(input,game.week,pair,game.opponentId),simulations:n}),teamId);
+  return {...game,playoffImpact:{
+   ifWin:win.playoffProbability,ifLoss:loss.playoffProbability,
+   swing:win.playoffProbability-loss.playoffProbability,
+   simulations:n
+  }};
+ });
+ return impacts.sort((a,b)=>b.playoffImpact.swing-a.playoffImpact.swing||a.week-b.week);
+}
