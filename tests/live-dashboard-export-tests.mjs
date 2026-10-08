@@ -19,6 +19,10 @@ const scheduled = {...report, remainingSchedule:[{week:6,opponentId:'A',opponent
 assert.deepEqual(weeklyReportToDashboardV1(scheduled).remainingSchedule,[{week:6,opponentId:'A',opponentName:'Alpha'}]);
 const forecasted={...report,remainingSchedule:[{week:6,opponentId:'A',opponentName:'Alpha',winProbability:.65,simulations:1000,projectionSource:'derived'}]};
 assert.equal(weeklyReportToDashboardV1(forecasted).remainingSchedule[0].winProbability,.65);
+const impacted={...forecasted,remainingSchedule:[{...forecasted.remainingSchedule[0],playoffImpact:{ifWin:.8,ifLoss:.5,swing:.3,simulations:500,secret:'hidden'}}]};
+assert.equal(weeklyReportToDashboardV1(impacted).remainingSchedule[0].playoffImpact.swing,.3);
+assert.doesNotMatch(JSON.stringify(weeklyReportToDashboardV1(impacted)),/hidden/);
+assert.throws(()=>weeklyReportToDashboardV1({...impacted,remainingSchedule:[{...impacted.remainingSchedule[0],playoffImpact:{ifWin:1.5,ifLoss:.5,swing:1,simulations:500}}]}),/Invalid probability/);
 assert.throws(()=>weeklyReportToDashboardV1({...forecasted,remainingSchedule:[{...forecasted.remainingSchedule[0],winProbability:2}]}),/Invalid probability/);
 assert.throws(() => weeklyReportToDashboardV1({...report,remainingSchedule:[{week:6,opponentId:'missing'}]}),/Invalid remaining schedule/);
 const withMatchup = {...report, matchup: {week:5,teamId:'A',opponentId:'A',opponentName:'Alpha',simulated:{winProbability:.6,teamMean:105,opponentMean:100},impact:{win:{playoffProbability:.8,championshipProbability:.4,averageWins:6},loss:{playoffProbability:.5,championshipProbability:.2,averageWins:5},simulations:5000}}};
