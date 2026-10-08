@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import {buildWeeklyGMRecommendations} from '../src/model/gm-recommendation-engine.js';
+import {evaluateTradeScenario} from '../src/model/trade-evaluator.js';
+import {simulateLeague} from '../src/simulator.js';
 const p=(id,name,pos,projection,slot=null)=>({id,name,position:pos,projection,...(slot?{lineupSlot:slot}:{})});
 const aq=p('A-QB','Alpha QB','QB',15),ar=p('A-RB','Alpha RB','RB',10),ab=p('A-BRB','Alpha Bench RB','RB',20),bq=p('B-QB','Bravo QB','QB',14),br=p('B-RB','Bravo RB','RB',14);
 const input={simulations:1000,seed:88,modelVariant:'baseline',lineupSlots:['QB','RB'],playoffSpots:2,playoffWeeks:[3],teams:[{id:'A',name:'Alpha',wins:2,losses:0,points:200,roster:[aq,ar,ab],weeklyLineups:{1:[p('A-QB','Alpha QB','QB',15,'QB'),p('A-RB','Alpha RB','RB',10,'RB')],2:[p('A-QB','Alpha QB','QB',15,'QB'),p('A-RB','Alpha RB','RB',10,'RB')],3:[p('A-QB','Alpha QB','QB',15,'QB'),p('A-RB','Alpha RB','RB',10,'RB')]}},{id:'B',name:'Bravo',wins:1,losses:1,points:180,roster:[bq,br],weeklyLineups:{1:[p('B-QB','Bravo QB','QB',14,'QB'),p('B-RB','Bravo RB','RB',14,'RB')],2:[p('B-QB','Bravo QB','QB',14,'QB'),p('B-RB','Bravo RB','RB',14,'RB')],3:[p('B-QB','Bravo QB','QB',14,'QB'),p('B-RB','Bravo RB','RB',14,'RB')]}}],schedule:[{week:1,matchups:[['A','B']]},{week:2,matchups:[['B','A']]}]};
@@ -30,4 +32,15 @@ assert.equal(waiverReport.recommendations[0].seedStability.missingReplications,0
 const tradeRows=[];for(const week of [1,2,3])for(const t of input.teams)for(const x of t.roster)tradeRows.push({week,playerId:x.id,projection:x.projection});
 const lopsided=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:tradeRows,startSit:false,waivers:null,trades:[{teamAId:'A',teamBId:'B',teamAGives:['A-RB'],teamBGives:['B-RB'],projectionRows:tradeRows,label:'Lopsided trade'}]},{confirmationSimulations:0});
 assert.equal(lopsided.actionCount,0);assert.equal(lopsided.diagnostics.rejectionCounts['unrealistic-counterparty'],1);assert.equal(lopsided.diagnostics.bestRejectedByType.trade.tradeFeasibility?.status??lopsided.diagnostics.bestRejectedByType.trade.reason,'unrealistic-counterparty');
+const tradeFixture={teamAId:'A',teamBId:'B',teamAGives:['A-RB'],teamBGives:['B-RB'],projectionRows:tradeRows,label:'Lopsided trade'};
+for(const seed of [88,100091]){
+ const seeded={...input,seed},baseline=simulateLeague({...seeded,simulations:1000});
+ const tradeResult=evaluateTradeScenario(seeded,tradeFixture,{simulations:1000,baselineResults:baseline});
+ assert.equal(tradeResult.trade.teamAId,'A');
+ assert.equal(tradeResult.trade.teamBId,'B');
+ assert.deepEqual(tradeResult.trade.teamAGives,['A-RB']);
+ assert.deepEqual(tradeResult.trade.teamBGives,['B-RB']);
+ assert.ok(Number.isFinite(tradeResult.teams.A.championshipDelta));
+ assert.ok(Number.isFinite(tradeResult.teams.B.championshipDelta));
+}
 console.log('gm-recommendation-engine-tests: all checks passed');
