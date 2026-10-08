@@ -86,9 +86,22 @@ export function buildWeeklyGMRecommendations(input,{teamId,week,projectionRows=[
  if(replicationCount&&ranked.length){
   const target=ranked[0],samples=[target],baseSeed=Number(input.seed??2026);
   for(let i=1;i<=replicationCount;i++){
-   const alternate={...input,seed:baseSeed+i*100003};
-   const result=buildWeeklyGMRecommendations(alternate,{teamId,week,projectionRows,waivers,trades,startSit,limit:Math.max(limit,20),validation,leverage},{...options,replicateTopRecommendationSeeds:0,baselineResults:undefined});
-   const matched=result.recommendations.find(r=>r.type===target.type&&r.label===target.label);
+   const alternate={...input,seed:baseSeed+i*100003},baseline=simulateLeague({...alternate,simulations:target.simulations}),replicaOptions={...options,simulations:target.simulations,baselineResults:baseline};
+   let matched=null;
+   try{
+    if(target.type==='start-sit'){
+     const d=target.details;
+     const evaluated=evaluateStartSitChoices(alternate,{teamId,week,projectionRows,choices:[{slot:d.slot,startPlayerId:d.startPlayerId,startPlayerName:d.startPlayerName,sitPlayerId:d.sitPlayerId,sitPlayerName:d.sitPlayerName,projectedPointDelta:d.projectedPointDelta}]},replicaOptions)[0];
+     if(evaluated)matched=actionFromStartSit(evaluated);
+    }else if(target.type==='trade'){
+     const d=target.details.trade;
+     const trade=(trades||[]).find(t=>String(t.teamAId)===String(d.teamAId)&&String(t.teamBId)===String(d.teamBId)&&JSON.stringify(t.teamAGives.map(String))===JSON.stringify(d.teamAGives)&&JSON.stringify(t.teamBGives.map(String))===JSON.stringify(d.teamBGives));
+     if(trade){const evaluated=evaluateTradeScenario(alternate,{...trade,projectionRows:trade.projectionRows??projectionRows},replicaOptions);matched=actionFromTrade(trade,evaluated,teamId);}
+    }else if(target.type==='waiver'){
+     const d=target.details,candidate=(waivers?.candidates??[]).find(p=>String(p.id??p.playerId??'')===String(d.addPlayerId));
+     if(candidate){const evaluated=rankWaiverCandidates(alternate,{teamId,candidates:[candidate],dropPlayerIds:[d.dropPlayerId??null],projectionRows,weeks:waivers.weeks,lineupSlots:waivers.lineupSlots,week},replicaOptions);const exact=evaluated.find(r=>String(r.addPlayerId)===String(d.addPlayerId)&&String(r.dropPlayerId??'')===String(d.dropPlayerId??''));if(exact)matched=actionFromWaiver(exact);}
+    }
+   }catch(error){if(options.throwOnInvalid)throw error}
    if(matched)samples.push(matched);
   }
   target.seedStability=assessReplicatedRecommendationSignal(samples);
