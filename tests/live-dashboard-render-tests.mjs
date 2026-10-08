@@ -10,7 +10,7 @@ const payload = {
     {id: 'B', name: 'Bravo', record: {wins: 2, losses: 2, ties: 0}, currentSeed: 2, averageWins: 6.1, playoffProbability: .6, championshipProbability: .1}
   ]
 };
-payload.remainingSchedule = [{week:6,opponentName:'Bravo',opponentId:'B'}];
+payload.remainingSchedule = [{week:6,opponentName:'Bravo',opponentId:'B',winProbability:.65,projectionSource:'derived',simulations:1000}];
 payload.matchup = {week:5,opponentName:'Bravo',winProbability:.6,simulatedMean:105,opponentMean:100,impact:{win:{playoffProbability:.8},loss:{playoffProbability:.5},simulations:5000}};
 const root = {innerHTML: '', querySelector() {return {set innerHTML(value) {root.detailHTML=value;}};}};
 renderDashboardV1(root, payload);
@@ -19,6 +19,8 @@ assert.match(root.innerHTML, /30.0 pp/);
 assert.match(root.innerHTML, /Week 5 matchup/);
 assert.match(root.innerHTML, /Remaining schedule/);
 assert.match(root.innerHTML, /Week 6/);
+assert.match(root.innerHTML, /65.0%/);
+assert.match(root.innerHTML, /derived/);
 assert.match(root.innerHTML, /PROVISIONAL/);
 assert.match(root.innerHTML, /&lt;Alpha&gt;/);
 assert.doesNotMatch(root.innerHTML, /<Alpha>/);
