@@ -10,7 +10,8 @@ assert.equal(report.diagnostics.readinessCounts.REVIEW_REQUIRED,1);assert.ok(rep
 const replicated=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:rows,startSit:{slot:'RB'},trades:[],waivers:null},{replicateTopRecommendationSeeds:1});
 assert.equal(replicated.recommendations[0].seedStability.requestedReplications,2);
 assert.ok(replicated.diagnostics.timing.seedReplicationSeconds>=0);
-assert.equal(replicated.recommendations[0].seedStability.missingReplications,2-replicated.recommendations[0].seedStability.replications);
+assert.equal(replicated.recommendations[0].seedStability.missingReplications,0);
+assert.equal(replicated.recommendations[0].seedStability.replications,2);
 assert.ok(['CONSISTENT_POSITIVE','CONSISTENT_NEGATIVE','MIXED_OR_INCONCLUSIVE','INSUFFICIENT_REPLICATIONS'].includes(replicated.recommendations[0].seedStability.status));
 const noneRows=[{week:1,playerId:'A-RB',projection:10},{week:1,playerId:'A-BRB',projection:5}];
 const none=buildWeeklyGMRecommendations(input,{teamId:'A',week:1,projectionRows:noneRows,startSit:{slot:'RB',choices:[{slot:'RB',startPlayerId:'A-BRB',sitPlayerId:'A-RB',startPlayerName:'Alpha Bench RB',sitPlayerName:'Alpha RB',projectedPointDelta:-5}]},trades:[],waivers:null});
