@@ -1,0 +1,19 @@
+import assert from 'node:assert/strict';
+import { weeklyReportToDashboardV1 } from '../src/ui/live-dashboard-export.js';
+const report = {
+  schemaVersion: 11, generatedAt: '2026-10-08T14:00:00Z',
+  team: { id: 'A' },
+  league: { playoffSpots: 1, outlook: [{ id: 'A', name: 'Alpha', record: { wins: 2, losses: 1, ties: 0 }, currentSeed: 1, playoffProbability: 0.7, championshipProbability: 0.3, averageWins: 5.4, remainingGames: 4, seedDistribution: [{ seed: 1, probability: 0.7 }] }] },
+  outlook: { simulations: 50000, seed: 123 },
+  trust: { trusted: true, projections: { directWeeks: [5, 6], longRangeWeeks: [7] }, postseason: { trusted: false, reason: 'Derived playoff projections' } }
+};
+const payload = weeklyReportToDashboardV1(report);
+assert.equal(payload.schemaVersion, 1);
+assert.equal(payload.model.championshipStatus, 'provisional');
+assert.equal(payload.teams[0].playoffProbability, 0.7);
+assert.deepEqual(payload.recommendations, []);
+assert.deepEqual(payload.model.directWeeks, [5, 6]);
+assert.throws(() => weeklyReportToDashboardV1({ ...report, trust: { ...report.trust, trusted: false } }), /Untrusted/);
+assert.throws(() => weeklyReportToDashboardV1({ ...report, league: { ...report.league, outlook: [{ ...report.league.outlook[0], playoffProbability: 1.1 }] } }), /Invalid probability/);
+assert.throws(() => weeklyReportToDashboardV1({ ...report, league: { ...report.league, outlook: [report.league.outlook[0], report.league.outlook[0]] } }), /Duplicate team IDs/);
+console.log('live-dashboard-export-tests: all checks passed');
