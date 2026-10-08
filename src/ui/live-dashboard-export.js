@@ -54,7 +54,7 @@ export function weeklyReportToDashboardV1(report) {
     matchup: matchup ?? null,
     remainingSchedule: (report.remainingSchedule ?? []).map(game => {
       if (!Number.isInteger(game.week) || !teams.some(team => team.id === String(game.opponentId))) throw new Error('Invalid remaining schedule');
-      return {week: game.week, opponentId: String(game.opponentId), opponentName: String(game.opponentName)};
+      return {week: game.week, opponentId: String(game.opponentId), opponentName: String(game.opponentName), ...(game.winProbability == null ? {} : {winProbability: probability(game.winProbability), simulations: Number(game.simulations), projectionSource: game.projectionSource === 'direct' ? 'direct' : 'derived'})};
     }),
     recommendations: [],
     warnings: report.trust.postseason.trusted ? [] : [report.trust.postseason.reason]
