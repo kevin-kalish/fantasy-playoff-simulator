@@ -13,9 +13,9 @@ const weekArg=process.argv[3]?Number(process.argv[3]):undefined;
 const focusTeamArg=process.argv[4]??process.env.FOCUS_TEAM_NAME;
 const configPath='config/fightin-kali-2026.json';
 const fail=m=>{console.error(`WEEKLY REFRESH: FAIL; ${m}`);process.exit(2)};
-if(!fs.existsSync(snapshotPath)) fail(`snapshot not found: ${snapshotPath}`);
+// A live API refresh can bootstrap the private snapshot; a stale file is not a prerequisite.
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8'));
-let snapshot=read(snapshotPath);const config=read(configPath);const runConfig=focusTeamArg?{...config,teamName:focusTeamArg,teamAliases:[focusTeamArg]}:config;
+let snapshot=fs.existsSync(snapshotPath)?read(snapshotPath):null;const config=read(configPath);const runConfig=focusTeamArg?{...config,teamName:focusTeamArg,teamAliases:[focusTeamArg]}:config;
 const slug=s=>String(s??'team').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 let yahooAuth;
 try{yahooAuth=await resolveYahooAccessToken();}catch(error){yahooAuth={accessToken:null,source:'unavailable',reason:error.message};}
@@ -23,14 +23,14 @@ let get=null,leagueKey=null,sourceAudit=null;
 if(yahooAuth.accessToken){
  try{
   get=createYahooClient({accessToken:yahooAuth.accessToken});
-  leagueKey=process.env.YAHOO_LEAGUE_KEY??snapshot.source?.leagueKey??config.leagueKey;
+  leagueKey=process.env.YAHOO_LEAGUE_KEY??snapshot?.source?.leagueKey??config.leagueKey;
   if(!leagueKey){
    const leagues=await discoverYahooNflLeagues(get,{season:config.season});
    const configuredLeagueId=String(process.env.YAHOO_LEAGUE_ID??config.leagueId??'');
    const matching=leagues.filter(x=>String(x.leagueId??x.leagueKey?.split('.').at(-1))===configuredLeagueId);
    if(matching.length===1)leagueKey=matching[0].leagueKey;else if(leagues.length===1)leagueKey=leagues[0].leagueKey;else throw new Error(`Could not uniquely discover Yahoo league ${configuredLeagueId}.`);
   }
-  const liveWeek=weekArg??Number(process.env.WEEK??snapshot.currentWeek??snapshot.source?.currentWeek??1);
+  const liveWeek=weekArg??Number(process.env.WEEK??snapshot?.currentWeek??snapshot?.source?.currentWeek??1);
   const referencePath=process.env.YAHOO_REFERENCE??'fixtures/yahoo-reference-2026-week3.json';
   if(fs.existsSync(referencePath)){
    const reference=read(referencePath);
@@ -47,8 +47,11 @@ if(yahooAuth.accessToken){
   snapshot.source={...snapshot.source,leagueKey,currentWeek:liveWeek};snapshot.currentWeek=liveWeek;
   fs.mkdirSync('data/private',{recursive:true});fs.writeFileSync(snapshotPath,JSON.stringify(snapshot,null,2)+'\n');
   console.error(`YAHOO STATE: refreshed ${snapshot.teams.length} teams and ${snapshot.schedule.length} remaining schedule weeks for week ${liveWeek}.`);
- }catch(error){console.error(`YAHOO STATE: unavailable; ${error.message}; using existing snapshot.`);}
+ }catch(error){fail(`Yahoo API refresh or reconciliation failed: ${error.message}. Refusing to simulate stale league data.`);}
 }
+if(!yahooAuth.accessToken)fail(`Yahoo authentication unavailable: ${yahooAuth.reason??'no access token'}. Refusing to simulate stale league data.`);
+if(!sourceAudit?.passed)fail('Live Yahoo reconciliation is required before simulation; configure YAHOO_REFERENCE and rerun.');
+if(!snapshot)fail('Yahoo API did not produce a league snapshot.');
 let plan;try{const outputPath=focusTeamArg?`data/private/${slug(focusTeamArg)}-week-${weekArg??Number(process.env.WEEK??snapshot.currentWeek??snapshot.source?.currentWeek??1)}-report.json`:undefined;plan=buildWeeklyRefreshPlan(snapshot,runConfig,{week:weekArg,outputPath});}catch(e){fail(e.message)}
 if(sourceAudit)plan.sourceAudit=sourceAudit;
 plan.tradeDiscovery={enabled:true,maxPartners:Number(process.env.TRADE_MAX_PARTNERS??9),maxPlayersPerTeam:Number(process.env.TRADE_MAX_PLAYERS_PER_TEAM??7),maxScenarios:Number(process.env.TRADE_MAX_SCENARIOS??24),valueTolerance:Number(process.env.TRADE_VALUE_TOLERANCE??.35),includePackages:process.env.TRADE_INCLUDE_PACKAGES!=='false'};
