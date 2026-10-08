@@ -62,12 +62,13 @@ export function rankRemainingMatchupImpact(input,{teamId,week,simulations=500,ba
  const baseline=focus(baselineResults??simulateLeague({...input,simulations:n}),teamId);
  if(!baseline)throw new Error('Missing baseline team');
  const forecasts=forecastRemainingMatchups(input,{teamId,week,simulations:Math.min(n,1000)});
+ const teamsById=new Map(input.teams.map(team=>[String(team.id),team]));
  const impacts=forecasts.map(game=>{
   const row=(input.schedule??[]).find(entry=>Number(entry.week)===game.week);
   const pair=row?.matchups?.find(ids=>ids.some(id=>String(id)===String(teamId))&&ids.some(id=>String(id)===game.opponentId));
   if(!pair)throw new Error('Missing schedule pair');
-  const win=focus(simulateLeague({...forceWinner(input,game.week,pair,input.teams.find(t=>String(t.id)===String(teamId)).id),simulations:n}),teamId);
-  const loss=focus(simulateLeague({...forceWinner(input,game.week,pair,input.teams.find(t=>String(t.id)===game.opponentId).id),simulations:n}),teamId);
+  const win=focus(simulateLeague({...forceWinner(input,game.week,pair,teamsById.get(String(teamId)).id),simulations:n}),teamId);
+  const loss=focus(simulateLeague({...forceWinner(input,game.week,pair,teamsById.get(game.opponentId).id),simulations:n}),teamId);
   return {...game,playoffImpact:{
    ifWin:win.playoffProbability,ifLoss:loss.playoffProbability,
    swing:win.playoffProbability-loss.playoffProbability,
