@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {buildWeeklyGMRecommendations} from '../src/model/gm-recommendation-engine.js';
 import {evaluateTradeScenario} from '../src/model/trade-evaluator.js';
+import {evaluateStartSitChoices} from '../src/model/start-sit-evaluator.js';
+import {rankWaiverCandidates} from '../src/model/waiver-ranker.js';
 import {simulateLeague} from '../src/simulator.js';
 const p=(id,name,pos,projection,slot=null)=>({id,name,position:pos,projection,...(slot?{lineupSlot:slot}:{})});
 const aq=p('A-QB','Alpha QB','QB',15),ar=p('A-RB','Alpha RB','RB',10),ab=p('A-BRB','Alpha Bench RB','RB',20),bq=p('B-QB','Bravo QB','QB',14),br=p('B-RB','Bravo RB','RB',14);
@@ -46,4 +48,22 @@ for(const seed of [88,100091]){
  assert.equal(repeated.teams.A.championshipDelta,tradeResult.teams.A.championshipDelta);
  assert.equal(repeated.teams.B.championshipDelta,tradeResult.teams.B.championshipDelta);
 }
+
+// Nonzero outcome regression: an improved week-one starter must change a modeled outcome,
+// and the selected-action evaluation must agree with the independent seeded baseline.
+const nonzeroInput={...input,seed:2401,simulations:2000};
+const nonzeroBaseline=simulateLeague(nonzeroInput);
+const nonzeroChoice={slot:'RB',startPlayerId:'A-BRB',startPlayerName:'Alpha Bench RB',sitPlayerId:'A-RB',sitPlayerName:'Alpha RB',projectedPointDelta:10};
+const nonzeroStart=evaluateStartSitChoices(nonzeroInput,{teamId:'A',week:1,projectionRows:rows,choices:[nonzeroChoice]},{simulations:2000,baselineResults:nonzeroBaseline})[0];
+assert.ok([nonzeroStart.winsDelta,nonzeroStart.playoffDelta,nonzeroStart.championshipDelta].some(x=>Math.abs(x)>1e-9),'Strong starter upgrade should change a simulated outcome');
+const nonzeroRepeat=evaluateStartSitChoices(nonzeroInput,{teamId:'A',week:1,projectionRows:rows,choices:[nonzeroChoice]},{simulations:2000,baselineResults:nonzeroBaseline})[0];
+for(const key of ['winsDelta','playoffDelta','championshipDelta'])assert.equal(nonzeroRepeat[key],nonzeroStart[key]);
+
+// Verify the exact waiver transaction, not just that a recommendation was ranked.
+const waiverBaseline=simulateLeague({...input,seed:100091,simulations:1000});
+const waiverReplica=rankWaiverCandidates({...input,seed:100091},{teamId:'A',candidates:[waiverCandidate],dropPlayerIds:['A-QB'],projectionRows:rows,week:1},{simulations:1000,baselineResults:waiverBaseline});
+assert.equal(waiverReplica[0].addPlayerId,waiverReport.recommendations[0].details.addPlayerId);
+assert.equal(waiverReplica[0].dropPlayerId,waiverReport.recommendations[0].details.dropPlayerId);
+assert.ok(Number.isFinite(waiverReplica[0].championshipDelta));
+
 console.log('gm-recommendation-engine-tests: all checks passed');
