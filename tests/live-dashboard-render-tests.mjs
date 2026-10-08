@@ -26,7 +26,8 @@ assert.match(root.innerHTML, /derived/);
 const closePayload={...payload,remainingSchedule:[payload.remainingSchedule[0],{...payload.remainingSchedule[0],week:7,playoffImpact:{ifWin:.79,ifLoss:.50,swing:.29,simulations:500}}]};
 renderDashboardV1(root,closePayload);
 assert.match(root.innerHTML,/Close playoff rankings: 2 games/);
-assert.match(root.innerHTML,/95% Monte Carlo error bound/);
+assert.match(root.innerHTML,/simultaneous 95% Monte Carlo error bounds/);
+assert.match(root.innerHTML,/pairwise screen/);
 const championshipRanked={...payload,remainingSchedule:[
  {...payload.remainingSchedule[0],week:8,opponentName:'Low title impact',playoffImpact:{...payload.remainingSchedule[0].playoffImpact,championshipSwing:.02}},
  {...payload.remainingSchedule[0],week:9,opponentName:'High title impact',playoffImpact:{...payload.remainingSchedule[0].playoffImpact,swing:.10,championshipSwing:.15}}
