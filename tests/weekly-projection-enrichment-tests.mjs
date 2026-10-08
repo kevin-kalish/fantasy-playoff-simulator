@@ -40,4 +40,10 @@ assert.equal(ramsOut.coverage.matched,1,'LAR roster should match LA projection t
 assert.equal(ramsOut.coverage.missing,0);
 assert.equal(ramsOut.league.teams[0].weeklyRosters[11][0].projection,7.25);
 
+const patriotsSnapshot={source:{season:2025},teams:[{id:'NE',name:'NE',roster:[{id:'yahoo-ne',name:'Patriots',position:'DEF',nflTeam:'NE'}]}],schedule:[{week:11,matchups:[]}],playoffWeeks:[]};
+for(const providerTeam of ['NEP','NWE']){
+ const result=enrichWeeklyProjections(patriotsSnapshot,[{season:2025,week:11,playerId:'provider-ne',name:'New England Patriots',position:'DST',nflTeam:providerTeam,projection:7.5}]);
+ assert.equal(result.coverage.matched,1,`Patriots DEF should match provider team ${providerTeam}`);
+ assert.equal(result.league.teams[0].weeklyRosters[11][0].projection,7.5);
+}
 console.log('weekly-projection-enrichment-tests: all checks passed');
