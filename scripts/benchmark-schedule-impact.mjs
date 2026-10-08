@@ -18,7 +18,7 @@ const schedule=Array.from({length:lastWeek-firstWeek+1},(_,j)=>{
  for(let i=0;i<teamCount/2;i++)matchups.push([rotation[i],rotation[teamCount-1-i]]);
  return {week:firstWeek+j,matchups};
 });
-const input={teams,schedule,playoffSpots:8,playoffWeeks:[15,16,17],simulations,seed:2026,modelVariant:'baseline',tiebreaker:'points',metadata:{directProjectionWeeks:[8],longRangeProjectionWeeks:[9,10,11,12,13,14]}};
+const input={teams,schedule,playoffSpots:8,playoffWeeks:[15,16,17],simulations,seed:2026,modelVariant:'correlated',tiebreaker:'points',metadata:{directProjectionWeeks:[8],longRangeProjectionWeeks:[9,10,11,12,13,14]}};
 const measure=fn=>{const start=performance.now(),result=fn();return {ms:Math.round(performance.now()-start),result};};
 const forecasts=measure(()=>forecastRemainingMatchups(input,{teamId:focusTeam,week:firstWeek,simulations}));
 const impact=measure(()=>rankRemainingMatchupImpact(input,{teamId:focusTeam,week:firstWeek,simulations}));
@@ -29,7 +29,7 @@ const ranges=impact.result.map(g=>{const values=[byWeek.get(g.week),...stability
 const topWeekAgreement=stability.result.filter(run=>run[0].week===impact.result[0].week).length;
 const nonZeroSwings=impact.result.filter(g=>Math.abs(g.playoffImpact.swing)>1e-9).length;
 const informative=nonZeroSwings>0;
-if(!informative)console.error('WARNING: No nonzero playoff swings; ranking agreement is uninformative.');
+if(!informative)throw new Error('Benchmark invalid: no nonzero playoff swings; check fixture and model variant.');
 
 if(impact.result.length!==7||impact.result.some(g=>!Number.isFinite(g.playoffImpact.swing)))throw new Error('Invalid impact output');
 console.log(JSON.stringify({benchmark:'synthetic-10-team',simulations,matchups:impact.result.length,focusTeam,nonZeroSwings,informative,forecastMs:forecasts.ms,impactMs:impact.ms,rankedWeeks:impact.result.map(g=>g.week),stability:{replications:4,additionalMs:stability.ms,topWeekAgreement:informative?topWeekAgreement+1:null,topWeekTotal:4,largestSwingRange:Math.max(...ranges.map(x=>x.range)),byWeek:ranges}},null,2));
