@@ -10,13 +10,15 @@ const payload = {
     {id: 'B', name: 'Bravo', record: {wins: 2, losses: 2, ties: 0}, currentSeed: 2, averageWins: 6.1, playoffProbability: .6, championshipProbability: .1}
   ]
 };
-const root = {innerHTML: ''};
+const root = {innerHTML: '', querySelector() {return {set innerHTML(value) {root.detailHTML=value;}};}};
 renderDashboardV1(root, payload);
 assert.match(root.innerHTML, /80\.0%/);
 assert.match(root.innerHTML, /PROVISIONAL/);
 assert.match(root.innerHTML, /&lt;Alpha&gt;/);
 assert.doesNotMatch(root.innerHTML, /<Alpha>/);
 assert.match(root.innerHTML, /Bravo/);
+assert.match(root.detailHTML, /Seed probabilities/);
+assert.match(root.detailHTML, /Starting lineup/);
 assert.throws(() => renderDashboardV1(root, {...payload, schemaVersion: 99}), /Unsupported/);
 assert.throws(() => renderDashboardV1(root, {...payload, league: {userTeamId: 'missing'}}), /Focus team missing/);
 console.log('live-dashboard-render-tests: all checks passed');
