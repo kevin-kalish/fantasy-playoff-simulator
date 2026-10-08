@@ -25,7 +25,14 @@ assert.match(root.innerHTML, /Championship swing 10.0 pp/);
 assert.match(root.innerHTML, /derived/);
 const closePayload={...payload,remainingSchedule:[payload.remainingSchedule[0],{...payload.remainingSchedule[0],week:7,playoffImpact:{ifWin:.79,ifLoss:.50,swing:.29,simulations:500}}]};
 renderDashboardV1(root,closePayload);
-assert.match(root.innerHTML,/Close rankings: 2 games/);
+assert.match(root.innerHTML,/Close playoff rankings: 2 games/);
+const championshipRanked={...payload,remainingSchedule:[
+ {...payload.remainingSchedule[0],week:8,opponentName:'Low title impact',playoffImpact:{...payload.remainingSchedule[0].playoffImpact,championshipSwing:.02}},
+ {...payload.remainingSchedule[0],week:9,opponentName:'High title impact',playoffImpact:{...payload.remainingSchedule[0].playoffImpact,swing:.10,championshipSwing:.15}}
+]};
+renderDashboardV1(root,championshipRanked);
+assert.ok(root.innerHTML.indexOf('High title impact')<root.innerHTML.indexOf('Low title impact'));
+assert.match(root.innerHTML,/ranked by conditional championship-probability swing/);
 assert.match(root.innerHTML,/not a confidence interval/);
 assert.match(root.innerHTML, /PROVISIONAL/);
 assert.match(root.innerHTML, /&lt;Alpha&gt;/);
