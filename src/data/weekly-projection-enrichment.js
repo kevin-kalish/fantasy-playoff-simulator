@@ -72,7 +72,7 @@ function defenseMedians(rows,season,weeks){
 const UNAVAILABLE=new Set(['OUT','O','IR','IR-R','PUP','PUP-R','SUSP','SUSPENDED','NA','INACTIVE']);
 const normalizedStatus=s=>String(s||'').trim().toUpperCase();
 function apply(p,row,week){
- if(!row)return {...p,projection:null,projectionStatus:'missing'};
+ if(!row){const status=normalizedStatus(p.status);return UNAVAILABLE.has(status)?{...p,status,projection:0,projectionStatus:'unavailable',availabilitySource:'yahoo-roster',rawProjection:null}:{...p,projection:null,projectionStatus:'missing'};}
  const rosterStatus=normalizedStatus(p.status),providerStatus=normalizedStatus(row.status);
  const unavailable=UNAVAILABLE.has(rosterStatus)||UNAVAILABLE.has(providerStatus);
  const status=unavailable?(UNAVAILABLE.has(rosterStatus)?rosterStatus:providerStatus):(rosterStatus&&rosterStatus!=='ACTIVE'?rosterStatus:providerStatus||'ACTIVE');
