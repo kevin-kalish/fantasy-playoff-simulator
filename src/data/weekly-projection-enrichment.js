@@ -61,6 +61,14 @@ function find(index,p,season,week){
   ||null;
 }
 
+function defenseMedians(rows,season,weeks){
+ const medians=new Map();
+ for(const week of weeks){
+  const values=(rows||[]).filter(r=>Number(r.week)===Number(week)&&Number(r.season??season)===Number(season)&&pos(r)==='DEF'&&Number.isFinite(Number(r.projection??r.projectedPoints))).map(r=>Number(r.projection??r.projectedPoints)).sort((a,b)=>a-b);
+  if(values.length)medians.set(week,values.length%2?values[(values.length-1)/2]:(values[values.length/2-1]+values[values.length/2])/2);
+ }
+ return medians;
+}
 function apply(p,row,week){
  if(!row)return {...p,projection:null,projectionStatus:'missing'};
  const status=String(row.status??p.status??'ACTIVE').toUpperCase();
@@ -82,6 +90,8 @@ export function enrichWeeklyProjections(snapshot,projectionRows,{weeks=null,seas
  ])].filter(Number.isInteger).sort((a,b)=>a-b);
 
  const index=indexRows(projectionRows);
+ const medianDefense=defenseMedians(projectionRows,season,targetWeeks);
+ const imputations=[];
  let matched=0,missing=0,bye=0,total=0;
  const missingPlayers=[];
 
@@ -94,8 +104,11 @@ export function enrichWeeklyProjections(snapshot,projectionRows,{weeks=null,seas
    const enriched=base.map(p=>{
     total++;
     const row=find(index,p,season,week);
-    const out=apply(p,row,week);
-    if(out.projectionStatus==='matched')matched++;
+    const median=medianDefense.get(week);
+    const imputed=!row&&pos(p)==='DEF'&&Number.isFinite(median);
+    const out=imputed?{...p,projection:median,projectionStatus:'imputed-defense',projectionSource:'weekly-defense-median',projectionConfidence:0.5}:apply(p,row,week);
+    if(imputed)imputations.push({teamId:team.id,teamName:team.name,week,playerId:id(p),name:p.name,projection:median,method:'weekly-defense-median'});
+    if(out.projectionStatus==='matched'||imputed)matched++;
     else if(out.projectionStatus==='bye')bye++;
     else{
      missing++;
@@ -118,6 +131,6 @@ export function enrichWeeklyProjections(snapshot,projectionRows,{weeks=null,seas
 
  return {
   league:{...snapshot,teams},
-  coverage:{total,matched,bye,missing,usable:matched+bye,matchRate:total?(matched+bye)/total:0,weeks:targetWeeks,missingPlayers}
+  coverage:{total,matched,bye,missing,usable:matched+bye,matchRate:total?(matched+bye)/total:0,weeks:targetWeeks,missingPlayers,imputations,imputedCount:imputations.length}
  };
 }
