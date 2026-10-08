@@ -21,6 +21,9 @@ const forecasted={...report,remainingSchedule:[{week:6,opponentId:'A',opponentNa
 assert.equal(weeklyReportToDashboardV1(forecasted).remainingSchedule[0].winProbability,.65);
 const impacted={...forecasted,remainingSchedule:[{...forecasted.remainingSchedule[0],playoffImpact:{ifWin:.8,ifLoss:.5,swing:.3,simulations:500,secret:'hidden'}}]};
 assert.equal(weeklyReportToDashboardV1(impacted).remainingSchedule[0].playoffImpact.swing,.3);
+const titleImpacted={...impacted,remainingSchedule:[{...impacted.remainingSchedule[0],playoffImpact:{...impacted.remainingSchedule[0].playoffImpact,championshipIfWin:.4,championshipIfLoss:.2,championshipSwing:.2,secret:'hidden'}}]};
+assert.equal(weeklyReportToDashboardV1(titleImpacted).remainingSchedule[0].playoffImpact.championshipSwing,.2);
+assert.doesNotMatch(JSON.stringify(weeklyReportToDashboardV1(titleImpacted)),/hidden/);
 assert.doesNotMatch(JSON.stringify(weeklyReportToDashboardV1(impacted)),/hidden/);
 assert.throws(()=>weeklyReportToDashboardV1({...impacted,remainingSchedule:[{...impacted.remainingSchedule[0],playoffImpact:{ifWin:1.5,ifLoss:.5,swing:1,simulations:500}}]}),/Invalid probability/);
 assert.throws(()=>weeklyReportToDashboardV1({...forecasted,remainingSchedule:[{...forecasted.remainingSchedule[0],winProbability:2}]}),/Invalid probability/);
