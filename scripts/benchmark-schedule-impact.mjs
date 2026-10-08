@@ -25,11 +25,15 @@ const impact=measure(()=>rankRemainingMatchupImpact(input,{teamId:focusTeam,week
 const replicateSeeds=[2027,2028,2029];
 const stability=measure(()=>replicateSeeds.map(seed=>rankRemainingMatchupImpact(input,{teamId:focusTeam,week:firstWeek,simulations,seed})));
 const byWeek=new Map(impact.result.map(g=>[g.week,g.playoffImpact.swing]));
+const titleByWeek=new Map(impact.result.map(g=>[g.week,g.playoffImpact.championshipSwing]));
 const ranges=impact.result.map(g=>{const values=[byWeek.get(g.week),...stability.result.map(run=>run.find(x=>x.week===g.week).playoffImpact.swing)];return {week:g.week,minSwing:Math.min(...values),maxSwing:Math.max(...values),range:Math.max(...values)-Math.min(...values)};});
+const championshipRanges=impact.result.map(g=>{const values=[titleByWeek.get(g.week),...stability.result.map(run=>run.find(x=>x.week===g.week).playoffImpact.championshipSwing)];return {week:g.week,minSwing:Math.min(...values),maxSwing:Math.max(...values),range:Math.max(...values)-Math.min(...values)};});
+const championshipTopWeek=impact.result.reduce((best,g)=>g.playoffImpact.championshipSwing>best.playoffImpact.championshipSwing?g:best).week;
+const championshipTopAgreement=1+stability.result.filter(run=>run.reduce((best,g)=>g.playoffImpact.championshipSwing>best.playoffImpact.championshipSwing?g:best).week===championshipTopWeek).length;
 const topWeekAgreement=stability.result.filter(run=>run[0].week===impact.result[0].week).length;
 const nonZeroSwings=impact.result.filter(g=>Math.abs(g.playoffImpact.swing)>1e-9).length;
 const informative=nonZeroSwings>0;
 if(!informative)throw new Error('Benchmark invalid: no nonzero playoff swings; check fixture and model variant.');
 
 if(impact.result.length!==7||impact.result.some(g=>!Number.isFinite(g.playoffImpact.swing)))throw new Error('Invalid impact output');
-console.log(JSON.stringify({benchmark:'synthetic-10-team',simulations,matchups:impact.result.length,focusTeam,nonZeroSwings,informative,forecastMs:forecasts.ms,impactMs:impact.ms,rankedWeeks:impact.result.map(g=>g.week),stability:{replications:4,additionalMs:stability.ms,topWeekAgreement:informative?topWeekAgreement+1:null,topWeekTotal:4,largestSwingRange:Math.max(...ranges.map(x=>x.range)),byWeek:ranges}},null,2));
+console.log(JSON.stringify({benchmark:'synthetic-10-team',simulations,matchups:impact.result.length,focusTeam,nonZeroSwings,informative,forecastMs:forecasts.ms,impactMs:impact.ms,rankedWeeks:impact.result.map(g=>g.week),stability:{replications:4,additionalMs:stability.ms,topWeekAgreement:informative?topWeekAgreement+1:null,topWeekTotal:4,largestSwingRange:Math.max(...ranges.map(x=>x.range)),byWeek:ranges},championshipStability:{replications:4,topWeek:championshipTopWeek,topWeekAgreement:championshipTopAgreement,topWeekTotal:4,largestSwingRange:Math.max(...championshipRanges.map(x=>x.range)),byWeek:championshipRanges}},null,2));
