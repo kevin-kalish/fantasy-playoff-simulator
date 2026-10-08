@@ -28,4 +28,7 @@ const targeted=measure(()=>{
 const same=full.value.recommendations.find(r=>r.label===selected.label);
 if(!same||!targeted.value)throw new Error('Comparison could not find selected action');
 if(Math.abs(same.championshipDelta-targeted.value.championshipDelta)>1e-12)throw new Error('Targeted and full championship deltas differ');
-console.log(JSON.stringify({benchmark:'synthetic-gm-targeted-vs-full',simulations,fullRescanMs:full.ms,targetedMs:targeted.ms,ratio:targeted.ms?Number((full.ms/targeted.ms).toFixed(2)):null,championshipDelta:targeted.value.championshipDelta,scope:'Four-player synthetic RB roster, one selected start/sit action and one seed; timings are not generalizable'},null,2));
+const integrated=measure(()=>buildWeeklyGMRecommendations(input,spec,{simulations,replicateTopRecommendationSeeds:1}));
+const integratedStability=integrated.value.recommendations[0]?.seedStability;
+if(integratedStability?.replications!==2||integratedStability.missingReplications!==0)throw new Error('Integrated targeted replication did not complete');
+console.log(JSON.stringify({benchmark:'synthetic-gm-targeted-vs-full',simulations,fullRescanMs:full.ms,targetedMs:targeted.ms,integratedMs:integrated.ms,integratedExtraMs:integrated.value.diagnostics.timing.seedReplicationSeconds*1000,ratio:targeted.ms?Number((full.ms/targeted.ms).toFixed(2)):null,championshipDelta:targeted.value.championshipDelta,scope:'Four-player synthetic RB roster, one selected start/sit action and one seed; timings are not generalizable'},null,2));
