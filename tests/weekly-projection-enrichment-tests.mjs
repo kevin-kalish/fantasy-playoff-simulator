@@ -46,4 +46,14 @@ for(const providerTeam of ['NEP','NWE']){
  assert.equal(result.coverage.matched,1,`Patriots DEF should match provider team ${providerTeam}`);
  assert.equal(result.league.teams[0].weeklyRosters[11][0].projection,7.5);
 }
+const missingDefenseSnapshot={source:{season:2025},teams:[{id:'M',name:'Missing',roster:[{id:'missing-ne',name:'Patriots',position:'DEF',nflTeam:'NE'}]}],schedule:[{week:11,matchups:[]}],playoffWeeks:[]};
+const medianRows=[{season:2025,week:11,name:'Bills',position:'DST',nflTeam:'BUF',projection:6},{season:2025,week:11,name:'Rams',position:'DEF',nflTeam:'LAR',projection:10}];
+const imputed=enrichWeeklyProjections(missingDefenseSnapshot,medianRows);
+assert.equal(imputed.coverage.imputedCount,1);
+assert.equal(imputed.coverage.missing,0);
+assert.equal(imputed.coverage.imputations[0].method,'weekly-defense-median');
+assert.equal(imputed.league.teams[0].weeklyRosters[11][0].projection,8);
+assert.equal(imputed.league.teams[0].weeklyRosters[11][0].projectionStatus,'imputed-defense');
+const noDefense=enrichWeeklyProjections(missingDefenseSnapshot,[]);
+assert.equal(noDefense.coverage.missing,1,'Do not invent defense projections without a valid peer median');
 console.log('weekly-projection-enrichment-tests: all checks passed');
