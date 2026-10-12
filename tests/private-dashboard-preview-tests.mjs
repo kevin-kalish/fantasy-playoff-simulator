@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {buildPrivatePreview} from '../scripts/build-private-dashboard-preview.mjs';
+const report={readiness:{ready:true},report:{schemaVersion:11,generatedAt:'2026-10-12T12:00:00Z',team:{id:'A'},league:{playoffSpots:1,outlook:[{id:'A',name:'<\/script><img src=x onerror=alert(1)>',record:{wins:1,losses:0,ties:0},currentSeed:1,playoffProbability:.5,championshipProbability:.5,averageWins:5,seedDistribution:[]}]},outlook:{simulations:50000,seed:1},trust:{trusted:true,projections:{directWeeks:[5],longRangeWeeks:[15]},postseason:{trusted:false,reason:'Derived'}}}};
+const renderer='export function renderDashboardV1(root,payload) { root.textContent=payload.teams[0].name; }';
+const html=buildPrivatePreview(report,renderer);
+assert.match(html,/PRIVATE \/ LOCAL ONLY/);
+assert.match(html,/renderDashboardV1\(document.getElementById/);
+assert.match(html,/\\u003c\\u002fscript\\u003e/);
+assert.doesNotMatch(html,/<img src=x/);
+assert.doesNotMatch(html,/<\/script><img/);
+assert.match(html,/connect-src 'none'/);
+assert.throws(()=>buildPrivatePreview({...report,readiness:{ready:false}},renderer),/readiness/);
+assert.throws(()=>buildPrivatePreview(report,'no renderer'),/renderer missing/);
+console.log('private-dashboard-preview-tests: all checks passed');
