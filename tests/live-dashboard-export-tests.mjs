@@ -43,6 +43,8 @@ assert.throws(() => weeklyReportToDashboardV1({ ...report, league: { ...report.l
 const rejectedReport = {...report, recommendations:{actionCount:0, diagnostics:{evaluatedActionCount:42,rejectedActionCount:42,rejectionCounts:{'low-confidence':36},coverage:{constrained:true},noActionExplanation:'No confirmed actions',nearMisses:[{type:'trade',label:'Example trade',reason:'low-confidence',playoffDelta:-.008,championshipDelta:.012,secretToken:'never-publish'}],bestRejectedByType:{trade:{type:'trade',label:'Example trade',reason:'low-confidence',secretToken:'never-publish'}}},confirmation:{evaluatedCount:1,passedCount:0,simulations:20000,secretToken:'never-publish'}}};
 const rejectedPayload=weeklyReportToDashboardV1(rejectedReport);
 assert.equal(rejectedPayload.gmDiagnostics.evaluated,42);
+assert.equal(rejectedPayload.gmDiagnostics.publicationReview.evaluated,0);
+assert.equal(rejectedPayload.gmDiagnostics.publicationReview.eligible,0);
 assert.equal(rejectedPayload.gmDiagnostics.rejectionCounts['low-confidence'],36);
 assert.equal(rejectedPayload.gmDiagnostics.coverageConstrained,true);
 assert.equal(rejectedPayload.gmDiagnostics.nearMisses[0].championshipDelta,.012);
