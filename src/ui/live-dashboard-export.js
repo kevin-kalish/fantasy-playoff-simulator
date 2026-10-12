@@ -1,3 +1,4 @@
+import {reviewActionPublication} from '../model/action-publication-gate.js';
 export function weeklyReportToDashboardV1(report) {
   if (report?.schemaVersion !== 11 || !report.trust?.trusted) throw new Error('Untrusted weekly report');
   const probability = (value) => {
@@ -58,8 +59,10 @@ export function weeklyReportToDashboardV1(report) {
     winsDelta: finite(candidate.winsDelta),
     projectedPointDelta: finite(candidate.projectedPointDelta)
   });
+  const publicationReview=reviewActionPublication(report);
   const gmDiagnostics = {
     evaluated: count(diagnostics.evaluatedActionCount),
+    publicationReview: {evaluated:publicationReview.evaluated,eligible:publicationReview.eligible,withheld:publicationReview.withheld,reasons:[...new Set(publicationReview.reviews.flatMap(r=>r.reasons))]},
     rejected: count(diagnostics.rejectedActionCount),
     approved: count(gm.actionCount),
     rejectionCounts: Object.fromEntries(Object.entries(diagnostics.rejectionCounts ?? {}).filter(([reason,value]) => /^[a-z0-9-]+$/i.test(reason) && Number.isInteger(value) && value >= 0)),
