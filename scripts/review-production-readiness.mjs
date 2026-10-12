@@ -28,7 +28,10 @@ export function auditWeeklyReport(document) {
  check('postseason-direct',report?.trust?.postseason?.trusted===true,'Postseason projections remain provisional', 'warning');
  const gm=report?.recommendations??{};
  check('gm-confirmation',Number(gm.confirmation?.passedCount??0)<=Number(gm.confirmation?.evaluatedCount??0),'Confirmation counts must be consistent');
- check('live-independent-seeds',false,'Independent-seed live rerun and odds stability comparison still required','warning');
+ const seedValidation=document?.seedValidation;
+ const seedTeam=seedValidation?.teams?.find(t=>String(t.id)===String(report?.team?.id));
+ const seedPass=seedValidation?.method==='independent-seed-replication'&&seedValidation?.runCount>=3&&seedValidation?.simulationsPerRun>=50000&&seedTeam?.stability?.playoffWithinTolerance===true&&seedTeam?.stability?.championshipWithinTolerance===true;
+ check('live-independent-seeds',Boolean(seedPass),seedPass?'Three or more independent 50,000-run seeds passed sampling stability':'Independent-seed live rerun and odds stability comparison still required','warning');
  check('browser-acceptance',false,'Private live browser smoke test still required','warning');
  return {status:findings.some(x=>x.status==='FAIL')?'FAIL':findings.some(x=>x.status==='WARN')?'REVIEW_REQUIRED':'PASS',findings,summary:{passed:findings.filter(x=>x.status==='PASS').length,failed:findings.filter(x=>x.status==='FAIL').length,warnings:findings.filter(x=>x.status==='WARN').length},generatedAt:report?.generatedAt??null};
 }
