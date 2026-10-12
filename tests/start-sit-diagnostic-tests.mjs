@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {diagnoseStartSit} from '../src/model/start-sit-diagnostic.js';
+const p=(id,projection)=>({id,name:id,position:'RB',lineupSlot:'RB',projection});
+const teams=[{id:'A',name:'A',wins:1,losses:1,roster:[p('starter',10),p('bench',9)],weeklyLineups:{3:[p('starter',10)],4:[p('starter',10)]}},{id:'B',name:'B',wins:1,losses:1,roster:[p('opponent',10)],weeklyLineups:{3:[p('opponent',10)],4:[p('opponent',10)]}}];
+const input={teams,schedule:[{week:3,matchups:[['A','B']]}],playoffSpots:1,playoffWeeks:[4],simulations:1000,seed:13,modelVariant:'baseline'};
+const options={teamId:'A',week:3,startPlayerId:'bench',sitPlayerId:'starter',runs:3,simulations:500};
+const a=diagnoseStartSit(input,options),b=diagnoseStartSit(input,options);
+assert.deepEqual(a,b);
+assert.equal(a.pointDelta,-1);
+assert.equal(a.scope.futureLineupsUnchanged,true);
+assert.equal(a.runs.length,3);
+assert.equal(a.action.start,'bench');
+assert.equal(input.teams[0].weeklyLineups[3][0].id,'starter');
+assert.throws(()=>diagnoseStartSit(input,{...options,runs:1}),/runs/);
+console.log('start-sit-diagnostic-tests: all checks passed');
