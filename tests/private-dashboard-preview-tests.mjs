@@ -5,7 +5,7 @@ const renderer='export function renderDashboardV1(root,payload) { root.textConte
 const html=buildPrivatePreview(report,renderer);
 assert.match(html,/PRIVATE \/ LOCAL ONLY/);
 assert.match(html,/renderDashboardV1\(document.getElementById/);
-assert.match(html,/\\u003c\\u002fscript\\u003e/);
+assert.match(html,/\\u003c\/script\\u003e/);
 assert.doesNotMatch(html,/<img src=x/);
 assert.doesNotMatch(html,/<\/script><img/);
 assert.match(html,/connect-src 'none'/);
