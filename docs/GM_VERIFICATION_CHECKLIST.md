@@ -13,7 +13,7 @@
 2. Verify league ID, scoring categories, team count, playoff slots, playoff weeks, tiebreakers, matchup schedule and lineup slot eligibility against Yahoo.
 3. Verify every roster's player IDs, current team assignment, injury/bye status and available free agents; flag stale timestamps and duplicate players.
 4. Check projection coverage and sources for every remaining week, especially the postseason. Derived long-range projections must keep championship odds labeled PROVISIONAL.
-5. Run the league at 50,000 simulations with a fixed seed; repeat with independent seeds and compare championship/playoff odds and the top GM recommendation.
+5. Run the league at 50,000 simulations with a fixed seed; repeat with independent seeds and compare championship/playoff odds and the top GM recommendation. For a private weekly run, set `SEED_VALIDATION_RUNS=3` and optionally `SEED_VALIDATION_SIMULATIONS=50000`; inspect the `seedValidation` object in the private JSON report. The seed check validates sampling consistency, not projection accuracy. It does not independently corroborate GM action rankings.
 6. Record runtime, scenario counts, missing seed replications, validation warnings and any disagreements. Do not automatically act on trades or waivers.
 7. Verify the public dashboard export contains only sanitized fields; no league secrets, OAuth tokens, personal rosters or private source snapshots.
 
