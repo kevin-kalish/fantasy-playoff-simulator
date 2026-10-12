@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {diagnoseStartSit} from '../src/model/start-sit-diagnostic.js';
 import {validateIndependentSeeds} from '../src/model/independent-seed-validation.js';
 import {prepareLeagueSimulation} from '../src/model/league-preparation.js';
 import {assessSimulationReadiness} from '../src/model/simulation-readiness.js';
@@ -72,10 +73,20 @@ else{
   const sample=seedValidation.teams[0];
   console.error(`SEED VALIDATION: ${seedRuns} independent runs x ${seedValidation.simulationsPerRun.toLocaleString()}; playoff ${(100*sample.playoff.min).toFixed(2)}%-${(100*sample.playoff.max).toFixed(2)}%; championship ${(100*sample.championship.min).toFixed(2)}%-${(100*sample.championship.max).toFixed(2)}%; sampling stability ${sample.stability.playoffWithinTolerance&&sample.stability.championshipWithinTolerance?'PASS':'REVIEW'}.`);
  }
+ let startSitDiagnostic=null;
+ if(process.env.START_SIT_DIAGNOSTIC==='true'){
+  const action=(report.recommendations?.items??[]).find(x=>x.type==='start-sit'&&x.details?.startPlayerId&&x.details?.sitPlayerId);
+  if(!action)console.error('START/SIT DIAGNOSTIC: no confirmed start/sit action available.');
+  else{
+   startSitDiagnostic=diagnoseStartSit(prepared.input,{teamId:spec.teamId,week,startPlayerId:action.details.startPlayerId,sitPlayerId:action.details.sitPlayerId,projectionRows:loaded.rows,runs:Number(process.env.START_SIT_DIAGNOSTIC_RUNS??5),simulations:Number(process.env.START_SIT_DIAGNOSTIC_SIMULATIONS??20000)});
+   const d=startSitDiagnostic;
+   console.error(`START/SIT DIAGNOSTIC: ${d.action.start} for ${d.action.sit}; ${d.runs.length} independent seeds x ${Number(process.env.START_SIT_DIAGNOSTIC_SIMULATIONS??20000).toLocaleString()}; point delta ${d.pointDelta.toFixed(2)}; playoff delta range ${(100*d.playoff.min).toFixed(2)} to ${(100*d.playoff.max).toFixed(2)} pp; mean ${(100*d.playoff.mean).toFixed(2)} pp; positive ${d.playoff.positiveRuns}/${d.runs.length}; future lineups unchanged ${d.scope.futureLineupsUnchanged}.`);
+  }
+ }
  const t=report.timing;console.error(`TIMING: core ${t.coreMonteCarloSeconds.toFixed(1)}s | scenario baseline ${t.scenarioBaselineSeconds.toFixed(1)}s | matchup ${t.matchupSeconds.toFixed(1)}s | recommendations ${t.recommendationsSeconds.toFixed(1)}s | total ${t.totalSeconds.toFixed(1)}s.`);
  const rt=report.recommendations?.diagnostics?.timing;if(rt){const ts=x=>Number(x??0).toFixed(1);console.error(`RECOMMENDATION TIMING: setup ${ts(rt.setupSeconds)}s | waivers ${ts(rt.waiverSeconds)}s (apply ${ts(rt.waiverApplySeconds)}s, simulate ${ts(rt.waiverSimulationSeconds)}s) | start/sit ${ts(rt.startSitSeconds)}s | trade screen ${ts(rt.tradeScreenSeconds)}s (apply ${ts(rt.tradeApplySeconds)}s, simulate ${ts(rt.tradeSimulationSeconds)}s) | confirmation ${ts(rt.confirmationSeconds)}s | finalize ${ts(rt.finalizeSeconds)}s.`);}
 const c=report.recommendations?.confirmation;if(c){const staged=c.precheckCount?`${c.precheckPassedCount}/${c.precheckCount} trade candidates passed the ${c.precheckSimulations.toLocaleString()}-simulation precheck; `:'';console.error(`CONFIRMATION: ${staged}${c.evaluatedCount??c.confirmedCount}/${c.finalCandidateCount??c.candidateCount} finalists re-evaluated at ${c.simulations.toLocaleString()} simulations each; ${c.passedCount??0} passed the final recommendation gate.`);}
  console.log(formatWeeklyIntelligence(report,{maxActions:Number(spec.maxActions??5)}));
- if(spec.outputPath){fs.writeFileSync(spec.outputPath,JSON.stringify({readiness,report,...(seedValidation?{seedValidation}:{})},null,2));console.error(`REPORT JSON: ${spec.outputPath}`);}
+ if(spec.outputPath){fs.writeFileSync(spec.outputPath,JSON.stringify({readiness,report,...(seedValidation?{seedValidation}:{}),...(startSitDiagnostic?{startSitDiagnostic}:{})},null,2));console.error(`REPORT JSON: ${spec.outputPath}`);}
  if(spec.includeJson) console.log(JSON.stringify({readiness,report},null,2));
 }
