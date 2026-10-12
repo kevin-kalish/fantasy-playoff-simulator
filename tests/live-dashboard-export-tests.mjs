@@ -49,5 +49,12 @@ assert.equal(rejectedPayload.gmDiagnostics.rejectionCounts['low-confidence'],36)
 assert.equal(rejectedPayload.gmDiagnostics.coverageConstrained,true);
 assert.equal(rejectedPayload.gmDiagnostics.nearMisses[0].championshipDelta,.012);
 assert.equal(rejectedPayload.gmDiagnostics.confirmation.simulations,20000);
+const approvedReport={...rejectedReport,recommendations:{...rejectedReport.recommendations,actionCount:1,items:[{type:'start-sit',label:'Private candidate',confirmationStatus:'CONFIRMED',simulations:20000,validation:{confidence:'high'},strategicScore:.02,championshipDelta:.001,secretToken:'never-publish'}]}};
+const approvedPayload=weeklyReportToDashboardV1(approvedReport);
+assert.equal(approvedPayload.gmDiagnostics.publicationReview.evaluated,1);
+assert.equal(approvedPayload.gmDiagnostics.publicationReview.withheld,1);
+assert.ok(approvedPayload.gmDiagnostics.publicationReview.reasons.includes('postseason-projections-provisional'));
+assert.deepEqual(approvedPayload.recommendations,[]);
+assert.doesNotMatch(JSON.stringify(approvedPayload),/Private candidate|never-publish/);
 assert.doesNotMatch(JSON.stringify(rejectedPayload),/never-publish/);
 console.log('live-dashboard-export-tests: all checks passed');
