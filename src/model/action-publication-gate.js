@@ -19,7 +19,7 @@ export function assessActionPublication(action,{postseasonTrusted=false,minimumS
 }
 
 export function reviewActionPublication(report){
- const actions=report?.recommendations?.recommendations??[];
+ const actions=report?.recommendations?.items??[];
  const postseasonTrusted=report?.trust?.postseason?.trusted===true;
  const reviews=actions.map(action=>({type:String(action.type??''),label:String(action.label??''),...assessActionPublication(action,{postseasonTrusted})}));
  return {status:reviews.length&&reviews.every(r=>r.status==='PUBLICATION_ELIGIBLE')?'ELIGIBLE':'REVIEW_REQUIRED',evaluated:reviews.length,eligible:reviews.filter(r=>r.status==='PUBLICATION_ELIGIBLE').length,withheld:reviews.filter(r=>r.status==='WITHHELD').length,reviews};
