@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {assessActionPublication,reviewActionPublication} from '../src/model/action-publication-gate.js';
+const action={type:'start-sit',label:'Start A / Sit B',confirmationStatus:'CONFIRMED',simulations:50000,validation:{confidence:'high'},strategicScore:.08,championshipDelta:.08,seedStability:{status:'CONSISTENT_POSITIVE',replications:3,missingReplications:0}};
+assert.equal(assessActionPublication(action,{postseasonTrusted:true}).status,'PUBLICATION_ELIGIBLE');
+assert.ok(assessActionPublication(action,{postseasonTrusted:false}).reasons.includes('postseason-projections-provisional'));
+assert.ok(assessActionPublication({...action,championshipDelta:.001},{postseasonTrusted:true}).reasons.includes('championship-signal-inconclusive'));
+assert.ok(assessActionPublication({...action,seedStability:undefined},{postseasonTrusted:true}).reasons.includes('independent-action-replication-required'));
+assert.ok(assessActionPublication({...action,confirmationStatus:'REQUIRED'},{postseasonTrusted:true}).reasons.includes('confirmation-required'));
+assert.ok(assessActionPublication({...action,type:'trade',tradeFeasibility:{status:'UNREALISTIC'}},{postseasonTrusted:true}).reasons.includes('trade-feasibility-not-established'));
+const report={trust:{postseason:{trusted:false}},recommendations:{recommendations:[action]}};
+assert.equal(reviewActionPublication(report).eligible,0);
+assert.equal(reviewActionPublication(report).withheld,1);
+assert.equal(reviewActionPublication({...report,trust:{postseason:{trusted:true}}}).eligible,1);
+assert.equal(reviewActionPublication({}).status,'REVIEW_REQUIRED');
+console.log('action-publication-gate-tests: all checks passed');
