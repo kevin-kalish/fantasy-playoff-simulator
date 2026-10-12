@@ -7,7 +7,7 @@ assert.ok(assessActionPublication({...action,championshipDelta:.001},{postseason
 assert.ok(assessActionPublication({...action,seedStability:undefined},{postseasonTrusted:true}).reasons.includes('independent-action-replication-required'));
 assert.ok(assessActionPublication({...action,confirmationStatus:'REQUIRED'},{postseasonTrusted:true}).reasons.includes('confirmation-required'));
 assert.ok(assessActionPublication({...action,type:'trade',tradeFeasibility:{status:'UNREALISTIC'}},{postseasonTrusted:true}).reasons.includes('trade-feasibility-not-established'));
-const report={trust:{postseason:{trusted:false}},recommendations:{recommendations:[action]}};
+const report={trust:{postseason:{trusted:false}},recommendations:{items:[action]}};
 assert.equal(reviewActionPublication(report).eligible,0);
 assert.equal(reviewActionPublication(report).withheld,1);
 assert.equal(reviewActionPublication({...report,trust:{postseason:{trusted:true}}}).eligible,1);
