@@ -20,6 +20,10 @@ export function importHistoricalProjectionArchives(archives=[],actualRows=[],{sc
   const archiveTime=archive.immutable===true?capturedAt:null;
   for(const [i,row] of rows.entries()){
    const [season,week,playerId]=identity(row),projection=number(row.projection),projectedAt=row.projectedAt??row.capturedAt??archiveTime;
+   // Explicit archive schemas require trustworthy provider freshness. Legacy schema v1
+   // captures may restamp cached forecasts and cannot establish issuance time.
+   if(raw?.schemaVersion===1){rejected.push({source:archive.path,row:i+1,reason:'legacy-archive-provenance-unverified'});continue;}
+   if(raw?.schemaVersion>=2&&(row.forecastProvenance?.kind!=='fresh-provider-response'||row.forecastProvenance?.observedAt!==projectedAt)){rejected.push({source:archive.path,row:i+1,reason:'forecast-provenance-unverified'});continue;}
    const kickoffAt=row.kickoffAt;
    const source=String(row.source??archive.source??raw?.source??'').trim();
    if(!season||!week||!playerId||projection===null||!source||!validTime(projectedAt)||!validTime(kickoffAt)){rejected.push({source:archive.path,row:i+1,reason:'missing-identity-projection-source-or-provenance'});continue;}
