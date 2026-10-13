@@ -58,6 +58,7 @@
     "calibration:accuracy": "node scripts/calibrate-projection-accuracy.mjs",
     "calibration:import": "node scripts/import-historical-projections.mjs",
     "calibration:kickoffs": "node scripts/enrich-projection-kickoffs.mjs",
-    "calibration:fetch-kickoffs": "node scripts/fetch-nfl-kickoffs.mjs"
+    "calibration:fetch-kickoffs": "node scripts/fetch-nfl-kickoffs.mjs",
+    "calibration:fetch-actuals": "node scripts/fetch-completed-nfl-actuals.mjs"
   }
 }
