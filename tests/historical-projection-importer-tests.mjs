@@ -3,7 +3,9 @@ import {importHistoricalProjectionArchives} from '../src/data/historical-project
 const archive={path:'archive.json',immutable:true,capturedAt:'2025-09-20T12:00:00Z',source:'provider',data:{rows:[{season:2025,week:3,playerId:'1',position:'RB',projection:12,kickoffAt:'2025-09-21T17:00:00Z'},{season:2025,week:3,playerId:'2',projection:8,kickoffAt:'2025-09-19T17:00:00Z'}]}};
 const actuals=[{season:2025,week:3,playerId:'1',actual:15,actualRecordedAt:'2025-09-22T17:00:00Z'}];
 const result=importHistoricalProjectionArchives([archive],actuals);
-assert.equal(result.rows.length,1);assert.equal(result.rows[0].actual,15);assert.equal(result.rows[0].projectedAt,archive.capturedAt);
+assert.equal(result.rows.length,1);
+assert.equal(importHistoricalProjectionArchives([{...archive,data:{...archive.data,schemaVersion:1}}],actuals).rejected[0].reason,'legacy-archive-provenance-unverified');
+assert.equal(importHistoricalProjectionArchives([{...archive,data:{...archive.data,schemaVersion:2}}],actuals).rejected[0].reason,'forecast-provenance-unverified');assert.equal(result.rows[0].actual,15);assert.equal(result.rows[0].projectedAt,archive.capturedAt);
 assert.equal(result.rejected.length,1);
 assert.equal(importHistoricalProjectionArchives([{...archive,immutable:false}],actuals).rows.length,0);
 assert.equal(importHistoricalProjectionArchives([{...archive,immutable:true,capturedAt:'2025-09-22T12:00:00Z'}],actuals).rows.length,0);
