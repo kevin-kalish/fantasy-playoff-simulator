@@ -64,7 +64,7 @@ else{
  if(spec.sourceAudit)console.error(`SOURCE AUDIT: ${spec.sourceAudit.passed?'PASS':'FAIL'}; ${spec.sourceAudit.checks?.length??0} checks; league ${spec.sourceAudit.leagueKey??'unknown'} week ${spec.sourceAudit.week??week}.`);
  console.error(`MONTE CARLO: running ${simulations.toLocaleString()} core simulations; scenario screening uses ${scenarioSimulations.toLocaleString()} each; promising actions confirm at ${confirmationSimulations.toLocaleString()}...`);
  const started=Date.now();
- const report=buildLeagueIntelligenceReport(prepared.input,{...spec,week,projectionRows:loaded.rows,providerHealth:loaded.trust,enrichedLeague:prepared.league,trust:simulationTrust,scenarioSimulations,confirmationSimulations});
+ const report=buildLeagueIntelligenceReport(prepared.input,{...spec,week,projectionRows:loaded.rows,providerHealth:loaded.trust,enrichedLeague:prepared.league,trust:simulationTrust,scenarioSimulations,confirmationSimulations,replicateTopRecommendationSeeds:Number(spec.replicateTopRecommendationSeeds??process.env.GM_ACTION_REPLICATION_SEEDS??2)});
  console.error(`MONTE CARLO: complete in ${((Date.now()-started)/1000).toFixed(1)}s.`);
  const seedRuns=Number(spec.seedValidationRuns??process.env.SEED_VALIDATION_RUNS??0);
  let seedValidation=null;
