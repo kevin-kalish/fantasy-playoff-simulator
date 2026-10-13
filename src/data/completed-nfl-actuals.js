@@ -45,10 +45,16 @@ export function reconcileProjectionActualIds(archives,actualRows){
   }
  }
  const mapped=[],rejected=[];
+ const actualWeeks=new Set(actualRows.map(a=>[Number(a.season),Number(a.week)].join('|')));
+ const actualWeeksByTeam=new Set(actualRows.map(a=>[Number(a.season),Number(a.week),team(a.nflTeam)].join('|')));
  for(const archive of archives){
   const rows=(archive.data?.rows??[]).map(r=>{
    const pair=[Number(r.season),Number(r.week),String(r.playerId??'').trim()].join('|'),a=byName.get(key(r));
-   if(!a||ambiguous.has(key(r))||conflicts.has(pair)||ids.get(pair)!==a.playerId){rejected.push({season:r.season,week:r.week,name:r.name,reason:'unmatched-or-ambiguous-identity'});return {...r,playerId:''};}
+   if(!a||ambiguous.has(key(r))||conflicts.has(pair)||ids.get(pair)!==a.playerId){
+    const weekKey=[Number(r.season),Number(r.week)].join('|');
+    const teamKey=[Number(r.season),Number(r.week),team(r.nflTeam)].join('|');
+    const reason=!actualWeeks.has(weekKey)?'no-completed-actuals-for-week':!actualWeeksByTeam.has(teamKey)?'no-completed-actuals-for-team-week':!r.playerId?'missing-projection-player-id':ambiguous.has(key(r))?'ambiguous-player-identity':conflicts.has(pair)?'conflicting-player-id':'player-not-matched';
+    rejected.push({season:r.season,week:r.week,name:r.name,reason});return {...r,playerId:''};}
    return {...r,playerId:a.playerId,originalProjectionPlayerId:r.playerId};
   });
   mapped.push({...archive,data:{...archive.data,rows}});
