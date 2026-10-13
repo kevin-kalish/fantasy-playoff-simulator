@@ -14,6 +14,7 @@ try{
  for(const entry of archives){
   const {archive,stats}=enrichProjectionArchiveWithKickoffs(entry.data,schedules);
   const target=path.join(output,path.basename(entry.path));
+  if(fs.existsSync(target)){console.log(path.basename(target)+': existing enriched copy; skip (remove derived copy to regenerate)');continue;}
   fs.writeFileSync(target,JSON.stringify(archive,null,2)+'\n',{flag:'wx'});
   eligible+=stats.eligiblePregame;matched+=stats.matched;
   console.log(path.basename(target)+': '+stats.eligiblePregame+' pregame, '+stats.postKickoff+' post-kickoff, '+stats.missing+' missing, '+stats.conflicted+' conflicts');
