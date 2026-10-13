@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {readArchiveDirectory} from '../src/data/historical-projection-importer.js';
+import {readArchiveDirectory} from './historical-projection-importer.js';
 export function calibrationRefreshPlan({season=2026,archives=0,refreshSchedule=false}={}){
  if(!Number.isInteger(Number(season))||Number(season)<1999)throw new Error('Invalid season');
  const steps=[];
