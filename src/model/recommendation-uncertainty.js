@@ -2,12 +2,16 @@
 // Hoeffding + union bound across baseline and action Bernoulli estimates.
 export function assessReplicatedRecommendationSignal(actions) {
  const valid=(actions??[]).filter(a=>Number.isFinite(Number(a?.championshipDelta))&&Number.isInteger(Number(a?.simulations))&&Number(a.simulations)>0);
- if(valid.length<2)return {status:'INSUFFICIENT_REPLICATIONS',replications:valid.length};
  const estimates=valid.map(a=>Number(a.championshipDelta));
+ const positiveRuns=estimates.filter(x=>x>0).length,negativeRuns=estimates.filter(x=>x<0).length,zeroRuns=estimates.length-positiveRuns-negativeRuns;
+ const direction=valid.length<2?'INSUFFICIENT_DATA':positiveRuns===valid.length?'ALL_POSITIVE':negativeRuns===valid.length?'ALL_NEGATIVE':zeroRuns===valid.length?'ALL_ZERO':'MIXED';
+ if(valid.length<2)return {status:'INSUFFICIENT_REPLICATIONS',replications:valid.length,direction,positiveRuns,negativeRuns,zeroRuns,statisticalStrength:'INSUFFICIENT_REPLICATIONS',projectionConfidence:'NOT_ASSESSED',scope:'Independent-seed sensitivity diagnostic; no historical or projection calibration'};
  const mean=estimates.reduce((sum,x)=>sum+x,0)/estimates.length;
  const min=Math.min(...estimates),max=Math.max(...estimates);
- const statuses=valid.map(assessRecommendationSignal);
- return {status:statuses.every(s=>s.status==='POSITIVE_SIGNAL')?'CONSISTENT_POSITIVE':statuses.every(s=>s.status==='NEGATIVE_SIGNAL')?'CONSISTENT_NEGATIVE':'MIXED_OR_INCONCLUSIVE',replications:valid.length,mean,min,max,range:max-min,signals:statuses.map(s=>s.status),scope:'Independent-seed sensitivity diagnostic, not a confidence interval or historical calibration'};
+ const statuses=valid.map(assessRecommendationSignal),signals=statuses.map(s=>s.status);
+ const status=signals.every(s=>s==='POSITIVE_SIGNAL')?'CONSISTENT_POSITIVE':signals.every(s=>s==='NEGATIVE_SIGNAL')?'CONSISTENT_NEGATIVE':'MIXED_OR_INCONCLUSIVE';
+ const statisticalStrength=status==='CONSISTENT_POSITIVE'?'POSITIVE_SIGNAL':status==='CONSISTENT_NEGATIVE'?'NEGATIVE_SIGNAL':signals.every(s=>s==='INCONCLUSIVE')?'INCONCLUSIVE':'MIXED_EVIDENCE';
+ return {status,direction,positiveRuns,negativeRuns,zeroRuns,statisticalStrength,projectionConfidence:'NOT_ASSESSED',replications:valid.length,mean,min,max,range:max-min,signals,scope:'Independent-seed sensitivity diagnostic, not a confidence interval or historical calibration'};
 }
 
 export function assessRecommendationSignal(action) {
