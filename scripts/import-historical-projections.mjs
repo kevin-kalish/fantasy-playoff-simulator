@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {readArchiveDirectory,importHistoricalProjectionArchives} from '../src/data/historical-projection-importer.js';
 import {evaluateProjectionAccuracy} from '../src/model/projection-accuracy-calibration.js';
-const [directory='data/private/projection-archives',actualFile='data/private/historical-actuals.json']=process.argv.slice(2);
+const [directory='data/private/projection-archives-enriched',actualFile='data/private/historical-actuals.json']=process.argv.slice(2);
 try{
  const archives=readArchiveDirectory(directory);
  if(!fs.existsSync(actualFile)){console.error('HISTORICAL IMPORT: actuals file missing: '+actualFile+'; no output written');process.exit(2);}
