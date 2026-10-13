@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {buildProjectionArchive,saveProjectionArchive} from '../src/data/projection-archive.js';
 import {diagnoseStartSit} from '../src/model/start-sit-diagnostic.js';
 import {validateIndependentSeeds} from '../src/model/independent-seed-validation.js';
 import {prepareLeagueSimulation} from '../src/model/league-preparation.js';
@@ -38,6 +39,15 @@ const simulations=Number(spec.simulations??process.env.SIMULATIONS??50000);
 const scenarioSimulations=Number(spec.scenarioSimulations??process.env.SCENARIO_SIMULATIONS??250);
 const confirmationSimulations=Number(spec.confirmationSimulations??process.env.CONFIRMATION_SIMULATIONS??20000);
 const longRangeSeasonWeight=Number(spec.longRangeSeasonWeight??process.env.LONG_RANGE_SEASON_WEIGHT??.65);
+// Archive only live Yahoo-audited runs. Fixtures and unaudited imports are excluded.
+if(spec.sourceAudit?.passed===true&&process.env.PROJECTION_ARCHIVE!=='false'){
+ try{
+  const providerByWeek=Object.fromEntries(loaded.trust.weekResults.map(r=>[r.week,r.provider]));
+  const archive=buildProjectionArchive(loaded.rows,{scoring:spec.scoring??'HALF',provider:loaded.provider,providerByWeek,leagueKey:spec.sourceAudit.leagueKey});
+  const file=saveProjectionArchive('data/private/projection-archives',archive);
+  console.error(`PROJECTION ARCHIVE: saved ${archive.rows.length} timestamped rows to ${file}; kickoff and realized scores require separate verification.`);
+ }catch(error){console.error(`PROJECTION ARCHIVE: FAIL; ${error.message}; simulation continues, but no historical archive is claimed.`);}
+}
 const prepared=prepareLeagueSimulation(snapshot,loaded.rows,{calibrationReport,simulations,seed:Number(spec.seed??process.env.SEED??20260923),modelVariant:spec.modelVariant??process.env.MODEL_VARIANT??'correlated',minimumProjectionMatchRate,weeks,season,seasonProjectionRows,longRangeSeasonWeight});
 prepared.input.metadata={...prepared.input.metadata,projectionProvider:loaded.trust};
 const fingerprint=simulationFingerprint(prepared.input);
