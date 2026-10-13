@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {normalizeCompletedNflverseActuals,reconcileProjectionActualIds} from '../src/data/completed-nfl-actuals.js';
+const scheduleRows=[{season:2026,week:1,home_team:'NE',away_team:'NYJ',kickoffAt:'2026-09-06T17:00:00Z'},{season:2026,week:7,home_team:'NE',away_team:'NYJ',kickoffAt:'2026-10-18T17:00:00Z'}];
+const csv='season,week,season_type,player_id,player_display_name,position,team,passing_yards,passing_tds,interceptions,rushing_yards,rushing_tds,receptions,receiving_yards,receiving_tds\n2026,1,REG,nfl-1,Example Player,RB,NE,0,0,0,80,1,2,10,0\n2026,7,REG,nfl-1,Example Player,RB,NE,0,0,0,80,1,2,10,0\n';
+const a=normalizeCompletedNflverseActuals(csv,{season:2026,scheduleRows,recordedAt:'2026-10-13T20:00:00Z'});
+assert.equal(a.rows.length,1);assert.equal(a.rejected.length,1);assert.ok(a.rows[0].actual>0);
+const archives=[{data:{rows:[{season:2026,week:1,playerId:'provider-1',name:'Example Player',position:'RB',nflTeam:'NE'},{season:2026,week:1,playerId:'provider-2',name:'Different Player',position:'RB',nflTeam:'NE'}]}}];
+const r=reconcileProjectionActualIds(archives,a.rows);
+assert.equal(r.matched,1);assert.equal(r.archives[0].data.rows[0].playerId,'nfl-1');assert.equal(r.archives[0].data.rows[1].playerId,'');
+assert.equal(archives[0].data.rows[0].playerId,'provider-1');
+console.log('completed-nfl-actuals-tests: all checks passed');
