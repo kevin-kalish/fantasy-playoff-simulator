@@ -60,6 +60,7 @@
     "calibration:kickoffs": "node scripts/enrich-projection-kickoffs.mjs",
     "calibration:fetch-kickoffs": "node scripts/fetch-nfl-kickoffs.mjs",
     "calibration:fetch-actuals": "node scripts/fetch-completed-nfl-actuals.mjs",
-    "calibration:refresh": "node scripts/refresh-calibration.mjs"
+    "calibration:refresh": "node scripts/refresh-calibration.mjs",
+    "calibration:capture": "node scripts/capture-pregame-projections.mjs"
   }
 }
