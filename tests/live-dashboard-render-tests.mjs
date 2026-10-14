@@ -14,7 +14,16 @@ payload.remainingSchedule = [{week:6,opponentName:'Bravo',opponentId:'B',winProb
 payload.matchup = {week:5,opponentName:'Bravo',winProbability:.6,simulatedMean:105,opponentMean:100,impact:{win:{playoffProbability:.8,championshipProbability:.25},loss:{playoffProbability:.5,championshipProbability:.15},simulations:5000}};
 const root = {innerHTML: '', querySelector() {return {set innerHTML(value) {root.detailHTML=value;}};}};
 renderDashboardV1(root, payload);
-assert.match(root.innerHTML, /80\.0%/);
+assert.match(root.innerHTML, /80\\.0%/);
+assert.match(root.innerHTML,/data-dashboard-tab="history"/);
+assert.match(root.innerHTML,/No recorded weekly playoff probability snapshots yet/);
+renderDashboardV1(root,{...payload,playoffHistory:[{week:0,probability:.8,result:null},{week:1,probability:.6,result:'L'},{week:2,probability:.75,result:'W'}]});
+assert.match(root.innerHTML,/Weekly playoff probability history/);
+assert.match(root.innerHTML,/Week 2/);
+assert.match(root.innerHTML,/-20.0 pp/);
+assert.match(root.innerHTML,/15.0 pp/);
+assert.match(root.innerHTML,/role="tabpanel" aria-labelledby="tab-history" hidden/);
+renderDashboardV1(root,payload);
 assert.match(root.innerHTML, /Expected final wins/);
 assert.match(root.innerHTML, /aria-label="Dashboard sections"/);
 assert.match(root.innerHTML, /href="#dashboard-matchup"/);
