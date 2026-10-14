@@ -15,7 +15,7 @@ export function captureCompletedWeekProbability({document,currentWeek,season,lea
  const focus=payload.teams.find(t=>String(t.id)===teamId);
  if(!focus||typeof focus.playoffProbability!=='number'||!Number.isFinite(focus.playoffProbability))return {status:'skipped',reason:'No valid focus-team probability'};
  const generatedAt=Date.parse(payload.generatedAt);
- if(!Number.isFinite(generatedAt)||generatedAt>now.getTime()+300000)return {status:'skipped',reason:'Invalid report timestamp'};
+ if(!Number.isFinite(generatedAt)||generatedAt>now.getTime()+300000||now.getTime()-generatedAt>10*24*60*60*1000)return {status:'skipped',reason:'Invalid report timestamp'};
  const week=currentWeek-1;
  const prior=fs.existsSync(archivePath)?JSON.parse(fs.readFileSync(archivePath,'utf8')):null;
  // Legacy archives lack season/league identifiers. Never silently mix them.
