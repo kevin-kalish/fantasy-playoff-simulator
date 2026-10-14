@@ -49,7 +49,7 @@ npm run test:dashboard
 npm test
 ```
 
-The tests cover the export allowlist, escaping/private HTML generation, a synthetic 10-team end-to-end report, provisional championship estimates, missing projection data, and renderer behavior. Browser clicking and keyboard behavior still require manual acceptance testing. Projection-provider freshness and historical calibration are separate readiness requirements; passing UI tests does not prove forecast accuracy.
+The tests cover the export allowlist, escaping/private HTML generation, a synthetic 10-team end-to-end report, provisional championship estimates, missing projection data, and renderer behavior. Deterministic delegated-event tests now cover tab switching, team selection, chronological/impact schedule ordering, keyboard activation, and history hover/focus details. Manual browser acceptance remains necessary for layout, pointer hit targets, and accessibility behavior in real browsers. Projection-provider freshness and historical calibration are separate readiness requirements; passing UI tests does not prove forecast accuracy.
 
 ## Current status
 
