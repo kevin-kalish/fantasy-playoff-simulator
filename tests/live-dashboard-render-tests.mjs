@@ -15,6 +15,9 @@ payload.matchup = {week:5,opponentName:'Bravo',winProbability:.6,simulatedMean:1
 const root = {innerHTML: '', querySelector() {return {set innerHTML(value) {root.detailHTML=value;}};}};
 renderDashboardV1(root, payload);
 assert.match(root.innerHTML, /80\.0%/);
+assert.match(root.innerHTML, /Expected final wins/);
+assert.match(root.innerHTML, /Projection reliability:/);
+assert.match(root.innerHTML, /Derived or cached forecasts may reduce confidence/);
 assert.match(root.innerHTML, /30.0 pp/);
 assert.match(root.innerHTML, /Week 5 matchup/);
 assert.match(root.innerHTML, /Remaining schedule/);
@@ -47,6 +50,7 @@ assert.match(root.detailHTML, /Starting lineup/);
 const gmPayload={...payload,gmDiagnostics:{evaluated:42,approved:0,rejected:42,confirmation:{passed:0},coverageConstrained:true,noActionExplanation:'No action cleared the gate',rejectionCounts:{'low-confidence':36},nearMisses:[{type:'trade',label:'Trade <unsafe>',reason:'low-confidence',playoffDelta:-.008,championshipDelta:.012}]}};
 renderDashboardV1(root,gmPayload);
 assert.match(root.innerHTML,/GM decision review/);
+assert.match(root.innerHTML,/No approved recommendations available for publication/);
 assert.match(root.innerHTML,/42 actions screened/);
 assert.match(root.innerHTML,/No action cleared the gate/);
 assert.match(root.innerHTML,/Near misses \(not actionable\)/);
