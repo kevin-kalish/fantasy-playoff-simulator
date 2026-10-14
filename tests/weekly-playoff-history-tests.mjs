@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {captureCompletedWeekProbability} from '../src/data/weekly-playoff-history.js';
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'fantasy-week-history-'));
+try{
+ const archivePath=path.join(dir,'history.json');
+ const report={schemaVersion:11,generatedAt:'2026-10-14T12:00:00Z',team:{id:'A'},league:{playoffSpots:8,outlook:[{id:'A',name:'Alpha',record:{wins:5,losses:1,ties:0},currentSeed:1,playoffProbability:.75,championshipProbability:.2,averageWins:10,seedDistribution:[]}]},outlook:{simulations:5000,seed:42},trust:{trusted:true,projections:{directWeeks:[7],longRangeWeeks:[8]},postseason:{trusted:false,reason:'Derived'}}};
+ const options={document:{readiness:{ready:true},report},currentWeek:7,season:2026,leagueKey:'470.l.244897',archivePath,now:new Date('2026-10-14T13:00:00Z')};
+ assert.equal(captureCompletedWeekProbability({...options,currentWeek:1}).status,'skipped');
+ assert.equal(fs.existsSync(archivePath),false);
+ assert.equal(captureCompletedWeekProbability({...options,document:{readiness:{ready:false},report}}).status,'skipped');
+ assert.equal(captureCompletedWeekProbability({...options,document:{readiness:{ready:true},report:{...report,trust:{trusted:false}}}}).status,'skipped');
+ assert.equal(captureCompletedWeekProbability(options).status,'recorded');
+ const first=fs.readFileSync(archivePath,'utf8');
+ assert.equal(JSON.parse(first).history[0].week,6);
+ assert.equal(JSON.parse(first).history[0].playoffProbability,.75);
+ assert.equal(JSON.parse(first).history[0].result,null);
+ assert.equal(captureCompletedWeekProbability({...options,document:{readiness:{ready:true},report:{...report,league:{...report.league,outlook:[{...report.league.outlook[0],playoffProbability:.99}]}}}}).status,'unchanged');
+ assert.equal(fs.readFileSync(archivePath,'utf8'),first);
+ assert.equal(captureCompletedWeekProbability({...options,leagueKey:'different'}).status,'skipped');
+ assert.equal(captureCompletedWeekProbability({...options,season:2025}).status,'skipped');
+ assert.equal(captureCompletedWeekProbability({...options,currentWeek:6}).status,'skipped');
+ assert.equal(captureCompletedWeekProbability({...options,currentWeek:8}).status,'recorded');
+ assert.deepEqual(JSON.parse(fs.readFileSync(archivePath,'utf8')).history.map(x=>x.week),[6,7]);
+ const legacyPath=path.join(dir,'legacy.json');
+ fs.writeFileSync(legacyPath,JSON.stringify({teamId:'A',history:[]}));
+ assert.equal(captureCompletedWeekProbability({...options,archivePath:legacyPath}).status,'skipped');
+ console.log('weekly-playoff-history-tests: all checks passed');
+}finally{fs.rmSync(dir,{recursive:true,force:true});}
