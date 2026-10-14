@@ -38,7 +38,7 @@ try{
  });
  console.error('PREGAME CAPTURE: fresh live Yahoo audit passed; '+result.liveAuditChecks+' checks.');
  const {freshProviderRows:verified,pregameKickoffVerifiedRows:kickoffVerified}=result.eligibility;
- const summary={capturedAt:readArchiveDirectory(dir).find(a=>a.path===result.archive)?.capturedAt,archive:path.basename(result.archive),...result.eligibility,season:Number(spec.season),weeks:spec.weeks??[spec.week]};
+ const summary={capturedAt:result.capturedAt,archive:path.basename(result.archive),...result.eligibility,season:Number(spec.season),weeks:spec.weeks??[spec.week]};
  fs.writeFileSync('data/private/last-pregame-capture.json',JSON.stringify(summary,null,2)+'\n');
  console.log('PREGAME CAPTURE: '+verified+'/'+result.eligibility.rows+' fresh-provider rows; private archive '+summary.archive);
  if(!verified){console.error('PREGAME CAPTURE: no live-provider forecasts; not calibration eligible');process.exitCode=2;}
