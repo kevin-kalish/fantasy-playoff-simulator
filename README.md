@@ -20,6 +20,19 @@ Start-Process .\\data\\private\\synthetic-dashboard-preview.html
 
 The **Playoff probability history** tab shows example Week 0–6 changes, including a loss from 80% to 60% followed by a win to 75%. These values are illustrative, not actual historical estimates. The chart labels completed games W/L/T and reveals week, playoff probability, result, and week-over-week percentage-point change when a marker is hovered or focused with the keyboard. The command generates a synthetic 10-team league preview at `data/private/synthetic-dashboard-preview.html`. The fixture includes a playoff race, current matchup, remaining schedule, playoff/championship leverage rankings, GM rejection diagnostics, and provisional postseason estimates. It is **demonstration data, not current Yahoo standings or live recommendations**. Use the section links to navigate, select a team in the playoff race, and switch the remaining schedule between chronological and impact order.
 
+### Refresh Yahoo and the private dashboard together
+
+Run the normal live workflow from the repository root (requires working Yahoo OAuth, a passing live reconciliation audit, and usable projection data):
+
+```powershell
+npm run fightin-kali:weekly
+Start-Process .\\data\\private\\live-dashboard-preview.html
+```
+
+After an audited, readiness-passing weekly simulation writes its private report, the workflow now **automatically rebuilds** `data/private/live-dashboard-preview.html` from that report. It incorporates any compatible archived playoff-probability history. This preview is local/offline, never deployed to GitHub Pages, and does not expose Yahoo OAuth tokens or projection-provider API keys. The preview is withheld if the report is untrusted, the output path is outside `data/private/`, or archived history has a mismatched team/league/season. Set `DASHBOARD_AUTO_PREVIEW=false` to opt out; set `PLAYOFF_HISTORY_CAPTURE=false` separately to opt out of weekly snapshot recording.
+
+If Yahoo credentials or the source audit fail, the live workflow stops rather than using a stale league snapshot. If the projection provider is unavailable or readiness fails, the dashboard is **not** refreshed. The synthetic demo remains available independently via `npm run dashboard:demo`. A successful local test suite alone does not confirm Yahoo connectivity or current projection access.
+
 ### Record real week-to-week playoff probability
 
 After each fantasy week is **complete**, save the trusted weekly report's playoff probability to a local archive. Specify the completed week and its result explicitly:
