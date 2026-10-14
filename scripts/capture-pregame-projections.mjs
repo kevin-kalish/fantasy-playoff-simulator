@@ -3,6 +3,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {readArchiveDirectory} from '../src/data/historical-projection-importer.js';
 import {executePregameCapture} from '../src/data/pregame-capture-workflow.js';
+import {preflightPregameCapture} from '../src/data/pregame-capture-preflight.js';
 import {createYahooClient} from '../src/data/yahoo-client.js';
 import {resolveYahooAccessToken} from '../src/data/yahoo-auth-session.js';
 import {runYahooLeagueAudit} from '../src/data/yahoo-live-audit.js';
@@ -14,6 +15,8 @@ try{
   if(!path.resolve(file).startsWith(privateRoot))throw new Error('Snapshot and spec must be under data/private');
   if(!fs.existsSync(file))throw new Error('Missing input: '+file);
  }
+ const preflight=preflightPregameCapture({snapshotPath:snapshot,specPath:specFile});
+ if(!preflight.ready)throw new Error('Offline preflight blocked live capture: '+preflight.checks.filter(c=>!c.pass).map(c=>c.name+' ('+c.detail+')').join('; '));
  const spec=JSON.parse(fs.readFileSync(specFile,'utf8'));
  const saved=JSON.parse(fs.readFileSync(snapshot,'utf8'));
  const referencePath=process.env.YAHOO_REFERENCE??'fixtures/yahoo-reference-2026-week3.json';
