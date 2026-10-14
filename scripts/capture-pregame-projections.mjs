@@ -4,6 +4,7 @@ import {spawnSync} from 'node:child_process';
 import {readArchiveDirectory} from '../src/data/historical-projection-importer.js';
 import {validatePregameCaptureInputs} from '../src/data/pregame-capture-validation.js';
 import {reconcileCaptureSnapshot} from '../src/data/capture-snapshot-reconciliation.js';
+import {evaluatePregameCaptureArchive} from '../src/data/pregame-capture-eligibility.js';
 import {createYahooClient} from '../src/data/yahoo-client.js';
 import {resolveYahooAccessToken} from '../src/data/yahoo-auth-session.js';
 import {runYahooLeagueAudit} from '../src/data/yahoo-live-audit.js';
@@ -37,12 +38,11 @@ try{
  if(run.status!==0)throw new Error('Weekly intelligence failed (exit '+String(run.status??'unknown')+')');
  const fresh=readArchiveDirectory(dir).filter(a=>!before.has(path.basename(a.path)));
  if(fresh.length!==1)throw new Error('Expected exactly one new immutable archive; found '+fresh.length);
- const rows=fresh[0].data.rows??[];
- const verified=rows.filter(r=>r.forecastProvenance?.kind==='fresh-provider-response').length;
- const kickoffVerified=rows.filter(r=>r.forecastProvenance?.kind==='fresh-provider-response'&&Number.isFinite(Date.parse(r.kickoffAt??''))&&Date.parse(r.projectedAt)<Date.parse(r.kickoffAt)&&Date.parse(fresh[0].capturedAt)<Date.parse(r.kickoffAt)).length;
- const summary={capturedAt:fresh[0].capturedAt,archive:path.basename(fresh[0].path),rows:rows.length,freshProviderRows:verified,pregameKickoffVerifiedRows:kickoffVerified,unverifiedRows:rows.length-verified,season:Number(spec.season),weeks:spec.weeks??[spec.week]};
+ const eligibility=evaluatePregameCaptureArchive(fresh[0].data);
+ const {freshProviderRows:verified,pregameKickoffVerifiedRows:kickoffVerified}=eligibility;
+ const summary={capturedAt:fresh[0].capturedAt,archive:path.basename(fresh[0].path),...eligibility,season:Number(spec.season),weeks:spec.weeks??[spec.week]};
  fs.writeFileSync('data/private/last-pregame-capture.json',JSON.stringify(summary,null,2)+'\n');
- console.log('PREGAME CAPTURE: '+verified+'/'+rows.length+' fresh-provider rows; private archive '+summary.archive);
+ console.log('PREGAME CAPTURE: '+verified+'/'+eligibility.rows+' fresh-provider rows; private archive '+summary.archive);
  if(!verified){console.error('PREGAME CAPTURE: no live-provider forecasts; not calibration eligible');process.exitCode=2;}
  else if(!kickoffVerified){console.error('PREGAME CAPTURE: no kickoff-verified pregame forecasts yet; run kickoff enrichment before calibration');process.exitCode=2;}
 }catch(error){console.error('PREGAME CAPTURE: FAIL; '+error.message);process.exitCode=1;}
