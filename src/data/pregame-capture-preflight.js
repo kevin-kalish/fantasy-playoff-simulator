@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {validatePregameCaptureInputs} from './pregame-capture-validation.js';
+import {parseKickoffScheduleCSV} from './projection-kickoff-enrichment.js';
 const quotaKey=apiKey=>createHash('sha256').update('https://api.jerrygm.com/api/ext/v1:'+apiKey).digest('hex');
 const inside=(root,file)=>{const relative=path.relative(path.resolve(root),path.resolve(file));return relative!==''&&!relative.startsWith('..'+path.sep)&&relative!=='..'&&!path.isAbsolute(relative);};
 export function preflightPregameCapture({snapshotPath,specPath,env=process.env,now=Date.now(),root='data/private',referencePath=env.YAHOO_REFERENCE??'fixtures/yahoo-reference-2026-week3.json',kickoffPath='data/private/nfl-kickoffs.csv',quotaPath='data/private/jerrygm-quota-state.json'}={}){
@@ -23,7 +24,18 @@ export function preflightPregameCapture({snapshotPath,specPath,env=process.env,n
   add('week-and-season',Number.isInteger(Number(spec.season))&&Number(spec.season)>2020&&Number.isInteger(Number(spec.week))&&Number(spec.week)>=1&&Number(spec.week)<=18,'Valid NFL season/week required');
  }
  add('yahoo-reference',fs.existsSync(referencePath),'Yahoo audit reference file must exist');
- add('kickoff-schedule',fs.existsSync(kickoffPath)&&fs.statSync(kickoffPath).size>0,'Independent kickoff CSV should exist before capture');
+ const scheduleExists=fs.existsSync(kickoffPath)&&fs.statSync(kickoffPath).size>0;
+ add('kickoff-schedule',scheduleExists,'Independent kickoff CSV should exist before capture');
+ if(spec&&scheduleExists){
+  try{
+   const rows=parseKickoffScheduleCSV(fs.readFileSync(kickoffPath,'utf8'));
+   const selected=rows.filter(r=>Number(r.season)===Number(spec.season)&&Number(r.week)===Number(spec.week));
+   const kickoff=selected.map(r=>r.kickoffAt??r.gameday_utc??r.kickoff_utc);
+   const valid=selected.length>0&&kickoff.every(v=>typeof v==='string'&&Number.isFinite(Date.parse(v)));
+   add('kickoff-week-covered',valid,valid?selected.length+' scheduled game rows found for requested week':'Requested season/week missing or invalid kickoff times');
+   if(valid)add('kickoff-week-future',kickoff.every(v=>Date.parse(v)>now),kickoff.every(v=>Date.parse(v)>now)?'All scheduled games have future kickoff timestamps':'At least one game has already started; cannot establish whole-week pregame capture');
+  }catch(e){add('kickoff-week-covered',false,'Kickoff CSV could not be parsed: '+e.message);}
+ }
  const fp=Boolean(env.FANTASYPROS_API_KEY),jg=Boolean(env.JERRYGM_API_KEY);
  add('provider-credentials',fp||jg,'FantasyPros or JerryGM credential must be available');
  let blockedUntil=null;
