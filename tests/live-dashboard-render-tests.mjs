@@ -79,6 +79,30 @@ assert.doesNotMatch(root.innerHTML,/Trade <unsafe>/);
 assert.match(root.innerHTML,/Insufficient &lt;evidence&gt; to confirm/);
 assert.match(root.innerHTML,/Confidence: low/);
 assert.doesNotMatch(root.innerHTML,/Insufficient <evidence>/);
+// Ten-team offline stress fixture: tight bubble, diverse title odds and partial forecasts.
+const tenTeams=Array.from({length:10},(_,i)=>({
+  id: i===0?'A':'T'+i, name:'Synthetic Team '+(i+1),
+  record:{wins:5+(i%3),losses:5-(i%3),ties:0},currentSeed:i+1,
+  averageWins:i===4?null:7+(9-i)*.17,
+  playoffProbability:i<4?.95-i*.07:.54-(i-4)*.018,
+  championshipProbability:i===0?.52:i===9?.001:.12-i*.01,
+  seedDistribution:[{seed:i+1,probability:.7}]
+}));
+const stressSchedule=Array.from({length:8},(_,i)=>({
+  week:7+i,opponentName:'Opponent '+i,opponentId:'T'+(i+1),
+  winProbability:i===3?null:.48+i*.02,projectionSource:i%2?'derived':'cached',simulations:500,
+  playoffImpact:i===3?{swing:null,championshipSwing:null,simulations:0}:{swing:.2-i*.003,championshipSwing:i%3===0?null:.08-i*.002,simulations:500}
+}));
+renderDashboardV1(root,{...payload,teams:tenTeams,remainingSchedule:stressSchedule,matchup:null,gmDiagnostics:null});
+assert.equal((root.innerHTML.match(/data-team-id="/g)||[]).length,10);
+assert.match(root.innerHTML,/Synthetic Team 10/);
+assert.match(root.innerHTML,/No weekly matchup analysis is available/);
+assert.match(root.innerHTML,/Scheduled/);
+assert.match(root.innerHTML,/Playoff leverage comparison/);
+assert.match(root.innerHTML,/Too close to distinguish from #1/);
+assert.doesNotMatch(root.innerHTML,/NaN|Infinity/);
+assert.doesNotMatch(root.innerHTML,/Playoff swing — pp/);
+assert.doesNotMatch(root.innerHTML,/href="#dashboard-gm"/);
 assert.throws(() => renderDashboardV1(root, {...payload, schemaVersion: 99}), /Unsupported/);
 assert.throws(() => renderDashboardV1(root, {...payload, league: {userTeamId: 'missing'}}), /Focus team missing/);
 console.log('live-dashboard-render-tests: all checks passed');
