@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {reconcileCaptureSnapshot} from '../src/data/capture-snapshot-reconciliation.js';
+const league={teams:[{id:'t1',roster:[{id:'p1',projection:12}],lineup:[{id:'p1',lineupSlot:'QB'}],weeklyLineups:{6:[{id:'p1',lineupSlot:'QB'}]}},{id:'t2',roster:[{id:'p2'}],lineup:[{id:'p2',lineupSlot:'RB'}]}],schedule:[{week:6,matchups:[['t1','t2']]},{week:7,matchups:[['t1','t2']]}]};
+const clone=()=>structuredClone(league);
+const compare=x=>reconcileCaptureSnapshot(x,league,{week:6});
+assert.equal(compare(clone()).passed,true);
+const projections=clone();projections.teams[0].roster[0].projection=25;assert.equal(compare(projections).passed,true);
+const roster=clone();roster.teams[0].roster[0].id='different';assert.deepEqual(compare(roster).differences,['roster:t1']);
+const lineup=clone();lineup.teams[0].weeklyLineups[6][0].lineupSlot='BN';assert.deepEqual(compare(lineup).differences,['lineup:t1']);
+const schedule=clone();schedule.schedule[1].matchups=[['t1','t1']];assert.deepEqual(compare(schedule).differences,['matchups:7']);
+const missing=clone();delete missing.teams[0].roster;assert.ok(compare(missing).differences.includes('roster:t1'));
+const weekMissing=clone();weekMissing.schedule=[];assert.ok(compare(weekMissing).differences.includes('current-week-schedule'));
+console.log('capture-snapshot-reconciliation-tests: all checks passed');
