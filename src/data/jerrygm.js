@@ -1,4 +1,7 @@
 const BASE_URL='https://api.jerrygm.com/api/ext/v1';
+const quotaBlocks=new Map();
+const quotaKey=(apiKey,baseUrl)=>`${baseUrl}:${apiKey}`;
+export function clearJerryGMQuotaBlocksForTests(){quotaBlocks.clear();}
 const scoringName=value=>{const s=String(value||'HALF').toLowerCase();return s==='ppr'?'ppr':s==='standard'||s==='std'?'standard':'half'};
 const rowsFrom=value=>Array.isArray(value)?value:Array.isArray(value?.players)?value.players:Array.isArray(value?.projections)?value.projections:[];
 const numberOrNull=value=>{const n=Number(value);return Number.isFinite(n)?n:null};
@@ -36,8 +39,17 @@ export class JerryGMClient{
  async request({season,week,scoring='HALF',names=[]}={}){
   const url=new URL(`${this.baseUrl}/projections`);url.searchParams.set('season',String(season));if(Number.isInteger(Number(week)))url.searchParams.set('week',String(week));url.searchParams.set('scoring',scoringName(scoring));
   if(names.length)url.searchParams.set('names',names.join(','));
+  const key=quotaKey(this.apiKey,this.baseUrl),blockedUntil=quotaBlocks.get(key);
+  if(blockedUntil&&blockedUntil>Date.now())throw new Error(`JerryGM quota exhausted; skipping API request until ${new Date(blockedUntil).toISOString()}`);
+  if(blockedUntil)quotaBlocks.delete(key);
   const response=await this.fetch(url,{headers:{'x-api-key':this.apiKey,'authorization':`Bearer ${this.apiKey}`,'accept':'application/json'}});
-  const text=await response.text();if(!response.ok)throw new Error(`JerryGM ${response.status}: ${text.slice(0,300)}`);
+  const text=await response.text();
+  if(response.status===429){
+   let resetAt=null;try{resetAt=JSON.parse(text)?.resetAt;}catch{}
+   const reset=Date.parse(resetAt??'');
+   quotaBlocks.set(key,Number.isFinite(reset)&&reset>Date.now()?reset:Date.now()+60*60*1000);
+  }
+  if(!response.ok)throw new Error(`JerryGM ${response.status}: ${text.slice(0,300)}`);
   try{return JSON.parse(text);}catch{throw new Error('JerryGM returned invalid JSON.');}
  }
  async projections({season,week,scoring='HALF',names=[]}={}){
