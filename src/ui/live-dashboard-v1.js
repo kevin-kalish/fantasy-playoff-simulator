@@ -23,8 +23,15 @@ export function renderDashboardV1(root, payload) {
     const y=p=>bottom-p*(bottom-top);
     const path=historyValid.map((p,i)=>(i?'L':'M')+x(p.week).toFixed(1)+' '+y(p.probability).toFixed(1)).join(' ');
     const grid=[0,.25,.5,.75,1].map(p=>`<line x1="${left}" y1="${y(p)}" x2="${right}" y2="${y(p)}" stroke="#dce2eb"/><text x="45" y="${y(p)+4}" text-anchor="end" font-size="12" fill="#526174">${Math.round(p*100)}%</text>`).join('');
-    const markers=historyValid.map(p=>`<circle cx="${x(p.week)}" cy="${y(p.probability)}" r="5" fill="#3268a8"><title>Week ${p.week}: ${percent(p.probability)}${p.result?' ('+escapeHtml(p.result)+')':''}</title></circle><text x="${x(p.week)}" y="292" text-anchor="middle" font-size="12" fill="#526174">${p.week}</text>`).join('');
-    return `<svg role="img" aria-label="Playoff probability by completed fantasy week, from zero to one hundred percent" viewBox="0 0 800 310" style="width:100%;height:auto;max-height:360px"><title>Weekly playoff probability history</title>${grid}<path d="${path}" fill="none" stroke="#3268a8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${markers}<text x="400" y="307" text-anchor="middle" font-size="12" fill="#526174">Fantasy week</text></svg><div class="table-wrap"><table><thead><tr><th>Week completed</th><th>Result</th><th>Playoff probability</th><th>Change</th></tr></thead><tbody>${historyValid.map((p,i)=>`<tr><td>Week ${p.week}</td><td>${p.result ?? '—'}</td><td>${percent(p.probability)}</td><td>${i ? points(p.probability-historyValid[i-1].probability) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
+    const markers=historyValid.map((p,i)=>{
+      const result=p.result==='W'?'W':p.result==='L'?'L':p.result==='T'?'T':'';
+      const change=i?points(p.probability-historyValid[i-1].probability):'baseline';
+      const tooltip='Week '+p.week+': '+percent(p.probability)+(result?' · '+(result==='W'?'Win':result==='L'?'Loss':'Tie'):'')+' · '+change;
+      const px=x(p.week), py=y(p.probability);
+      const badgeY=py<top+38?py+25:py-15;
+      return `<g class="history-point" tabindex="0" role="img" aria-label="${escapeHtml(tooltip)}" data-history-tooltip="${escapeHtml(tooltip)}"><title>${escapeHtml(tooltip)}</title><circle cx="${px}" cy="${py}" r="9" fill="transparent" stroke="none"/><circle cx="${px}" cy="${py}" r="5" fill="#3268a8" pointer-events="none"/>${result?`<text x="${px}" y="${badgeY}" text-anchor="middle" font-size="12" font-weight="700" fill="${result==='W'?'#167047':result==='L'?'#b03838':'#526174'}" pointer-events="none">${result}</text>`:''}<text x="${px}" y="292" text-anchor="middle" font-size="12" fill="#526174" pointer-events="none">${p.week}</text></g>`;
+    }).join('');
+    return `<svg role="group" aria-label="Playoff probability by completed fantasy week, from zero to one hundred percent" viewBox="0 0 800 310" style="width:100%;height:auto;max-height:360px"><title>Weekly playoff probability history</title>${grid}<path d="${path}" fill="none" stroke="#3268a8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${markers}<text x="400" y="307" text-anchor="middle" font-size="12" fill="#526174">Fantasy week</text></svg><p id="dashboard-history-tooltip" class="demo-disclaimer" aria-live="polite">Hover over or focus a point to see its probability, result, and weekly change. W = win; L = loss; T = tie.</p><div class="table-wrap"><table><thead><tr><th>Week completed</th><th>Result</th><th>Playoff probability</th><th>Change</th></tr></thead><tbody>${historyValid.map((p,i)=>`<tr><td>Week ${p.week}</td><td>${p.result ?? '—'}</td><td>${percent(p.probability)}</td><td>${i ? points(p.probability-historyValid[i-1].probability) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
   })();
   const rows = payload.teams.map(team => `<tr class="${team.id === teamId ? 'selected' : ''}" data-team-id="${escapeHtml(team.id)}" tabindex="0" role="button" aria-label="View ${escapeHtml(team.name)}"><td>${escapeHtml(team.name)}</td><td>${escapeHtml(record(team.record))}</td><td>#${escapeHtml(team.currentSeed)}</td><td>${escapeHtml(decimal(team.averageWins))}</td><td>${percent(team.playoffProbability)}</td><td>${percent(team.championshipProbability)}${titleSuffix}</td></tr>`).join('');
   const showTeam = team => {
@@ -112,6 +119,22 @@ export function renderDashboardV1(root, payload) {
       if (button) button.setAttribute('aria-selected',String(name===tab));
     }
   };
+  const tooltipDefault='Hover over or focus a point to see its probability, result, and weekly change. W = win; L = loss; T = tie.';
+  const updateHistoryTooltip = event => {
+    const marker=event.target?.closest?.('[data-history-tooltip]');
+    const tooltip=root.querySelector?.('#dashboard-history-tooltip');
+    if(marker && tooltip) tooltip.textContent=marker.getAttribute('data-history-tooltip');
+  };
+  const resetHistoryTooltip = event => {
+    const marker=event.target?.closest?.('[data-history-tooltip]');
+    const next=event.relatedTarget?.closest?.('[data-history-tooltip]');
+    const tooltip=root.querySelector?.('#dashboard-history-tooltip');
+    if(marker && marker!==next && tooltip) tooltip.textContent=tooltipDefault;
+  };
+  root.addEventListener?.('mouseover',updateHistoryTooltip);
+  root.addEventListener?.('focusin',updateHistoryTooltip);
+  root.addEventListener?.('mouseout',resetHistoryTooltip);
+  root.addEventListener?.('focusout',resetHistoryTooltip);
   root.onclick = event => {
     const tabButton=event.target?.closest?.('[data-dashboard-tab]');
     if (tabButton) { switchTab(tabButton.getAttribute('data-dashboard-tab')); return; }
