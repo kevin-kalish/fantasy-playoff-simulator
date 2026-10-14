@@ -28,11 +28,11 @@ export async function loadWeeklyProjections({season,week,scoring='HALF',minimumR
  const observedAt=['fantasypros','jerrygm'].includes(result.provider)?new Date().toISOString():null;
  return {...result,observedAt,trust:projectionProviderTrust(result,{minimumRows})};
 }
-export async function loadWeeklyProjectionHorizon({season,weeks,week,scoring='HALF',minimumRows=1,projectionNames=[],apiKey=process.env.FANTASYPROS_API_KEY,jerryGMApiKey=process.env.JERRYGM_API_KEY,fixturePath=null,cachePath=process.env.PROJECTION_CACHE_PATH??'data/private/projection-cache.json',fetchImpl=globalThis.fetch}={}){
+export async function loadWeeklyProjectionHorizon({season,weeks,week,scoring='HALF',minimumRows=1,projectionNames=[],apiKey=process.env.FANTASYPROS_API_KEY,jerryGMApiKey=process.env.JERRYGM_API_KEY,fixturePath=null,cachePath=process.env.PROJECTION_CACHE_PATH??'data/private/projection-cache.json',fetchImpl=globalThis.fetch,preferCache=process.env.PROJECTION_REFRESH!=='true'}={}){
  const targetWeeks=[...new Set((weeks?.length?weeks:[week]).map(Number).filter(Number.isInteger))].sort((a,b)=>a-b);
  if(!targetWeeks.length)throw new Error('At least one projection week is required.');
  const results=[];
- for(const targetWeek of targetWeeks)results.push(await loadWeeklyProjections({season,week:targetWeek,scoring,minimumRows,projectionNames,apiKey,jerryGMApiKey,fixturePath,cachePath,fetchImpl}));
+ for(const targetWeek of targetWeeks)results.push(await loadWeeklyProjections({season,week:targetWeek,scoring,minimumRows,projectionNames,apiKey,jerryGMApiKey,fixturePath,cachePath,fetchImpl,preferCache}));
  const rows=results.flatMap(result=>result.rows);
  const providers=[...new Set(results.map(result=>result.provider))];
  const attempts=results.flatMap((result,index)=>result.attempts.map(attempt=>({...attempt,week:targetWeeks[index]})));
