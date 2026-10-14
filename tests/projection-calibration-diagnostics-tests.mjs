@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {assessProjectionCalibration} from '../src/model/projection-calibration-diagnostics.js';
+const empty=assessProjectionCalibration({overall:{n:0},quality:{accepted:0,rejected:0}});
+assert.equal(empty.calibrationReviewReady,false);
+assert.equal(empty.parameterUpdatesAllowed,false);
+assert.ok(empty.warnings.includes('insufficient-total-sample'));
+const good=assessProjectionCalibration({overall:{n:120,mae:2,rmse:3,bias:1},quality:{accepted:120,rejected:0},bySeason:{2025:{n:60},2026:{n:60}},byPosition:{RB:{n:60,mae:2},WR:{n:60,mae:2}},bySource:{jerrygm:{n:120}},byHorizon:{'3-7d':{n:120}}});
+assert.equal(good.calibrationReviewReady,true);
+assert.equal(good.parameterUpdatesAllowed,false);
+const bad=assessProjectionCalibration({...good,quality:{accepted:120,rejected:1}});
+assert.equal(bad.calibrationReviewReady,false);
+console.log('projection-calibration-diagnostics-tests: all checks passed');
