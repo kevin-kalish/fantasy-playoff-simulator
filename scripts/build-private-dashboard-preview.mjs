@@ -38,7 +38,9 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
  if(fs.existsSync(archivePath)){
   const archive=JSON.parse(fs.readFileSync(archivePath,'utf8'));
   const report=document.report??document;
-  if(String(archive.teamId)===String(report.team?.id)){
+  const leagueKey=document.sourceAudit?.leagueKey??document.report?.sourceAudit?.leagueKey;
+  const season=document.sourceAudit?.season??document.report?.season;
+  if(String(archive.teamId)===String(report.team?.id) && (!leagueKey || String(archive.leagueKey)===String(leagueKey)) && (!season || Number(archive.season)===Number(season))){
    report.playoffHistory=archive.history;
   } else throw new Error('Private history team does not match the requested report');
  }
