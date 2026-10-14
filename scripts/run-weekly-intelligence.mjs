@@ -72,7 +72,7 @@ if(!readiness.ready){
    if(comparison.status==='compared'){
     fs.mkdirSync('data/private',{recursive:true});
     const comparisonPath=`data/private/lineup-scenario-week-${week}.json`;
-    fs.writeFileSync(comparisonPath,JSON.stringify(comparison,null,2)+'\\n',{mode:0o600});
+    fs.writeFileSync(comparisonPath,JSON.stringify(comparison,null,2)+'\n',{mode:0o600});
     console.error(`LINEUP SCENARIOS: compared actual submitted lineup with optimized hypothetical; private report ${comparisonPath}; main readiness remains FAIL.`);
    }else console.error(`LINEUP SCENARIOS: ${comparison.status}; ${comparison.reason}`);
   }catch(error){console.error(`LINEUP SCENARIOS: unavailable; ${error.message}`);}
