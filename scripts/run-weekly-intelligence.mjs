@@ -7,6 +7,7 @@ import {diagnoseStartSit} from '../src/model/start-sit-diagnostic.js';
 import {validateIndependentSeeds} from '../src/model/independent-seed-validation.js';
 import {prepareLeagueSimulation} from '../src/model/league-preparation.js';
 import {assessSimulationReadiness} from '../src/model/simulation-readiness.js';
+import {compareLineupScenarios} from '../src/model/lineup-scenario-comparison.js';
 import {buildLeagueIntelligenceReport} from '../src/model/league-intelligence-report.js';
 import {formatWeeklyIntelligence} from '../src/model/weekly-intelligence-format.js';
 import {simulationFingerprint} from '../src/model/simulation-fingerprint.js';
@@ -63,7 +64,20 @@ const confidence=prepared.diagnostics.longRangeConfidence;
 if(confidence){const derived=prepared.diagnostics.longRangeProjectionWeeks??[];if(derived.length){const first=derived[0],last=derived.at(-1);console.error(`HORIZON CONFIDENCE: W${first} ${(100*confidence.byWeek[first]).toFixed(0)}% -> W${last} ${(100*confidence.byWeek[last]).toFixed(0)}% (${confidence.method}; diagnostic only).`);}}
 console.error(`SIMULATION INPUT: ${fingerprint}; seed ${prepared.input.seed}; variant ${prepared.input.modelVariant}.`);
 console.error(`READY CHECK: ${readiness.ready?'PASS':'FAIL'}; projections ${(100*readiness.projectionCoverage.matchRate).toFixed(1)}% usable; incomplete lineups ${readiness.incompleteLineups.length}.`);
-if(!readiness.ready){for(const error of readiness.errors)console.error(`ERROR: ${error}`);console.log(JSON.stringify({readiness,projectionHealth:loaded.trust,metadata:prepared.input.metadata,report:null},null,2));process.exitCode=2;}
+if(!readiness.ready){
+ if(spec.sourceAudit?.passed===true&&readiness.incompleteLineups.length&&process.env.LINEUP_SCENARIO_COMPARE!=='false'){
+  try{
+   const hypothetical=prepareLeagueSimulation(snapshot,loaded.rows,{calibrationReport,simulations,seed:Number(spec.seed??process.env.SEED??20260923),modelVariant:spec.modelVariant??process.env.MODEL_VARIANT??'correlated',minimumProjectionMatchRate,weeks,season,seasonProjectionRows,longRangeSeasonWeight,lineupPolicy:'optimized-hypothetical'});
+   const comparison=compareLineupScenarios(prepared,hypothetical,{teamId:spec.teamId,week,minimumProjectionMatchRate,simulations:Math.min(2000,Math.max(100,scenarioSimulations))});
+   if(comparison.status==='compared'){
+    fs.mkdirSync('data/private',{recursive:true});
+    const comparisonPath=`data/private/lineup-scenario-week-${week}.json`;
+    fs.writeFileSync(comparisonPath,JSON.stringify(comparison,null,2)+'\\n',{mode:0o600});
+    console.error(`LINEUP SCENARIOS: compared actual submitted lineup with optimized hypothetical; private report ${comparisonPath}; main readiness remains FAIL.`);
+   }else console.error(`LINEUP SCENARIOS: ${comparison.status}; ${comparison.reason}`);
+  }catch(error){console.error(`LINEUP SCENARIOS: unavailable; ${error.message}`);}
+ }
+ for(const error of readiness.errors)console.error(`ERROR: ${error}`);console.log(JSON.stringify({readiness,projectionHealth:loaded.trust,metadata:prepared.input.metadata,report:null},null,2));process.exitCode=2;}
 else{
  const tradeDiscovery=spec.tradeDiscovery;
  if(tradeDiscovery?.enabled&&!(spec.trades?.length)){
