@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {captureCompletedWeekProbability} from '../src/data/weekly-playoff-history.js';
 import {buildProjectionArchive,saveProjectionArchive} from '../src/data/projection-archive.js';
 import {diagnoseStartSit} from '../src/model/start-sit-diagnostic.js';
 import {validateIndependentSeeds} from '../src/model/independent-seed-validation.js';
@@ -99,5 +100,11 @@ else{
 const c=report.recommendations?.confirmation;if(c){const staged=c.precheckCount?`${c.precheckPassedCount}/${c.precheckCount} trade candidates passed the ${c.precheckSimulations.toLocaleString()}-simulation precheck; `:'';console.error(`CONFIRMATION: ${staged}${c.evaluatedCount??c.confirmedCount}/${c.finalCandidateCount??c.candidateCount} finalists re-evaluated at ${c.simulations.toLocaleString()} simulations each; ${c.passedCount??0} passed the final recommendation gate.`);}
  console.log(formatWeeklyIntelligence(report,{maxActions:Number(spec.maxActions??5)}));
  if(spec.outputPath){fs.writeFileSync(spec.outputPath,JSON.stringify({readiness,report,...(seedValidation?{seedValidation}:{}),...(startSitDiagnostic?{startSitDiagnostic}:{})},null,2));console.error(`REPORT JSON: ${spec.outputPath}`);}
+ if(spec.sourceAudit?.passed===true && spec.sourceAudit.week===week && spec.sourceAudit.leagueKey && spec.outputPath && process.env.PLAYOFF_HISTORY_CAPTURE!=='false'){
+  try{
+   const captured=captureCompletedWeekProbability({document:{readiness,report},currentWeek:week,season,leagueKey:spec.sourceAudit.leagueKey});
+   console.error(`PLAYOFF HISTORY: ${captured.status}; ${captured.reason??('completed week '+captured.week)}`);
+  }catch(error){console.error(`PLAYOFF HISTORY: FAIL; ${error.message}; report preserved; archive unchanged.`);}
+ }
  if(spec.includeJson) console.log(JSON.stringify({readiness,report},null,2));
 }
