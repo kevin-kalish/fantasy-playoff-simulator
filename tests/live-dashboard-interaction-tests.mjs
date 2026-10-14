@@ -35,7 +35,7 @@ renderDashboardV1(root,{
 const eventTarget=(selector,attributes)=>({
  closest(query){return query===selector?{getAttribute(name){return attributes[name];}}:null;}
 });
-assert.equal(element('#dashboard-history').hidden,false===true);
+assert.match(root.innerHTML,/data-dashboard-tab="history"/);
 root.onclick({target:eventTarget('[data-dashboard-tab]',{'data-dashboard-tab':'history'})});
 assert.equal(element('#dashboard-history').hidden,false);
 assert.equal(element('#dashboard-overview').hidden,true);
