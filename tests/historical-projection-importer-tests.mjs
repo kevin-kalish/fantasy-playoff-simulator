@@ -9,6 +9,12 @@ assert.equal(importHistoricalProjectionArchives([{...archive,data:{...archive.da
 assert.equal(result.rejected.length,1);
 const verifiedV3={...archive,data:{...archive.data,schemaVersion:3,rows:[{...archive.data.rows[0],projectedAt:'2025-09-20T11:55:00Z',forecastProvenance:{kind:'fresh-provider-response',provider:'jerrygm',observedAt:'2025-09-20T11:55:00Z'}}]}};
 assert.equal(importHistoricalProjectionArchives([verifiedV3],actuals).rows.length,1);
+const v3Row=verifiedV3.data.rows[0];
+const withRow=(row,overrides={})=>[{...verifiedV3,...overrides,data:{...verifiedV3.data,rows:[row]}}];
+assert.equal(importHistoricalProjectionArchives(withRow(v3Row,{capturedAt:'2025-09-22T12:00:00Z'}),actuals).rejected[0].reason,'archive-not-pregame');
+assert.equal(importHistoricalProjectionArchives(withRow(v3Row,{capturedAt:'2025-09-20T11:54:00Z'}),actuals).rejected[0].reason,'invalid-verified-provider-timeline');
+assert.equal(importHistoricalProjectionArchives(withRow(v3Row,{immutable:false}),actuals).rejected[0].reason,'invalid-verified-provider-timeline');
+assert.equal(importHistoricalProjectionArchives(withRow({...v3Row,forecastProvenance:{...v3Row.forecastProvenance,provider:'cache'}}),actuals).rejected[0].reason,'invalid-verified-provider-timeline');
 assert.equal(importHistoricalProjectionArchives([{...verifiedV3,data:{...verifiedV3.data,rows:[{...verifiedV3.data.rows[0],forecastProvenance:{kind:'unverified-cache-or-fallback'}}]}}],actuals).rows.length,0);
 assert.equal(importHistoricalProjectionArchives([{...archive,immutable:false}],actuals).rows.length,0);
 assert.equal(importHistoricalProjectionArchives([{...archive,immutable:true,capturedAt:'2025-09-22T12:00:00Z'}],actuals).rows.length,0);
