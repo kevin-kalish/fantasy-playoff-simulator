@@ -61,6 +61,13 @@ if(sourceAudit)plan.sourceAudit=sourceAudit;
 plan.tradeDiscovery={enabled:true,maxPartners:Number(process.env.TRADE_MAX_PARTNERS??9),maxPlayersPerTeam:Number(process.env.TRADE_MAX_PLAYERS_PER_TEAM??7),maxScenarios:Number(process.env.TRADE_MAX_SCENARIOS??24),valueTolerance:Number(process.env.TRADE_VALUE_TOLERANCE??.35),includePackages:process.env.TRADE_INCLUDE_PACKAGES!=='false'};
 plan.scanAvailability={startSit:{status:'available'},waivers:{status:'unavailable',reason:'Yahoo waiver source not attempted.'},trades:{status:'not-configured',reason:'Trade discovery runs after projections are loaded.'}};
 if(leagueKey)plan.yahoo={leagueKey,leagueKeySource:'live-state'};
+if(process.env.YAHOO_ONLY_REFRESH==='true'){
+ const specPath=focusTeamArg?`data/private/${slug(focusTeamArg)}-week-${plan.week}-spec.json`:`data/private/fightin-kali-week-${plan.week}-spec.json`;
+ fs.mkdirSync('data/private',{recursive:true});
+ fs.writeFileSync(specPath,JSON.stringify(plan,null,2)+'\\n'.replace('\\\\n','\\n'));
+ console.log(`YAHOO ONLY: PASS; season ${plan.season} week ${plan.week}; snapshot ${snapshotPath}; spec ${specPath}; ${sourceAudit.checks.length} reconciliation checks; no projection provider, waivers or Monte Carlo requests.`);
+ process.exit(0);
+}
 if(get&&leagueKey){
  try{
   const raw=await loadYahooWaiverPool(get,{leagueKey,limit:Number(process.env.WAIVER_CANDIDATE_LIMIT??30)});
