@@ -1,3 +1,7 @@
+### Submitted Yahoo lineup versus optimized hypothetical
+
+If a trusted Yahoo weekly run fails readiness because a submitted lineup has empty starter slots, the weekly command now attempts a **private diagnostic what-if comparison**. The normal report stays blocked. A separate `data/private/lineup-scenario-week-<week>.json` contains paired Monte Carlo forecasts using (1) the actual Yahoo starters, including empty slots, and (2) an optimized eligible lineup **only for teams with incomplete submitted lineups**. Other teams retain their submitted current-week starters. The hypothetical is not a roster transaction, a Yahoo lineup update, or a trusted replacement forecast. The comparison is withheld if the optimized scenario fails readiness or unrelated data-quality errors exist. Set `LINEUP_SCENARIO_COMPARE=false` to disable the optional diagnostic. It uses already loaded projections and makes no extra provider requests. Same-seed simulations are reproducible but not guaranteed to be common-random-number paired at the player level.
+
 # Fantasy Playoff Simulator
 
 Monte Carlo fantasy football analytics application for estimating playoff, seed, matchup, and championship probabilities. Current live development targets a 10-team Yahoo Fantasy Football league with 8 playoff spots.
