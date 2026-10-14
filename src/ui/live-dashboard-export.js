@@ -83,6 +83,18 @@ export function weeklyReportToDashboardV1(report) {
     league: { teamCount: teams.length, playoffTeamCount: report.league.playoffSpots, userTeamId: String(report.team.id) },
     model: { simulations: report.outlook.simulations, seed: report.outlook.seed, championshipStatus: report.trust.postseason.trusted ? 'direct' : 'provisional', directWeeks: [...directWeeks], derivedWeeks: [...derivedWeeks] },
     teams,
+    playoffHistory: (() => {
+      const history = report.playoffHistory ?? [];
+      if (!Array.isArray(history)) throw new Error('Invalid playoff history');
+      const seen = new Set();
+      return history.map(entry => {
+        if (!Number.isInteger(entry.week) || entry.week < 0 || seen.has(entry.week) || String(entry.teamId ?? report.team.id) !== String(report.team.id)) throw new Error('Invalid playoff history week or team');
+        seen.add(entry.week);
+        const result = entry.result == null ? null : String(entry.result).toUpperCase();
+        if (result != null && !['W','L','T'].includes(result)) throw new Error('Invalid playoff history result');
+        return {week:entry.week,probability:probability(entry.playoffProbability),result};
+      }).sort((a,b)=>a.week-b.week);
+    })(),
     roster,
     matchup: matchup ?? null,
     remainingSchedule: (report.remainingSchedule ?? []).map(game => {
