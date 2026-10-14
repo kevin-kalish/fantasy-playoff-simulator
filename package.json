@@ -55,6 +55,7 @@
     "review:readiness": "node scripts/review-production-readiness.mjs",
     "test:dashboard": "node tests/live-dashboard-export-tests.mjs && node tests/live-dashboard-render-tests.mjs && node tests/private-dashboard-preview-tests.mjs",
     "dashboard:preview": "node scripts/build-private-dashboard-preview.mjs",
+    "dashboard:demo": "node scripts/build-synthetic-dashboard-preview.mjs",
     "calibration:accuracy": "node scripts/calibrate-projection-accuracy.mjs",
     "calibration:import": "node scripts/import-historical-projections.mjs",
     "calibration:kickoffs": "node scripts/enrich-projection-kickoffs.mjs",
