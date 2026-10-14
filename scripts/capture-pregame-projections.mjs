@@ -24,8 +24,10 @@ try{
  if(fresh.length!==1)throw new Error('Expected exactly one new immutable archive; found '+fresh.length);
  const rows=fresh[0].data.rows??[];
  const verified=rows.filter(r=>r.forecastProvenance?.kind==='fresh-provider-response').length;
- const summary={capturedAt:fresh[0].capturedAt,archive:path.basename(fresh[0].path),rows:rows.length,freshProviderRows:verified,unverifiedRows:rows.length-verified,season:Number(spec.season),weeks:spec.weeks??[spec.week]};
+ const kickoffVerified=rows.filter(r=>r.forecastProvenance?.kind==='fresh-provider-response'&&Number.isFinite(Date.parse(r.kickoffAt??''))&&Date.parse(r.projectedAt)<Date.parse(r.kickoffAt)&&Date.parse(fresh[0].capturedAt)<Date.parse(r.kickoffAt)).length;
+ const summary={capturedAt:fresh[0].capturedAt,archive:path.basename(fresh[0].path),rows:rows.length,freshProviderRows:verified,pregameKickoffVerifiedRows:kickoffVerified,unverifiedRows:rows.length-verified,season:Number(spec.season),weeks:spec.weeks??[spec.week]};
  fs.writeFileSync('data/private/last-pregame-capture.json',JSON.stringify(summary,null,2)+'\n');
  console.log('PREGAME CAPTURE: '+verified+'/'+rows.length+' fresh-provider rows; private archive '+summary.archive);
  if(!verified){console.error('PREGAME CAPTURE: no live-provider forecasts; not calibration eligible');process.exitCode=2;}
+ else if(!kickoffVerified){console.error('PREGAME CAPTURE: no kickoff-verified pregame forecasts yet; run kickoff enrichment before calibration');process.exitCode=2;}
 }catch(error){console.error('PREGAME CAPTURE: FAIL; '+error.message);process.exitCode=1;}
