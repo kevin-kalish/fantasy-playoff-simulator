@@ -18,7 +18,7 @@ npm run dashboard:demo
 Start-Process .\\data\\private\\synthetic-dashboard-preview.html
 ```
 
-The **Playoff probability history** tab shows example Week 0–6 changes, including a loss from 80% to 60% followed by a win to 75%. These values are illustrative, not actual historical estimates. The command generates a synthetic 10-team league preview at `data/private/synthetic-dashboard-preview.html`. The fixture includes a playoff race, current matchup, remaining schedule, playoff/championship leverage rankings, GM rejection diagnostics, and provisional postseason estimates. It is **demonstration data, not current Yahoo standings or live recommendations**. Use the section links to navigate, select a team in the playoff race, and switch the remaining schedule between chronological and impact order.
+The **Playoff probability history** tab shows example Week 0–6 changes, including a loss from 80% to 60% followed by a win to 75%. These values are illustrative, not actual historical estimates. The chart labels completed games W/L/T and reveals week, playoff probability, result, and week-over-week percentage-point change when a marker is hovered or focused with the keyboard. The command generates a synthetic 10-team league preview at `data/private/synthetic-dashboard-preview.html`. The fixture includes a playoff race, current matchup, remaining schedule, playoff/championship leverage rankings, GM rejection diagnostics, and provisional postseason estimates. It is **demonstration data, not current Yahoo standings or live recommendations**. Use the section links to navigate, select a team in the playoff race, and switch the remaining schedule between chronological and impact order.
 
 ### Record real week-to-week playoff probability
 
