@@ -131,10 +131,10 @@ export function renderDashboardV1(root, payload) {
     const tooltip=root.querySelector?.('#dashboard-history-tooltip');
     if(marker && marker!==next && tooltip) tooltip.textContent=tooltipDefault;
   };
-  root.addEventListener?.('mouseover',updateHistoryTooltip);
-  root.addEventListener?.('focusin',updateHistoryTooltip);
-  root.addEventListener?.('mouseout',resetHistoryTooltip);
-  root.addEventListener?.('focusout',resetHistoryTooltip);
+  root.onmouseover=updateHistoryTooltip;
+  root.onfocusin=updateHistoryTooltip;
+  root.onmouseout=resetHistoryTooltip;
+  root.onfocusout=resetHistoryTooltip;
   root.onclick = event => {
     const tabButton=event.target?.closest?.('[data-dashboard-tab]');
     if (tabButton) { switchTab(tabButton.getAttribute('data-dashboard-tab')); return; }
