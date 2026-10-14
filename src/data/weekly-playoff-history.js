@@ -2,7 +2,7 @@
 // Forecast week N reflects completed games through N-1. No network requests.
 import fs from 'node:fs';
 import path from 'node:path';
-import {weeklyReportToDashboardV1} from '../src/ui/live-dashboard-export.js';
+import {weeklyReportToDashboardV1} from '../ui/live-dashboard-export.js';
 
 export function captureCompletedWeekProbability({document,currentWeek,season,leagueKey,archivePath='data/private/playoff-probability-history.json',now=new Date()}){
  if(!Number.isInteger(currentWeek)||currentWeek<2||currentWeek>18)return {status:'skipped',reason:'No completed regular-season week to capture'};
