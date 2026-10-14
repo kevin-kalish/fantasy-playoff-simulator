@@ -7,7 +7,7 @@ let saved=0;
 const save=(_dir,archive)=>{saved++;assert.equal(archive.rows[0].kickoffAt,futureKickoff);return 'test.json';};
 const readSchedule=()=>`season,week,home_team,away_team,kickoffAt\n2026,6,NE,NYJ,${futureKickoff}\n`;
 const observedAt=new Date(Date.now()-1000).toISOString();
-const live=async()=>({provider:'jerrygm',rows:[player],trust:{weekResults:[{week:6,provider:'jerrygm',observedAt}]}});
+const live=async options=>{assert.equal(options.preferCache,false);return {provider:'jerrygm',rows:[player],trust:{weekResults:[{week:6,provider:'jerrygm',observedAt}]}};
 const result=await captureFreshProjectionArchive({spec,load:live,save,readSchedule});
 assert.equal(result.freshProviderRows,1);
 assert.equal(result.eligibility.pregameKickoffVerifiedRows,1);
