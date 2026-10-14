@@ -5,8 +5,11 @@ const actuals=[{season:2025,week:3,playerId:'1',actual:15,actualRecordedAt:'2025
 const result=importHistoricalProjectionArchives([archive],actuals);
 assert.equal(result.rows.length,1);
 assert.equal(importHistoricalProjectionArchives([{...archive,data:{...archive.data,schemaVersion:1}}],actuals).rejected[0].reason,'legacy-archive-provenance-unverified');
-assert.equal(importHistoricalProjectionArchives([{...archive,data:{...archive.data,schemaVersion:2}}],actuals).rejected[0].reason,'forecast-provenance-unverified');assert.equal(result.rows[0].actual,15);assert.equal(result.rows[0].projectedAt,archive.capturedAt);
+assert.equal(importHistoricalProjectionArchives([{...archive,data:{...archive.data,schemaVersion:2}}],actuals).rejected[0].reason,'legacy-archive-provenance-unverified');assert.equal(result.rows[0].actual,15);assert.equal(result.rows[0].projectedAt,archive.capturedAt);
 assert.equal(result.rejected.length,1);
+const verifiedV3={...archive,data:{...archive.data,schemaVersion:3,rows:[{...archive.data.rows[0],projectedAt:'2025-09-20T11:55:00Z',forecastProvenance:{kind:'fresh-provider-response',provider:'jerrygm',observedAt:'2025-09-20T11:55:00Z'}}]}};
+assert.equal(importHistoricalProjectionArchives([verifiedV3],actuals).rows.length,1);
+assert.equal(importHistoricalProjectionArchives([{...verifiedV3,data:{...verifiedV3.data,rows:[{...verifiedV3.data.rows[0],forecastProvenance:{kind:'unverified-cache-or-fallback'}}]}}],actuals).rows.length,0);
 assert.equal(importHistoricalProjectionArchives([{...archive,immutable:false}],actuals).rows.length,0);
 assert.equal(importHistoricalProjectionArchives([{...archive,immutable:true,capturedAt:'2025-09-22T12:00:00Z'}],actuals).rows.length,0);
 console.log('historical-projection-importer-tests: all checks passed');
