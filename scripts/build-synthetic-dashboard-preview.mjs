@@ -26,6 +26,7 @@ const document={readiness:{ready:true},report:{
  league:{playoffSpots:8,outlook:teams},
  outlook:{simulations:50000,seed:20261014},
  trust:{trusted:true,projections:{directWeeks:[7,8],longRangeWeeks:[9,10,11,12,15,16,17]},postseason:{trusted:false,reason:'Synthetic derived postseason projections'}},
+ playoffHistory:[{week:0,playoffProbability:.80},{week:1,playoffProbability:.60,result:'L'},{week:2,playoffProbability:.75,result:'W'},{week:3,playoffProbability:.71,result:'L'},{week:4,playoffProbability:.82,result:'W'},{week:5,playoffProbability:.87,result:'W'},{week:6,playoffProbability:.97,result:'W'}],
  remainingSchedule:schedule,
  matchup:{week:7,teamId:'T1',opponentId:'T2',opponentName:'Demo Team 2',
  simulated:{winProbability:.56,teamMean:118.4,opponentMean:114.2},
