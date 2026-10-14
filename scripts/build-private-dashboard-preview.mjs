@@ -34,6 +34,14 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
  if(!input)throw new Error('Usage: npm run dashboard:preview -- data/private/<report>.json [data/private/<preview>.html]');
  if(!withinPrivate(output))throw new Error('Preview must be saved inside data/private; public output paths are prohibited');
  const document=JSON.parse(fs.readFileSync(input,'utf8'));
+ const archivePath=path.join(privateRoot,'playoff-probability-history.json');
+ if(fs.existsSync(archivePath)){
+  const archive=JSON.parse(fs.readFileSync(archivePath,'utf8'));
+  const report=document.report??document;
+  if(String(archive.teamId)===String(report.team?.id)){
+   report.playoffHistory=archive.history;
+  } else throw new Error('Private history team does not match the requested report');
+ }
  const renderer=fs.readFileSync(path.join(projectRoot,'src/ui/live-dashboard-v1.js'),'utf8');
  const html=buildPrivatePreview(document,renderer);
  fs.mkdirSync(path.dirname(output),{recursive:true});
