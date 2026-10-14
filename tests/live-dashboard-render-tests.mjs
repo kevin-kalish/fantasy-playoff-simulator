@@ -37,7 +37,7 @@ assert.ok(root.innerHTML.indexOf('Low title impact')<root.innerHTML.indexOf('Hig
 assert.match(root.innerHTML,/data-schedule-order="chronological" aria-pressed="true"/);
 assert.match(root.innerHTML,/data-schedule-order="impact" aria-pressed="false"/);
 assert.match(root.innerHTML,/Chronological order is the default/);
-assert.match(root.innerHTML,/ranked by conditional championship-probability swing/);
+assert.match(root.innerHTML,/Impact ranking sorts by conditional championship-probability swing/);
 assert.match(root.innerHTML, /PROVISIONAL/);
 assert.match(root.innerHTML, /&lt;Alpha&gt;/);
 assert.doesNotMatch(root.innerHTML, /<Alpha>/);
