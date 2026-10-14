@@ -8,7 +8,7 @@ export function buildProjectionArchive(rows,{capturedAt=new Date().toISOString()
  const clean=(rows||[]).filter(r=>Number.isInteger(Number(r.season))&&Number.isInteger(Number(r.week))&&valid(r.projection)&&r.name&&r.position).map(r=>({
   season:Number(r.season),week:Number(r.week),playerId:String(r.playerId??'').trim(),name:String(r.name),position:String(r.position).toUpperCase(),nflTeam:String(r.nflTeam??''),projection:Number(r.projection),
   source:String(r.source??providerByWeek[r.week]??provider),scoring:String(scoring).toUpperCase(),projectedAt:verifiedTime(r.week)??capturedAt,
-  forecastProvenance:{kind:verifiedTime(r.week)&&['fantasypros','jerrygm'].includes(String(providerByWeek[r.week]??provider))?'fresh-provider-response':'unverified-cache-or-fallback',provider:String(providerByWeek[r.week]??provider),observedAt:verifiedTime(r.week)},
+  forecastProvenance:{kind:verifiedTime(r.week)&&['fantasypros','jerrygm'].includes(String(providerByWeek[r.week]??provider))?'fresh-provider-response':'unverified-cache-or-fallback',provider:String(providerByWeek[r.week]??provider),observedAt:verifiedTime(r.week),retrievedAt:verifiedTime(r.week),issuedAt:null,issuanceVerified:false},
   // Kickoff is intentionally absent until independently sourced and verified.
   ...(r.kickoffAt?{kickoffAt:r.kickoffAt}:{})
  }));
