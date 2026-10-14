@@ -13,6 +13,19 @@ export function renderDashboardV1(root, payload) {
   const titleSuffix = provisional ? ' *' : '';
   const sections = [['dashboard-matchup','Matchup'],['dashboard-schedule','Schedule'],['dashboard-leverage','Leverage'],['dashboard-gm','GM review'],['dashboard-race','Playoff race']];
   const navigation = `<nav aria-label="Dashboard sections" class="schedule-view-controls">${sections.filter(([id]) => id !== 'dashboard-gm' || payload.gmDiagnostics).map(([id,label]) => `<a href="#${id}">${label}</a>`).join('')}</nav>`;
+  const history = Array.isArray(payload.playoffHistory) ? [...payload.playoffHistory].sort((a,b)=>a.week-b.week) : [];
+  const historyValid = history.filter(point => Number.isInteger(point.week) && point.week >= 0 && typeof point.probability === 'number' && Number.isFinite(point.probability) && point.probability >= 0 && point.probability <= 1);
+  const historyChart = (() => {
+    if (!historyValid.length) return '<p class="demo-disclaimer">No recorded weekly playoff probability snapshots yet. This chart will populate as weekly snapshots are saved; previous weeks cannot be reconstructed from the latest forecast.</p>';
+    const left=55, right=765, top=25, bottom=270;
+    const minWeek=Math.min(...historyValid.map(p=>p.week)), maxWeek=Math.max(...historyValid.map(p=>p.week));
+    const x=week=>minWeek===maxWeek?(left+right)/2:left+(week-minWeek)/(maxWeek-minWeek)*(right-left);
+    const y=p=>bottom-p*(bottom-top);
+    const path=historyValid.map((p,i)=>(i?'L':'M')+x(p.week).toFixed(1)+' '+y(p.probability).toFixed(1)).join(' ');
+    const grid=[0,.25,.5,.75,1].map(p=>`<line x1="${left}" y1="${y(p)}" x2="${right}" y2="${y(p)}" stroke="#dce2eb"/><text x="45" y="${y(p)+4}" text-anchor="end" font-size="12" fill="#526174">${Math.round(p*100)}%</text>`).join('');
+    const markers=historyValid.map(p=>`<circle cx="${x(p.week)}" cy="${y(p.probability)}" r="5" fill="#3268a8"><title>Week ${p.week}: ${percent(p.probability)}${p.result?' ('+escapeHtml(p.result)+')':''}</title></circle><text x="${x(p.week)}" y="292" text-anchor="middle" font-size="12" fill="#526174">${p.week}</text>`).join('');
+    return `<svg role="img" aria-label="Playoff probability by completed fantasy week, from zero to one hundred percent" viewBox="0 0 800 310" style="width:100%;height:auto;max-height:360px"><title>Weekly playoff probability history</title>${grid}<path d="${path}" fill="none" stroke="#3268a8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${markers}<text x="400" y="307" text-anchor="middle" font-size="12" fill="#526174">Fantasy week</text></svg><div class="table-wrap"><table><thead><tr><th>Week completed</th><th>Result</th><th>Playoff probability</th><th>Change</th></tr></thead><tbody>${historyValid.map((p,i)=>`<tr><td>Week ${p.week}</td><td>${p.result ?? '—'}</td><td>${percent(p.probability)}</td><td>${i ? points(p.probability-historyValid[i-1].probability) : '—'}</td></tr>`).join('')}</tbody></table></div>`;
+  })();
   const rows = payload.teams.map(team => `<tr class="${team.id === teamId ? 'selected' : ''}" data-team-id="${escapeHtml(team.id)}" tabindex="0" role="button" aria-label="View ${escapeHtml(team.name)}"><td>${escapeHtml(team.name)}</td><td>${escapeHtml(record(team.record))}</td><td>#${escapeHtml(team.currentSeed)}</td><td>${escapeHtml(decimal(team.averageWins))}</td><td>${percent(team.playoffProbability)}</td><td>${percent(team.championshipProbability)}${titleSuffix}</td></tr>`).join('');
   const showTeam = team => {
     const detail = root.querySelector?.("#dashboard-team-detail");
@@ -69,6 +82,8 @@ export function renderDashboardV1(root, payload) {
   root.innerHTML = `<div class="dash-head"><div><div class="eyebrow">Live dashboard export · read only</div><h2>${escapeHtml(focus.name)}</h2></div><div class="sim-note">${escapeHtml(payload.model?.simulations)} simulations · generated ${escapeHtml(payload.generatedAt)}</div></div>
     <div class="metric-grid"><div><span>Playoff probability</span><strong>${percent(focus.playoffProbability)}</strong></div><div><span>Championship probability</span><strong>${percent(focus.championshipProbability)}${titleSuffix}</strong></div><div><span>Expected final wins</span><strong>${escapeHtml(Number(focus.averageWins).toFixed(2))}</strong></div></div>
     <p class="demo-disclaimer"><strong>Projection reliability:</strong> ${projectionNotice} ${provisional ? "Championship estimates are provisional." : ""}</p>
+    <div class="schedule-view-controls" role="tablist" aria-label="Dashboard views"><button type="button" role="tab" id="tab-overview" data-dashboard-tab="overview" aria-controls="dashboard-overview" aria-selected="true">Overview</button><button type="button" role="tab" id="tab-history" data-dashboard-tab="history" aria-controls="dashboard-history" aria-selected="false">Playoff probability history</button></div>
+    <div id="dashboard-overview" role="tabpanel" aria-labelledby="tab-overview">
     ${navigation}
     <section id="dashboard-matchup" aria-label="Weekly matchup">${matchupPanel}</section>
     <section id="dashboard-schedule" aria-label="Remaining schedule">${schedulePanel}</section>
@@ -77,7 +92,8 @@ export function renderDashboardV1(root, payload) {
     <section id="dashboard-race" aria-label="League playoff race"><div class="race-panel"><h3>League playoff race</h3><div class="table-wrap"><table><thead><tr><th>Team</th><th>Record</th><th>Seed</th><th>Avg wins</th><th>Playoffs</th><th>Champion</th></tr></thead><tbody>${rows}</tbody></table></div></div></section>
     <div id="dashboard-team-detail" class="detail-card" aria-live="polite"><h3>${escapeHtml(focus.name)}</h3><p>Click a team in the playoff race to inspect its outlook.</p></div>
     <p class="demo-disclaimer">${provisional ? '* Championship odds are PROVISIONAL because playoff-week projections are derived.' : 'Championship odds use direct playoff-week projections.'} Direct weeks: ${escapeHtml((payload.model?.directWeeks ?? []).join(', ') || 'none')}; derived weeks: ${escapeHtml((payload.model?.derivedWeeks ?? []).join(', ') || 'none')}.</p>
-    <p class="demo-disclaimer">Recommended actions are not published by this read-only dashboard. Approved GM scenarios, if any, require a separate action-publication trust review.</p>`;
+    <p class="demo-disclaimer">Recommended actions are not published by this read-only dashboard. Approved GM scenarios, if any, require a separate action-publication trust review.</p></div>
+    <section id="dashboard-history" role="tabpanel" aria-labelledby="tab-history" hidden><div class="race-panel"><h3>Playoff probability by week</h3><p class="demo-disclaimer">Each point is the forecast recorded after that week's games, not a prediction of the outcome of that game. Week 0 is the preseason baseline when available. Changes reflect results, projections, and other model inputs.</p>${historyChart}</div></section>`;
   showTeam(focus);
   const scheduleGames = root.querySelector?.('#dashboard-schedule-games');
   const scheduleButtons = root.querySelectorAll?.('[data-schedule-order]') ?? [];
@@ -87,7 +103,18 @@ export function renderDashboardV1(root, payload) {
     scheduleGames.innerHTML = games.map(game => `<div class="schedule-row"><span>Week ${escapeHtml(game.week)}</span><strong>${escapeHtml(game.opponentName)}</strong><em>${game.winProbability == null ? 'Scheduled' : `${percent(game.winProbability)} · ${escapeHtml(game.projectionSource)} (${escapeHtml(game.simulations)} sims)`}${game.playoffImpact ? ` · Playoff swing ${points(game.playoffImpact.swing)}${game.playoffImpact.championshipSwing == null ? '' : ` · Championship swing ${points(game.playoffImpact.championshipSwing)}`}` : ''}</em></div>`).join('') || '<p class="demo-disclaimer">No remaining schedule supplied.</p>';
     for (const button of scheduleButtons) button.setAttribute('aria-pressed', String(button.getAttribute('data-schedule-order') === order));
   };
+  const switchTab = tab => {
+    if (!['overview','history'].includes(tab)) return;
+    for (const name of ['overview','history']) {
+      const panel=root.querySelector?.('#dashboard-'+name);
+      const button=root.querySelector?.('#tab-'+name);
+      if (panel) panel.hidden=name!==tab;
+      if (button) button.setAttribute('aria-selected',String(name===tab));
+    }
+  };
   root.onclick = event => {
+    const tabButton=event.target?.closest?.('[data-dashboard-tab]');
+    if (tabButton) { switchTab(tabButton.getAttribute('data-dashboard-tab')); return; }
     const orderButton = event.target?.closest?.('[data-schedule-order]');
     if (orderButton) { renderScheduleOrder(orderButton.getAttribute('data-schedule-order')); return; }
     const row = event.target?.closest?.("[data-team-id]"); if (!row) return; const team = payload.teams.find(t => t.id === row.getAttribute("data-team-id")); if (team) showTeam(team);
