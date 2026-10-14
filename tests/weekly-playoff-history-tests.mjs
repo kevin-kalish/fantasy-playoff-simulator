@@ -12,6 +12,8 @@ try{
  assert.equal(fs.existsSync(archivePath),false);
  assert.equal(captureCompletedWeekProbability({...options,document:{readiness:{ready:false},report}}).status,'skipped');
  assert.equal(captureCompletedWeekProbability({...options,document:{readiness:{ready:true},report:{...report,trust:{trusted:false}}}}).status,'skipped');
+ assert.equal(captureCompletedWeekProbability({...options,now:new Date('2026-11-15T13:00:00Z')}).status,'skipped');
+ assert.equal(fs.existsSync(archivePath),false);
  assert.equal(captureCompletedWeekProbability(options).status,'recorded');
  const first=fs.readFileSync(archivePath,'utf8');
  assert.equal(JSON.parse(first).history[0].week,6);
