@@ -2,6 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {readArchiveDirectory} from '../src/data/historical-projection-importer.js';
+import {validatePregameCaptureInputs} from '../src/data/pregame-capture-validation.js';
+import {createYahooClient} from '../src/data/yahoo-client.js';
+import {resolveYahooAccessToken} from '../src/data/yahoo-auth-session.js';
+import {runYahooLeagueAudit} from '../src/data/yahoo-live-audit.js';
 const [snapshot,specFile]=process.argv.slice(2);
 if(!snapshot||!specFile){console.error('Usage: npm run calibration:capture -- <private-snapshot.json> <private-weekly-spec.json>');process.exit(2);}
 try{
@@ -11,7 +15,18 @@ try{
   if(!fs.existsSync(file))throw new Error('Missing input: '+file);
  }
  const spec=JSON.parse(fs.readFileSync(specFile,'utf8'));
- if(spec.sourceAudit?.passed!==true)throw new Error('A passed Yahoo source audit is required for archival capture');
+ const expected=validatePregameCaptureInputs(spec,snapshot);
+ const referencePath=process.env.YAHOO_REFERENCE??'fixtures/yahoo-reference-2026-week3.json';
+ if(!fs.existsSync(referencePath))throw new Error('Yahoo audit reference is missing: '+referencePath);
+ const yahooAuth=await resolveYahooAccessToken();
+ if(!yahooAuth.accessToken)throw new Error('Live Yahoo authentication is required for capture');
+ const live=await runYahooLeagueAudit(createYahooClient({accessToken:yahooAuth.accessToken}),{leagueKey:expected.leagueKey,season:expected.season,week:expected.week,reference:JSON.parse(fs.readFileSync(referencePath,'utf8'))});
+ if(!live.report.passed)throw new Error('Fresh live Yahoo reconciliation failed');
+ const saved=JSON.parse(fs.readFileSync(snapshot,'utf8'));
+ const liveIds=(live.league.teams??[]).map(t=>String(t.id)).sort();
+ const savedIds=(saved.teams??[]).map(t=>String(t.id)).sort();
+ if(JSON.stringify(liveIds)!==JSON.stringify(savedIds))throw new Error('Snapshot team IDs differ from fresh Yahoo audit');
+ console.error('PREGAME CAPTURE: fresh live Yahoo audit passed; '+live.report.checks.length+' checks.');
  if(spec.projectionFixturePath)throw new Error('Fixture projections are not eligible for archival capture');
  if(!process.env.FANTASYPROS_API_KEY&&!process.env.JERRYGM_API_KEY)throw new Error('A live FantasyPros or JerryGM API key is required; cache alone is insufficient');
  const dir='data/private/projection-archives';
