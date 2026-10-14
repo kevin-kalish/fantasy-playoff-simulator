@@ -4,6 +4,42 @@ Monte Carlo fantasy football analytics application for estimating playoff, seed,
 
 Live development site: https://kevin-kalish.github.io/fantasy-playoff-simulator/
 
+## View the dashboard locally (October 2026)
+
+The current read-only live-report dashboard is available as a **private, offline HTML preview**. It is **not** the same as the public GitHub Pages synthetic demo. No browser server or API keys are needed for the synthetic preview.
+
+### Try it immediately with synthetic data
+
+From the repository root in PowerShell:
+
+```powershell
+git pull --ff-only origin dashboard-contract-v1
+npm run dashboard:demo
+Start-Process .\\data\\private\\synthetic-dashboard-preview.html
+```
+
+The command generates a synthetic 10-team league preview at `data/private/synthetic-dashboard-preview.html`. The fixture includes a playoff race, current matchup, remaining schedule, playoff/championship leverage rankings, GM rejection diagnostics, and provisional postseason estimates. It is **demonstration data, not current Yahoo standings or live recommendations**. Use the section links to navigate, select a team in the playoff race, and switch the remaining schedule between chronological and impact order.
+
+### Preview a real, locally generated weekly report
+
+Only after an existing **trusted, readiness-passing** private weekly report is available:
+
+```powershell
+npm run dashboard:preview -- data/private/YOUR-WEEKLY-REPORT.json
+Start-Process .\\data\\private\\live-dashboard-preview.html
+```
+
+Replace `YOUR-WEEKLY-REPORT.json` with the actual private report filename. The preview command expects an input JSON document with `readiness.ready === true` and a trusted schema-v11 report, either directly or under `report`; it fails closed otherwise. It does **not** fetch new Yahoo or projection-provider data. The HTML output is restricted to `data/private/` and must **never** be committed, uploaded to GitHub Pages, or shared publicly. The preview is read-only: GM candidates and rejected near misses are not actionable recommendations.
+
+### Validate
+
+```powershell
+npm run test:dashboard
+npm test
+```
+
+The tests cover the export allowlist, escaping/private HTML generation, a synthetic 10-team end-to-end report, provisional championship estimates, missing projection data, and renderer behavior. Browser clicking and keyboard behavior still require manual acceptance testing. Projection-provider freshness and historical calibration are separate readiness requirements; passing UI tests does not prove forecast accuracy.
+
 ## Current status
 
 The project has a working weekly intelligence pipeline for **The Fightin' Kali** with live Yahoo Fantasy Sports integration. Yahoo OAuth/API access is now operational and the weekly workflow refreshes league standings, remaining schedule, rosters, and current lineups before analysis. Yahoo is also the live waiver source. JerryGM supplies weekly player projections.
@@ -128,7 +164,7 @@ Trade-model hardening for this phase is complete. Net roster need is calculated 
 
 ## Front-end readiness
 
-The existing browser UI is still primarily a synthetic/demo dashboard. The simulation and weekly-intelligence backend are now sufficiently mature to begin reconnecting the front end after the current trade-model refinement is closed. Before treating the UI as a live production view, the remaining integration work is to expose the refreshed Yahoo/weekly report through a stable browser-facing data contract, render trust/projection-horizon and provisional-postseason states, surface recommendation/near-miss diagnostics without implying rejected scenarios are recommendations, and verify team/week drill-down against live league state.
+The public GitHub Pages browser UI remains a synthetic/demo dashboard. Separately, a private read-only live-report dashboard now supports a stable schema-v1 export, local offline HTML preview, 10-team synthetic acceptance coverage, section navigation, schedule ordering, team detail, matchup and leverage analysis, and GM diagnostics subject to the publication gate. Before treating the UI as a live production view, the remaining integration work is to expose the refreshed Yahoo/weekly report through a stable browser-facing data contract, render trust/projection-horizon and provisional-postseason states, surface recommendation/near-miss diagnostics without implying rejected scenarios are recommendations, and verify team/week drill-down against live league state.
 
 ## Development roadmap
 
