@@ -23,4 +23,10 @@ const horizon=await loadWeeklyProjectionHorizon({season:2026,weeks:[4,5,6],apiKe
 assert.equal(horizon.provider,'fixture');assert.deepEqual(horizon.weeks,[4,5,6]);assert.deepEqual(horizon.rows.map(x=>x.week),[4,5,6]);assert.equal(horizon.rows.length,3);assert.equal(horizon.trust.ready,true);assert.equal(horizon.trust.degraded,true);assert.equal(horizon.trust.fallbacksUsed,3);assert.equal(horizon.trust.weekResults.length,3);assert.equal(horizon.trust.attempts.filter(x=>x.provider==='fantasypros').length,3);
 let cacheNetworkCalls=0;const cacheFetch=async()=>{cacheNetworkCalls++;return{ok:false,status:500,text:async()=>''}};const cached=await loadWeeklyProjections({season:2026,week:4,apiKey:'test-key',jerryGMApiKey:'jgm-test',fixturePath:file,cachePath:cache,fetchImpl:cacheFetch,preferCache:true});
 assert.equal(cached.provider,'cache');assert.equal(cacheNetworkCalls,0);assert.equal(cached.rows[0].name,'Cached RB');assert.equal(cached.trust.degraded,false);assert.equal(cached.trust.fallbacksUsed,0);
+let refreshCalls=0;
+const refreshFetch=async()=>{refreshCalls++;return {ok:false,status:403,text:async()=>'{"message":"Forbidden"}'};};
+const refreshed=await loadWeeklyProjectionHorizon({season:2026,weeks:[4],apiKey:'test-key',jerryGMApiKey:'',fixturePath:null,cachePath:cache,fetchImpl:refreshFetch,preferCache:false});
+assert.equal(refreshCalls,1);
+assert.equal(refreshed.provider,'cache');
+assert.equal(refreshed.trust.weekResults[0].observedAt,null);
 fs.unlinkSync(file);fs.unlinkSync(cache);console.log('weekly-projection-provider-tests: all checks passed');
