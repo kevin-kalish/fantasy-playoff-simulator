@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import assert from 'node:assert/strict';
 import {JerryGMClient,normalizeJerryGMProjections,normalizeJerryGMSeasonProjections,clearJerryGMQuotaBlocksForTests} from '../src/data/jerrygm.js';
 import {loadWeeklyProjections} from '../src/data/weekly-projection-provider.js';
@@ -16,10 +19,17 @@ const fallbackFetch=async(url)=>String(url).includes('fantasypros.com')?{ok:fals
 const result=await loadWeeklyProjections({season:2026,week:3,minimumRows:2,apiKey:'fp-test',jerryGMApiKey:'jgm-test',cachePath:null,fetchImpl:fallbackFetch});assert.equal(result.provider,'jerrygm');assert.equal(result.rows.length,2);assert.equal(result.degraded,true);assert.equal(result.attempts[0].provider,'fantasypros');assert.equal(result.attempts[1].provider,'jerrygm');assert.equal(result.trust.ready,true);
 let quotaCalls=0;
 const quotaFetch=async()=>{quotaCalls++;return{ok:false,status:429,text:async()=>JSON.stringify({error:'Monthly call quota exceeded',resetAt:'2099-11-01T00:00:00.000Z'})}};
-const quotaClient=new JerryGMClient({apiKey:'quota-test',fetchImpl:quotaFetch});
+const quotaDir=fs.mkdtempSync(path.join(os.tmpdir(),'jerrygm-quota-'));
+const quotaStatePath=path.join(quotaDir,'quota.json');
+const quotaClient=new JerryGMClient({apiKey:'quota-test',fetchImpl:quotaFetch,quotaStatePath});
 await assert.rejects(quotaClient.projections({season:2026,week:6,names:Array.from({length:30},(_,i)=>'Player '+i)}),/429/);
 assert.equal(quotaCalls,1,'quota failure must stop targeted batches');
 await assert.rejects(quotaClient.seasonProjections({season:2026}),/skipping API request/);
 assert.equal(quotaCalls,1,'quota failure must prevent subsequent requests');
 clearJerryGMQuotaBlocksForTests();
+const restartedClient=new JerryGMClient({apiKey:'quota-test',fetchImpl:quotaFetch,quotaStatePath});
+await assert.rejects(restartedClient.projections({season:2026,week:7}),/skipping API request/);
+assert.equal(quotaCalls,1,'persisted quota must block a new client after memory reset');
+assert.doesNotMatch(fs.readFileSync(quotaStatePath,'utf8'),/quota-test/,'API key must never be persisted');
+fs.rmSync(quotaDir,{recursive:true,force:true});
 console.log('jerrygm-tests: all checks passed');
