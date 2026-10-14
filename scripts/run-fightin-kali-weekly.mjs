@@ -64,7 +64,7 @@ if(leagueKey)plan.yahoo={leagueKey,leagueKeySource:'live-state'};
 if(process.env.YAHOO_ONLY_REFRESH==='true'){
  const specPath=focusTeamArg?`data/private/${slug(focusTeamArg)}-week-${plan.week}-spec.json`:`data/private/fightin-kali-week-${plan.week}-spec.json`;
  fs.mkdirSync('data/private',{recursive:true});
- fs.writeFileSync(specPath,JSON.stringify(plan,null,2)+'\\n'.replace('\\\\n','\\n'));
+ fs.writeFileSync(specPath,JSON.stringify(plan,null,2)+'\n');
  console.log(`YAHOO ONLY: PASS; season ${plan.season} week ${plan.week}; snapshot ${snapshotPath}; spec ${specPath}; ${sourceAudit.checks.length} reconciliation checks; no projection provider, waivers or Monte Carlo requests.`);
  process.exit(0);
 }
