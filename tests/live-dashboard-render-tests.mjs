@@ -33,7 +33,10 @@ const championshipRanked={...payload,remainingSchedule:[
  {...payload.remainingSchedule[0],week:9,opponentName:'High title impact',playoffImpact:{...payload.remainingSchedule[0].playoffImpact,swing:.10,championshipSwing:.15}}
 ]};
 renderDashboardV1(root,championshipRanked);
-assert.ok(root.innerHTML.indexOf('High title impact')<root.innerHTML.indexOf('Low title impact'));
+assert.ok(root.innerHTML.indexOf('Low title impact')<root.innerHTML.indexOf('High title impact'));
+assert.match(root.innerHTML,/data-schedule-order="chronological" aria-pressed="true"/);
+assert.match(root.innerHTML,/data-schedule-order="impact" aria-pressed="false"/);
+assert.match(root.innerHTML,/Chronological order is the default/);
 assert.match(root.innerHTML,/ranked by conditional championship-probability swing/);
 assert.match(root.innerHTML, /PROVISIONAL/);
 assert.match(root.innerHTML, /&lt;Alpha&gt;/);
