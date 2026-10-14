@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {JerryGMClient,normalizeJerryGMProjections,normalizeJerryGMSeasonProjections} from '../src/data/jerrygm.js';
+import {JerryGMClient,normalizeJerryGMProjections,normalizeJerryGMSeasonProjections,clearJerryGMQuotaBlocksForTests} from '../src/data/jerrygm.js';
 import {loadWeeklyProjections} from '../src/data/weekly-projection-provider.js';
 
 const payload={season:2026,week:3,players:[{name:'Josh Allen',position:'QB',team:'BUF',projectedPPG:20.06},{name:'Example Back',position:'RB',team:'NE',projectedPPG:12.4}]};
@@ -14,4 +14,12 @@ const seasonRows=normalizeJerryGMSeasonProjections(seasonRaw,{season:2026});asse
 let fullBoardCalls=0;const fullBoardFetch=async url=>{fullBoardCalls++;assert.doesNotMatch(String(url),/[?&]names=/);return{ok:true,status:200,text:async()=>JSON.stringify(payload)}};await new JerryGMClient({apiKey:'jgm-test',fetchImpl:fullBoardFetch}).projections({season:2026,week:3,scoring:'HALF'});assert.equal(fullBoardCalls,1);
 const fallbackFetch=async(url)=>String(url).includes('fantasypros.com')?{ok:false,status:403,statusText:'Forbidden',text:async()=>'{"message":"Forbidden"}'}:{ok:true,status:200,text:async()=>JSON.stringify(payload)};
 const result=await loadWeeklyProjections({season:2026,week:3,minimumRows:2,apiKey:'fp-test',jerryGMApiKey:'jgm-test',cachePath:null,fetchImpl:fallbackFetch});assert.equal(result.provider,'jerrygm');assert.equal(result.rows.length,2);assert.equal(result.degraded,true);assert.equal(result.attempts[0].provider,'fantasypros');assert.equal(result.attempts[1].provider,'jerrygm');assert.equal(result.trust.ready,true);
+let quotaCalls=0;
+const quotaFetch=async()=>{quotaCalls++;return{ok:false,status:429,text:async()=>JSON.stringify({error:'Monthly call quota exceeded',resetAt:'2099-11-01T00:00:00.000Z'})}};
+const quotaClient=new JerryGMClient({apiKey:'quota-test',fetchImpl:quotaFetch});
+await assert.rejects(quotaClient.projections({season:2026,week:6,names:Array.from({length:30},(_,i)=>'Player '+i)}),/429/);
+assert.equal(quotaCalls,1,'quota failure must stop targeted batches');
+await assert.rejects(quotaClient.seasonProjections({season:2026}),/skipping API request/);
+assert.equal(quotaCalls,1,'quota failure must prevent subsequent requests');
+clearJerryGMQuotaBlocksForTests();
 console.log('jerrygm-tests: all checks passed');
