@@ -20,6 +20,12 @@ assert.match(root.innerHTML,/No recorded weekly playoff probability snapshots ye
 renderDashboardV1(root,{...payload,playoffHistory:[{week:0,probability:.8,result:null},{week:1,probability:.6,result:'L'},{week:2,probability:.75,result:'W'}]});
 assert.match(root.innerHTML,/Weekly playoff probability history/);
 assert.match(root.innerHTML,/Week 2/);
+assert.match(root.innerHTML,/data-history-tooltip="Week 1: 60.0% · Loss · -20.0 pp"/);
+assert.match(root.innerHTML,/data-history-tooltip="Week 2: 75.0% · Win · 15.0 pp"/);
+assert.match(root.innerHTML,/Hover over or focus a point/);
+assert.match(root.innerHTML,/tabindex="0" role="img"/);
+assert.match(root.innerHTML,/>L<\/text>/);
+assert.match(root.innerHTML,/>W<\/text>/);
 assert.match(root.innerHTML,/-20.0 pp/);
 assert.match(root.innerHTML,/15.0 pp/);
 assert.match(root.innerHTML,/role="tabpanel" aria-labelledby="tab-history" hidden/);
