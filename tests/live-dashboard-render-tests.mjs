@@ -37,6 +37,12 @@ const championshipRanked={...payload,remainingSchedule:[
 ]};
 renderDashboardV1(root,championshipRanked);
 assert.ok(root.innerHTML.indexOf('Low title impact')<root.innerHTML.indexOf('High title impact'));
+assert.match(root.innerHTML,/Playoff leverage comparison/);
+assert.match(root.innerHTML,/Making the playoffs/);
+assert.match(root.innerHTML,/Winning the championship/);
+assert.match(root.innerHTML,/top playoff and championship leverage games differ/i);
+assert.match(root.innerHTML,/Championship leverage is PROVISIONAL/);
+assert.ok(root.innerHTML.indexOf('High title impact') > root.innerHTML.indexOf('Low title impact'));
 assert.match(root.innerHTML,/data-schedule-order="chronological" aria-pressed="true"/);
 assert.match(root.innerHTML,/data-schedule-order="impact" aria-pressed="false"/);
 assert.match(root.innerHTML,/Chronological order is the default/);
