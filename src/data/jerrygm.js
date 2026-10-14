@@ -1,6 +1,11 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
 const BASE_URL='https://api.jerrygm.com/api/ext/v1';
 const quotaBlocks=new Map();
-const quotaKey=(apiKey,baseUrl)=>`${baseUrl}:${apiKey}`;
+const quotaKey=(apiKey,baseUrl)=>createHash('sha256').update(`${baseUrl}:${apiKey}`).digest('hex');
+const readQuotaState=file=>{if(!file||!fs.existsSync(file))return {};const parsed=JSON.parse(fs.readFileSync(file,'utf8'));if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw new Error('Invalid JerryGM quota state');return parsed;};
+const persistQuota=(file,key,until)=>{if(!file)return;const state=readQuotaState(file);state[key]=until;fs.mkdirSync(path.dirname(file),{recursive:true});const tmp=`${file}.${process.pid}.tmp`;try{fs.writeFileSync(tmp,JSON.stringify(state,null,2)+'\n',{mode:0o600});fs.renameSync(tmp,file);}finally{if(fs.existsSync(tmp))fs.unlinkSync(tmp);}};
 export function clearJerryGMQuotaBlocksForTests(){quotaBlocks.clear();}
 const scoringName=value=>{const s=String(value||'HALF').toLowerCase();return s==='ppr'?'ppr':s==='standard'||s==='std'?'standard':'half'};
 const rowsFrom=value=>Array.isArray(value)?value:Array.isArray(value?.players)?value.players:Array.isArray(value?.projections)?value.projections:[];
@@ -35,11 +40,11 @@ export function normalizeJerryGMSeasonProjections(payload,{season}={}){
 }
 
 export class JerryGMClient{
- constructor({apiKey,fetchImpl=globalThis.fetch,baseUrl=BASE_URL}={}){if(!apiKey)throw new Error('JerryGM API key required.');this.apiKey=apiKey;this.fetch=fetchImpl;this.baseUrl=baseUrl;}
+ constructor({apiKey,fetchImpl=globalThis.fetch,baseUrl=BASE_URL,quotaStatePath='data/private/jerrygm-quota-state.json'}={}){if(!apiKey)throw new Error('JerryGM API key required.');this.apiKey=apiKey;this.fetch=fetchImpl;this.baseUrl=baseUrl;this.quotaStatePath=quotaStatePath;}
  async request({season,week,scoring='HALF',names=[]}={}){
   const url=new URL(`${this.baseUrl}/projections`);url.searchParams.set('season',String(season));if(Number.isInteger(Number(week)))url.searchParams.set('week',String(week));url.searchParams.set('scoring',scoringName(scoring));
   if(names.length)url.searchParams.set('names',names.join(','));
-  const key=quotaKey(this.apiKey,this.baseUrl),blockedUntil=quotaBlocks.get(key);
+  const key=quotaKey(this.apiKey,this.baseUrl),blockedUntil=Math.max(quotaBlocks.get(key)??0,Number(readQuotaState(this.quotaStatePath)[key])||0);
   if(blockedUntil&&blockedUntil>Date.now())throw new Error(`JerryGM quota exhausted; skipping API request until ${new Date(blockedUntil).toISOString()}`);
   if(blockedUntil)quotaBlocks.delete(key);
   const response=await this.fetch(url,{headers:{'x-api-key':this.apiKey,'authorization':`Bearer ${this.apiKey}`,'accept':'application/json'}});
@@ -47,7 +52,9 @@ export class JerryGMClient{
   if(response.status===429){
    let resetAt=null;try{resetAt=JSON.parse(text)?.resetAt;}catch{}
    const reset=Date.parse(resetAt??'');
-   quotaBlocks.set(key,Number.isFinite(reset)&&reset>Date.now()?reset:Date.now()+60*60*1000);
+   const until=Number.isFinite(reset)&&reset>Date.now()?reset:Date.now()+60*60*1000;
+   quotaBlocks.set(key,until);
+   persistQuota(this.quotaStatePath,key,until);
   }
   if(!response.ok)throw new Error(`JerryGM ${response.status}: ${text.slice(0,300)}`);
   try{return JSON.parse(text);}catch{throw new Error('JerryGM returned invalid JSON.');}
