@@ -7,7 +7,7 @@ import fs from 'node:fs';
 export async function captureFreshProjectionArchive({spec,projectionNames=[],load=loadWeeklyProjectionHorizon,save=saveProjectionArchive,directory='data/private/projection-archives',kickoffPath='data/private/nfl-kickoffs.csv',readSchedule=path=>fs.readFileSync(path,'utf8')}){
  if(spec?.projectionFixturePath)throw new Error('Fixture projections are not eligible for capture');
  const weeks=spec.weeks?.length?spec.weeks:[spec.week];
- const result=await load({season:Number(spec.season),weeks,scoring:spec.scoring??'HALF',minimumRows:Number(spec.minimumProjectionRows??1),projectionNames});
+ const result=await load({season:Number(spec.season),weeks,scoring:spec.scoring??'HALF',minimumRows:Number(spec.minimumProjectionRows??1),projectionNames,preferCache:false});
  const fresh=(result.trust?.weekResults??[]).filter(r=>['jerrygm','fantasypros'].includes(r.provider)&&typeof r.observedAt==='string'&&Number.isFinite(Date.parse(r.observedAt)));
  if(!fresh.length)throw new Error('No fresh provider observations; cache-only or fixture projections cannot create a capture archive');
  const providerByWeek=Object.fromEntries((result.trust?.weekResults??[]).map(r=>[r.week,r.provider]));
