@@ -113,12 +113,11 @@ export function prepareLeagueSimulation(snapshot,projectionRows,{slots=null,week
  for(const team of optimized.teams||[]){
   const live=(enriched.league.teams||[]).find(x=>String(x.id)===String(team.id))?.weeklyLineups?.[currentWeek];
   if(live?.length){
-   // Preserve the submitted Yahoo starters separately for start/sit diagnostics.
-   // The simulation uses the optimized eligible roster rather than treating an
-   // empty submitted slot as an absence of available fantasy players.
-   team.submittedWeeklyLineups={...(team.submittedWeeklyLineups||{}),[currentWeek]:structuredClone(live)};
-   const submittedEmptySlots=Math.max(0,activeSlots.length-live.length);
-   team.lineupDiagnostics[currentWeek]={...team.lineupDiagnostics[currentWeek],submittedEmptySlots,submittedSource:'live-submitted',source:'optimized-roster'};
+   // Keep the real submitted starters for current-week modeling and start/sit.
+   // Never silently substitute an optimized lineup for a manager's actual choices.
+   team.weeklyLineups[currentWeek]=structuredClone(live);
+   const emptySlots=Math.max(0,activeSlots.length-live.length);
+   team.lineupDiagnostics={...(team.lineupDiagnostics||{}),[currentWeek]:{projectedPoints:live.reduce((n,p)=>n+(Number.isFinite(Number(p.projection))?Number(p.projection):0),0),emptySlots,complete:emptySlots===0,rosterPlayers:(team.roster||[]).length,source:'live-submitted'}};
   }
  }
  optimized.schedule=(optimized.schedule||[]).filter(row=>Number(row.week)>=currentWeek);
