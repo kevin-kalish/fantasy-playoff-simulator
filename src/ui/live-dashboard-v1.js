@@ -9,6 +9,8 @@ export function renderDashboardV1(root, payload) {
   if (!focus) throw new Error('Focus team missing');
   const provisional = payload.model?.championshipStatus === 'provisional';
   const titleSuffix = provisional ? ' *' : '';
+  const sections = [['dashboard-matchup','Matchup'],['dashboard-schedule','Schedule'],['dashboard-leverage','Leverage'],['dashboard-gm','GM review'],['dashboard-race','Playoff race']];
+  const navigation = `<nav aria-label="Dashboard sections" class="schedule-view-controls">${sections.filter(([id]) => id !== 'dashboard-gm' || payload.gmDiagnostics).map(([id,label]) => `<a href="#${id}">${label}</a>`).join('')}</nav>`;
   const rows = payload.teams.map(team => `<tr class="${team.id === teamId ? 'selected' : ''}" data-team-id="${escapeHtml(team.id)}" tabindex="0" role="button" aria-label="View ${escapeHtml(team.name)}"><td>${escapeHtml(team.name)}</td><td>${escapeHtml(record(team.record))}</td><td>#${escapeHtml(team.currentSeed)}</td><td>${escapeHtml(Number(team.averageWins).toFixed(2))}</td><td>${percent(team.playoffProbability)}</td><td>${percent(team.championshipProbability)}${titleSuffix}</td></tr>`).join('');
   const showTeam = team => {
     const detail = root.querySelector?.("#dashboard-team-detail");
@@ -65,11 +67,12 @@ export function renderDashboardV1(root, payload) {
   root.innerHTML = `<div class="dash-head"><div><div class="eyebrow">Live dashboard export · read only</div><h2>${escapeHtml(focus.name)}</h2></div><div class="sim-note">${escapeHtml(payload.model?.simulations)} simulations · generated ${escapeHtml(payload.generatedAt)}</div></div>
     <div class="metric-grid"><div><span>Playoff probability</span><strong>${percent(focus.playoffProbability)}</strong></div><div><span>Championship probability</span><strong>${percent(focus.championshipProbability)}${titleSuffix}</strong></div><div><span>Expected final wins</span><strong>${escapeHtml(Number(focus.averageWins).toFixed(2))}</strong></div></div>
     <p class="demo-disclaimer"><strong>Projection reliability:</strong> ${projectionNotice} ${provisional ? "Championship estimates are provisional." : ""}</p>
-    ${matchupPanel}
-    ${schedulePanel}
-    ${leveragePanel}
-    ${gmPanel}
-    <div class="race-panel"><h3>League playoff race</h3><div class="table-wrap"><table><thead><tr><th>Team</th><th>Record</th><th>Seed</th><th>Avg wins</th><th>Playoffs</th><th>Champion</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+    ${navigation}
+    <section id="dashboard-matchup" aria-label="Weekly matchup">${matchupPanel}</section>
+    <section id="dashboard-schedule" aria-label="Remaining schedule">${schedulePanel}</section>
+    <section id="dashboard-leverage" aria-label="Playoff leverage">${leveragePanel || '<p class="demo-disclaimer">No conditional leverage estimates available.</p>'}</section>
+    ${gm ? `<section id="dashboard-gm" aria-label="GM decision review">${gmPanel}</section>` : ''}
+    <section id="dashboard-race" aria-label="League playoff race"><div class="race-panel"><h3>League playoff race</h3><div class="table-wrap"><table><thead><tr><th>Team</th><th>Record</th><th>Seed</th><th>Avg wins</th><th>Playoffs</th><th>Champion</th></tr></thead><tbody>${rows}</tbody></table></div></div></section>
     <div id="dashboard-team-detail" class="detail-card" aria-live="polite"><h3>${escapeHtml(focus.name)}</h3><p>Click a team in the playoff race to inspect its outlook.</p></div>
     <p class="demo-disclaimer">${provisional ? '* Championship odds are PROVISIONAL because playoff-week projections are derived.' : 'Championship odds use direct playoff-week projections.'} Direct weeks: ${escapeHtml((payload.model?.directWeeks ?? []).join(', ') || 'none')}; derived weeks: ${escapeHtml((payload.model?.derivedWeeks ?? []).join(', ') || 'none')}.</p>
     <p class="demo-disclaimer">Recommended actions are not published by this read-only dashboard. Approved GM scenarios, if any, require a separate action-publication trust review.</p>`;
