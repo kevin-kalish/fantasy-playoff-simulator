@@ -42,6 +42,11 @@ assert.match(root.innerHTML,/Making the playoffs/);
 assert.match(root.innerHTML,/Winning the championship/);
 assert.match(root.innerHTML,/top playoff and championship leverage games differ/i);
 assert.match(root.innerHTML,/Championship leverage is PROVISIONAL/);
+assert.match(root.innerHTML,/Too close to distinguish from #1/);
+assert.match(root.innerHTML,/Pairwise 95% Monte Carlo bounds/);
+assert.match(root.innerHTML,/#2 · Week 8/);
+assert.match(root.innerHTML,/#2 · Week 9/);
+
 assert.ok(root.innerHTML.indexOf('High title impact') > root.innerHTML.indexOf('Low title impact'));
 assert.match(root.innerHTML,/data-schedule-order="chronological" aria-pressed="true"/);
 assert.match(root.innerHTML,/data-schedule-order="impact" aria-pressed="false"/);
