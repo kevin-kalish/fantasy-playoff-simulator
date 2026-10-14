@@ -16,5 +16,5 @@ export async function executePregameCapture({spec,snapshot,snapshotPath,readLive
  if(!Array.isArray(archives)||archives.length!==1)throw new Error('Expected exactly one new immutable archive; found '+(archives?.length??0));
  const entry=archives[0],archive=entry.data??entry;
  const eligibility=evaluatePregameCaptureArchive(archive);
- return {expected,liveAuditChecks:live.report.checks?.length??0,archive:entry.path??null,eligibility,calibrationReady:eligibility.pregameKickoffVerifiedRows>0};
+ return {expected,liveAuditChecks:live.report.checks?.length??0,archive:entry.path??null,capturedAt:archive.capturedAt,eligibility,calibrationReady:eligibility.pregameKickoffVerifiedRows>0};
 }
