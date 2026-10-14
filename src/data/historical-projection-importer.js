@@ -24,9 +24,17 @@ export function importHistoricalProjectionArchives(archives=[],actualRows=[],{sc
    // captures may restamp cached forecasts and cannot establish issuance time.
    if(raw?.schemaVersion===1||raw?.schemaVersion===2){rejected.push({source:archive.path,row:i+1,reason:'legacy-archive-provenance-unverified'});continue;}
    if(raw?.schemaVersion>=2&&(row.forecastProvenance?.kind!=='fresh-provider-response'||row.forecastProvenance?.observedAt!==projectedAt)){rejected.push({source:archive.path,row:i+1,reason:'forecast-provenance-unverified'});continue;}
+   if(raw?.schemaVersion===3){
+    const provenance=row.forecastProvenance??{};
+    const provider=String(provenance.provider??'').toLowerCase();
+    if(!archive.immutable||!['jerrygm','fantasypros'].includes(provider)||!validTime(capturedAt)||!validTime(provenance.observedAt)||Date.parse(provenance.observedAt)>Date.parse(capturedAt)){
+     rejected.push({source:archive.path,row:i+1,reason:'invalid-verified-provider-timeline'});continue;
+    }
+   }
    const kickoffAt=row.kickoffAt;
    const source=String(row.source??archive.source??raw?.source??'').trim();
    if(!season||!week||!playerId||projection===null||!source||!validTime(projectedAt)||!validTime(kickoffAt)){rejected.push({source:archive.path,row:i+1,reason:'missing-identity-projection-source-or-provenance'});continue;}
+   if(raw?.schemaVersion===3&&Date.parse(capturedAt)>=Date.parse(kickoffAt)){rejected.push({source:archive.path,row:i+1,reason:'archive-not-pregame'});continue;}
    if(Date.parse(projectedAt)>=Date.parse(kickoffAt)){rejected.push({source:archive.path,row:i+1,reason:'not-pregame'});continue;}
    const score=String(row.scoring??scoring).toUpperCase(),actual=actuals.get([season,week,playerId,score].join('|'));
    if(!actual){rejected.push({source:archive.path,row:i+1,reason:'actual-not-found'});continue;}
