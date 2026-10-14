@@ -57,4 +57,10 @@ assert.ok(approvedPayload.gmDiagnostics.publicationReview.reasons.includes('post
 assert.deepEqual(approvedPayload.recommendations,[]);
 assert.doesNotMatch(JSON.stringify(approvedPayload),/Private candidate|never-publish/);
 assert.doesNotMatch(JSON.stringify(rejectedPayload),/never-publish/);
+const historyReport={...report,playoffHistory:[{week:2,playoffProbability:.75,result:'W',secret:'not-exported'},{week:0,playoffProbability:.80},{week:1,playoffProbability:.60,result:'L'}]};
+assert.deepEqual(weeklyReportToDashboardV1(historyReport).playoffHistory,[{week:0,probability:.80,result:null},{week:1,probability:.60,result:'L'},{week:2,probability:.75,result:'W'}]);
+assert.doesNotMatch(JSON.stringify(weeklyReportToDashboardV1(historyReport)),/not-exported/);
+assert.throws(()=>weeklyReportToDashboardV1({...historyReport,playoffHistory:[{week:1,playoffProbability:.6},{week:1,playoffProbability:.7}]}),/history/);
+assert.throws(()=>weeklyReportToDashboardV1({...historyReport,playoffHistory:[{week:1,playoffProbability:1.5}]}),/probability/);
+assert.throws(()=>weeklyReportToDashboardV1({...historyReport,playoffHistory:[{week:1,playoffProbability:.6,teamId:'OTHER'}]}),/history/);
 console.log('live-dashboard-export-tests: all checks passed');
