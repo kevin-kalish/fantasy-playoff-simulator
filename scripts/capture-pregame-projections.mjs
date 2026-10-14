@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {spawnSync} from 'node:child_process';
+import {captureFreshProjectionArchive} from '../src/data/fresh-projection-capture.js';
 import {readArchiveDirectory} from '../src/data/historical-projection-importer.js';
 import {executePregameCapture} from '../src/data/pregame-capture-workflow.js';
 import {preflightPregameCapture} from '../src/data/pregame-capture-preflight.js';
@@ -31,11 +31,10 @@ try{
    return runYahooLeagueAudit(createYahooClient({accessToken:yahooAuth.accessToken}),{leagueKey:expected.leagueKey,season:expected.season,week:expected.week,reference:JSON.parse(fs.readFileSync(referencePath,'utf8'))});
   },
   runProjectionJob:async()=>{
-   if(!process.env.FANTASYPROS_API_KEY&&!process.env.JERRYGM_API_KEY)throw new Error('A live FantasyPros or JerryGM API key is required; cache alone is insufficient');
-   const run=spawnSync(process.execPath,['scripts/run-weekly-intelligence.mjs',snapshot,specFile],{encoding:'utf8',timeout:240000,env:{...process.env,PROJECTION_REFRESH:'true',PROJECTION_ARCHIVE:'true'}});
-   if(run.stdout)process.stdout.write(run.stdout.slice(-12000));
-   if(run.stderr)process.stderr.write(run.stderr.slice(-12000));
-   if(run.status!==0)throw new Error('Weekly intelligence failed (exit '+String(run.status??'unknown')+')');
+   if(!process.env.FANTASYPROS_API_KEY&&!process.env.JERRYGM_API_KEY)throw new Error('A live provider API key is required');
+   const rosterNames=(saved.teams??[]).flatMap(t=>t.roster??t.lineup??[]).map(p=>String(p?.name??'').trim()).filter(Boolean);
+   const result=await captureFreshProjectionArchive({spec,projectionNames:[...new Set(rosterNames)]});
+   console.error('PROJECTION CAPTURE: '+result.freshProviderRows+'/'+result.rows+' fresh provider rows; '+result.file);
   },
   readNewArchives:async()=>readArchiveDirectory(dir).filter(a=>!before.has(path.basename(a.path)))
  });
