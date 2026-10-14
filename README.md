@@ -31,6 +31,12 @@ npm run dashboard:record-week -- data/private/NEXT-WEEKLY-REPORT.json 2 W
 
 A Week 0 preseason snapshot is optional; record it with `0` and no result. These commands require `readiness.ready=true`, a trusted report, and input under `data/private/`. They do not fetch data. Each completed week can be recorded **once**; the command refuses silent overwrites. The archive is `data/private/playoff-probability-history.json`, which is private and must never be committed. When `dashboard:preview` runs for the same team, it automatically includes these archived snapshots in the history tab. The latest weekly report by itself **cannot reconstruct earlier weeks**. Historical points are recorded forecasts, not retrospective recomputations or observed playoff outcomes. Preserve the original report's generated timestamp and only label a point as a completed week when it truly is post-game.
 
+### Automatic post-week capture (audited Yahoo runs)
+
+A normal `npm run fightin-kali:weekly` run now records the focus team's playoff probability **after the previous week** when Yahoo's current week is at least 2, the Yahoo source audit passes for that week, the simulation report is trusted and readiness-passing, and a private report output path is configured. For example, a trusted run during Yahoo Week 7 records the probability as the **Week 6** snapshot. The result is initially left blank (not guessed). The capture is offline after the report is built, makes no additional provider requests, and never rewrites an existing week. Set `PLAYOFF_HISTORY_CAPTURE=false` to disable this behavior.
+
+Automatic capture stores season and Yahoo league identity in `data/private/playoff-probability-history.json`; if an older manually created archive lacks those fields, capture refuses to append rather than silently mix histories. Keep the legacy file as a backup and resolve its provenance before creating a new season-scoped archive. **Do not retroactively label a current forecast as a prior week's forecast.** Existing records and their timestamps are preserved. The private preview loads the same archive. The history chart is a record of model forecasts, not a reconstruction of historical odds.
+
 ### Preview a real, locally generated weekly report
 
 Only after an existing **trusted, readiness-passing** private weekly report is available:
@@ -49,7 +55,7 @@ npm run test:dashboard
 npm test
 ```
 
-The tests cover the export allowlist, escaping/private HTML generation, a synthetic 10-team end-to-end report, provisional championship estimates, missing projection data, and renderer behavior. Deterministic delegated-event tests now cover tab switching, team selection, chronological/impact schedule ordering, keyboard activation, and history hover/focus details. Manual browser acceptance remains necessary for layout, pointer hit targets, and accessibility behavior in real browsers. Projection-provider freshness and historical calibration are separate readiness requirements; passing UI tests does not prove forecast accuracy.
+The tests also cover automatic history capture, immutable weekly snapshots, league/season identity, and readiness/trust refusal. The tests cover the export allowlist, escaping/private HTML generation, a synthetic 10-team end-to-end report, provisional championship estimates, missing projection data, and renderer behavior. Deterministic delegated-event tests now cover tab switching, team selection, chronological/impact schedule ordering, keyboard activation, and history hover/focus details. Manual browser acceptance remains necessary for layout, pointer hit targets, and accessibility behavior in real browsers. Projection-provider freshness and historical calibration are separate readiness requirements; passing UI tests does not prove forecast accuracy.
 
 ## Current status
 
