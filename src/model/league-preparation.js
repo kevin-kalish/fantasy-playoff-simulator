@@ -117,9 +117,9 @@ export function prepareLeagueSimulation(snapshot,projectionRows,{slots=null,week
    // Keep the real submitted starters for current-week modeling and start/sit.
    // Never silently substitute an optimized lineup for a manager's actual choices.
    team.submittedWeeklyLineups={...(team.submittedWeeklyLineups||{}),[currentWeek]:structuredClone(live)};
-   if(lineupPolicy==='submitted')team.weeklyLineups[currentWeek]=structuredClone(live);
+   if(lineupPolicy==='submitted'||live.length>=activeSlots.length)team.weeklyLineups[currentWeek]=structuredClone(live);
    const emptySlots=Math.max(0,activeSlots.length-live.length);
-   team.lineupDiagnostics={...(team.lineupDiagnostics||{}),[currentWeek]:lineupPolicy==='submitted'?{projectedPoints:live.reduce((n,p)=>n+(Number.isFinite(Number(p.projection))?Number(p.projection):0),0),emptySlots,complete:emptySlots===0,rosterPlayers:(team.roster||[]).length,source:'live-submitted'}:{...team.lineupDiagnostics[currentWeek],submittedEmptySlots:emptySlots,source:'optimized-hypothetical'}};
+   team.lineupDiagnostics={...(team.lineupDiagnostics||{}),[currentWeek]:(lineupPolicy==='submitted'||live.length>=activeSlots.length)?{projectedPoints:live.reduce((n,p)=>n+(Number.isFinite(Number(p.projection))?Number(p.projection):0),0),emptySlots,complete:emptySlots===0,rosterPlayers:(team.roster||[]).length,source:'live-submitted'}:{...team.lineupDiagnostics[currentWeek],submittedEmptySlots:emptySlots,source:'optimized-hypothetical'}};
   }
  }
  optimized.schedule=(optimized.schedule||[]).filter(row=>Number(row.week)>=currentWeek);
