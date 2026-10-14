@@ -26,6 +26,7 @@ export function captureCompletedWeekProbability({document,currentWeek,season,lea
  if(history.some(p=>p.week>week))return {status:'skipped',reason:'Refusing out-of-order historical backfill'};
  const next={season:Number(season),leagueKey:String(leagueKey),teamId,history:[...history,{week,playoffProbability:focus.playoffProbability,result:null,generatedAt:payload.generatedAt}]};
  fs.mkdirSync(path.dirname(archivePath),{recursive:true});
- fs.writeFileSync(archivePath,JSON.stringify(next,null,2)+'\n',{flag:'wx',mode:0o600});
+ const temporary=archivePath+'.tmp-'+process.pid;
+ try{fs.writeFileSync(temporary,JSON.stringify(next,null,2)+'\n',{flag:'wx',mode:0o600});fs.renameSync(temporary,archivePath);}finally{if(fs.existsSync(temporary))fs.rmSync(temporary,{force:true});}
  return {status:'recorded',week,probability:focus.playoffProbability};
 }
