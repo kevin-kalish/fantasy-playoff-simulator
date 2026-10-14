@@ -18,7 +18,18 @@ npm run dashboard:demo
 Start-Process .\\data\\private\\synthetic-dashboard-preview.html
 ```
 
-The command generates a synthetic 10-team league preview at `data/private/synthetic-dashboard-preview.html`. The fixture includes a playoff race, current matchup, remaining schedule, playoff/championship leverage rankings, GM rejection diagnostics, and provisional postseason estimates. It is **demonstration data, not current Yahoo standings or live recommendations**. Use the section links to navigate, select a team in the playoff race, and switch the remaining schedule between chronological and impact order.
+The **Playoff probability history** tab shows example Week 0–6 changes, including a loss from 80% to 60% followed by a win to 75%. These values are illustrative, not actual historical estimates. The command generates a synthetic 10-team league preview at `data/private/synthetic-dashboard-preview.html`. The fixture includes a playoff race, current matchup, remaining schedule, playoff/championship leverage rankings, GM rejection diagnostics, and provisional postseason estimates. It is **demonstration data, not current Yahoo standings or live recommendations**. Use the section links to navigate, select a team in the playoff race, and switch the remaining schedule between chronological and impact order.
+
+### Record real week-to-week playoff probability
+
+After each fantasy week is **complete**, save the trusted weekly report's playoff probability to a local archive. Specify the completed week and its result explicitly:
+
+```powershell
+npm run dashboard:record-week -- data/private/YOUR-WEEKLY-REPORT.json 1 L
+npm run dashboard:record-week -- data/private/NEXT-WEEKLY-REPORT.json 2 W
+```
+
+A Week 0 preseason snapshot is optional; record it with `0` and no result. These commands require `readiness.ready=true`, a trusted report, and input under `data/private/`. They do not fetch data. Each completed week can be recorded **once**; the command refuses silent overwrites. The archive is `data/private/playoff-probability-history.json`, which is private and must never be committed. When `dashboard:preview` runs for the same team, it automatically includes these archived snapshots in the history tab. The latest weekly report by itself **cannot reconstruct earlier weeks**. Historical points are recorded forecasts, not retrospective recomputations or observed playoff outcomes. Preserve the original report's generated timestamp and only label a point as a completed week when it truly is post-game.
 
 ### Preview a real, locally generated weekly report
 
