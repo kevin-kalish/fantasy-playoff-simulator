@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import {captureCompletedWeekProbability} from '../src/data/weekly-playoff-history.js';
+import {buildPrivatePreview} from './build-private-dashboard-preview.mjs';
+import path from 'node:path';
 import {buildProjectionArchive,saveProjectionArchive} from '../src/data/projection-archive.js';
 import {diagnoseStartSit} from '../src/model/start-sit-diagnostic.js';
 import {validateIndependentSeeds} from '../src/model/independent-seed-validation.js';
@@ -105,6 +107,25 @@ const c=report.recommendations?.confirmation;if(c){const staged=c.precheckCount?
    const captured=captureCompletedWeekProbability({document:{readiness,report},currentWeek:week,season,leagueKey:spec.sourceAudit.leagueKey});
    console.error(`PLAYOFF HISTORY: ${captured.status}; ${captured.reason??('completed week '+captured.week)}`);
   }catch(error){console.error(`PLAYOFF HISTORY: FAIL; ${error.message}; report preserved; archive unchanged.`);}
+ }
+ if(spec.sourceAudit?.passed===true && spec.sourceAudit.week===week && spec.sourceAudit.leagueKey && spec.outputPath && process.env.DASHBOARD_AUTO_PREVIEW!=='false'){
+  try{
+   const privateRoot=path.resolve('data/private');
+   const outputFile=path.resolve(spec.outputPath);
+   if(!outputFile.startsWith(privateRoot+path.sep))throw new Error('Refusing to generate preview from a report outside data/private');
+   const dashboardReport={...report};
+   const archivePath=path.join(privateRoot,'playoff-probability-history.json');
+   if(fs.existsSync(archivePath)){
+    const archive=JSON.parse(fs.readFileSync(archivePath,'utf8'));
+    if(String(archive.teamId)!==String(report.team?.id)||Number(archive.season)!==Number(season)||String(archive.leagueKey)!==String(spec.sourceAudit.leagueKey))throw new Error('History archive league/season/team mismatch; preview withheld');
+    dashboardReport.playoffHistory=archive.history;
+   }
+   const renderer=fs.readFileSync('src/ui/live-dashboard-v1.js','utf8');
+   const html=buildPrivatePreview({readiness,report:dashboardReport},renderer);
+   const previewPath=path.join(privateRoot,'live-dashboard-preview.html');
+   fs.writeFileSync(previewPath,html,{mode:0o600});
+   console.error('DASHBOARD PREVIEW: private offline HTML updated at '+previewPath);
+  }catch(error){console.error('DASHBOARD PREVIEW: SKIPPED; '+error.message);}
  }
  if(spec.includeJson) console.log(JSON.stringify({readiness,report},null,2));
 }
