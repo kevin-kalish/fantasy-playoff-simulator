@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {assessHistoricalDataCoverage} from '../src/data/historical-data-coverage.js';
+const empty=assessHistoricalDataCoverage();
+assert.equal(empty.missingData,'verified-pregame-archives');
+assert.equal(empty.potentiallyMatchableRows,0);
+const archive={immutable:true,capturedAt:'2026-10-10T12:00:00Z',data:{schemaVersion:3,rows:[{season:2026,week:6,kickoffAt:'2026-10-11T18:00:00Z',forecastProvenance:{kind:'fresh-provider-response',provider:'jerrygm',observedAt:'2026-10-10T11:00:00Z'}},{season:2026,week:7,kickoffAt:'2026-10-18T18:00:00Z',forecastProvenance:{kind:'cached',provider:'jerrygm',observedAt:'2026-10-10T11:00:00Z'}}]}};
+const r=assessHistoricalDataCoverage([archive],[{season:2026,week:6}]);
+assert.equal(r.potentiallyMatchableRows,1);
+assert.equal(r.issueCounts['unverified-pregame-provenance'],1);
+assert.equal(r.parameterUpdatesAllowed,false);
+console.log('historical-data-coverage-tests: all checks passed');
