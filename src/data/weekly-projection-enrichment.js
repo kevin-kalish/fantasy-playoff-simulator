@@ -2,11 +2,11 @@ const key=s=>String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u030
 const positionAlias=value=>{const p=String(value||'').trim().toUpperCase();return p==='DST'||p==='D/ST'?'DEF':p};
 const TEAM_ALIASES={LA:'LAR',LAR:'LAR',JAC:'JAX',JAX:'JAX',WAS:'WSH',WSH:'WSH',NEP:'NE',NWE:'NE',NE:'NE'};
 const pos=p=>positionAlias(p.position||p.pos);
-const team=p=>{const t=String(p.nflTeam||p.team||'').trim().toUpperCase();return TEAM_ALIASES[t]||t};
-const identity=p=>[key(p.name||p.playerName),pos(p),team(p)].join('|');
+const nflTeam=p=>{const t=String(p.nflTeam||p.team||'').trim().toUpperCase();return TEAM_ALIASES[t]||t};
+const identity=p=>[key(p.name||p.playerName),pos(p),nflTeam(p)].join('|');
 const namePosition=p=>[key(p.name||p.playerName),pos(p)].join('|');
 const nameOnly=p=>key(p.name||p.playerName);
-const defenseTeam=p=>pos(p)==='DEF'&&team(p)?team(p):'';
+const defenseTeam=p=>pos(p)==='DEF'&&nflTeam(p)?nflTeam(p):'';
 const id=p=>String(p.playerId||p.id||'');
 const weekKey=(season,week)=>`${season||''}:${week}`;
 
@@ -122,7 +122,7 @@ export function enrichWeeklyProjections(snapshot,projectionRows,{weeks=null,seas
     total++;
     const row=find(index,p,season,week);
     const median=medianDefense.get(week);
-    const conflictingDefense=(projectionRows||[]).some(candidate=>Number(candidate.week)===Number(week)&&Number(candidate.season??season)===Number(season)&&pos(candidate)==='DEF'&&key(candidate.name||candidate.playerName)===key(p.name||p.playerName)&&team(candidate)&&team(p)&&team(candidate)!==team(p));
+    const conflictingDefense=(projectionRows||[]).some(candidate=>Number(candidate.week)===Number(week)&&Number(candidate.season??season)===Number(season)&&pos(candidate)==='DEF'&&key(candidate.name||candidate.playerName)===key(p.name||p.playerName)&&nflTeam(candidate)&&nflTeam(p)&&nflTeam(candidate)!==nflTeam(p));
     const peerCount=(projectionRows||[]).filter(candidate=>Number(candidate.week)===Number(week)&&Number(candidate.season??season)===Number(season)&&pos(candidate)==='DEF'&&Number.isFinite(Number(candidate.projection??candidate.projectedPoints))).length;
     const imputed=!row&&!conflictingDefense&&pos(p)==='DEF'&&peerCount>=2&&Number.isFinite(median);
     const out=imputed?{...p,projection:median,projectionStatus:'imputed-defense',projectionSource:'weekly-defense-median',projectionConfidence:0.5}:apply(p,row,week,{currentWeek:Number(snapshot.currentWeek??snapshot.source?.currentWeek??Math.min(...targetWeeks)),playProbabilities});
