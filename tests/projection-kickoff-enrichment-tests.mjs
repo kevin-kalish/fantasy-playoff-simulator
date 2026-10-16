@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {enrichProjectionArchiveWithKickoffs} from '../src/data/projection-kickoff-enrichment.js';
+const base={immutableArchive:true,capturedAt:'2026-10-13T19:00:00Z',rows:[{season:2026,week:7,nflTeam:'NE',projectedAt:'2026-10-13T19:00:00Z'},{season:2026,week:6,nflTeam:'NE',projectedAt:'2026-10-13T19:00:00Z'},{season:2026,week:7,nflTeam:'SEA',projectedAt:'2026-10-13T19:00:00Z'}]};
+const schedule=[{season:2026,week:7,home_team:'NE',away_team:'NYJ',kickoffAt:'2026-10-18T17:00:00Z'},{season:2026,week:6,home_team:'NE',away_team:'NYJ',kickoffAt:'2026-10-11T17:00:00Z'}];
+const {archive,stats}=enrichProjectionArchiveWithKickoffs(base,schedule);
+assert.equal(stats.eligiblePregame,1);assert.equal(stats.postKickoff,1);assert.equal(stats.missing,1);
+assert.equal(archive.rows[0].kickoffAt,'2026-10-18T17:00:00.000Z');
+assert.equal(base.rows[0].kickoffAt,undefined);
+const conflicting=enrichProjectionArchiveWithKickoffs(base,[...schedule,{season:2026,week:7,home_team:'NE',away_team:'BUF',kickoffAt:'2026-10-19T17:00:00Z'}]);
+assert.equal(conflicting.stats.conflicted,1);
+assert.equal(conflicting.archive.rows[0].kickoffAt,undefined);
+console.log('projection-kickoff-enrichment-tests: all checks passed');

@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {assessProjectionFreshness} from '../src/data/projection-freshness.js';
+const q=assessProjectionFreshness({now:'2026-10-16T18:00:00Z',weeklyCacheUpdatedAt:'2026-10-16T17:00:00Z',weekResults:[{week:6,provider:'cache',rows:100,observedAt:null},{week:7,provider:'jerrygm',rows:100,observedAt:'2026-10-16T12:00:00Z'}],seasonSource:{status:'truncated',generatedAt:'2026-10-08T18:00:00Z',dataThroughWeek:4,truncated:true}});
+assert.deepEqual(q.unknownAgeWeeks,[6]);
+assert.equal(q.weeks[0].ageHours,null);
+assert.equal(q.weeks[0].cacheFileAgeHours,1);
+assert.equal(q.weeks[0].provenance,'cached-unknown-origin');
+assert.equal(q.weeks[1].ageHours,6);
+assert.equal(q.seasonBaseline.ageHours,192);
+assert.equal(q.seasonBaseline.truncated,true);
+console.log('projection-freshness-tests: all checks passed');

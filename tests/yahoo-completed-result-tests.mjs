@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {verifiedYahooCompletedResult} from '../src/data/yahoo-completed-result.js';
+const a='470.l.244897.t.1',b='470.l.244897.t.2';
+const wrap=(matchup)=>({fantasy_content:{league:{scoreboard:{matchups:{0:{matchup},count:1}}}}});
+const match=(winner,extra={})=>({week:'5',teams:{0:{team:[{team_key:a}]},1:{team:[{team_key:b}]},count:2},...(winner?{winner_team_key:winner}:{}),...extra});
+assert.deepEqual(verifiedYahooCompletedResult(wrap(match(a)),{week:5,teamId:a}),{status:'verified',result:'W'});
+assert.deepEqual(verifiedYahooCompletedResult(wrap(match(b)),{week:5,teamId:a}),{status:'verified',result:'L'});
+assert.deepEqual(verifiedYahooCompletedResult(wrap(match(null,{is_tied:'1'})),{week:5,teamId:a}),{status:'verified',result:'T'});
+assert.equal(verifiedYahooCompletedResult(wrap(match(null)),{week:5,teamId:a}).status,'unverified');
+assert.equal(verifiedYahooCompletedResult(wrap(match(a,{is_tied:'1'})),{week:5,teamId:a}).status,'unverified');
+assert.equal(verifiedYahooCompletedResult(wrap(match(a)),{week:4,teamId:a}).status,'unverified');
+assert.equal(verifiedYahooCompletedResult(wrap(match('unrelated')),{week:5,teamId:a}).status,'unverified');
+const yahooArray={fantasy_content:{league:[{scoreboard:{week:'5',matchups:{0:{matchup:[[{teams:{0:{team:[[{team_key:a}]]},1:{team:[[{team_key:b}]]},count:2}},{winner_team_key:a}]]},count:1}}}]}};
+assert.deepEqual(verifiedYahooCompletedResult(yahooArray,{week:5,teamId:a}),{status:'verified',result:'W'});
+assert.equal(verifiedYahooCompletedResult(yahooArray,{week:4,teamId:a}).status,'unverified');
+console.log('yahoo-completed-result-tests: all checks passed');

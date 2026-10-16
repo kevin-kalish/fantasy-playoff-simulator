@@ -8,6 +8,8 @@ export function assessSimulationReadiness(prepared,{minimumProjectionMatchRate=.
  const currentUnavailable=audit.filter(x=>Number(x.week)===currentWeek&&!x.uncertain);
  const uncertain=audit.filter(x=>x.uncertain);
  const heuristic=audit.filter(x=>x.playProbability!=null);
+ const conflicts=audit.filter(x=>x.source==='provider-prior-status-conflict');
+ if(conflicts.length)warnings.push(`${conflicts.length} future player-week projection(s) conflict with current Yahoo unavailable status; future provider projections are retained but return-to-play must be verified.`);
  if(heuristic.length)warnings.push(`${heuristic.length} player-week projection(s) use uncalibrated heuristic play probabilities; validate against injury news before lineup decisions.`);
  if(currentUnavailable.length)warnings.push(`${currentUnavailable.length} current-week unavailable roster player(s) excluded from lineup optimization.`);
  if(uncertain.length)warnings.push(`${uncertain.length} player-week availability observation(s) require confirmation (questionable/doubtful or unresolved future status).`);

@@ -2,11 +2,11 @@ const key=s=>String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u030
 const positionAlias=value=>{const p=String(value||'').trim().toUpperCase();return p==='DST'||p==='D/ST'?'DEF':p};
 const TEAM_ALIASES={LA:'LAR',LAR:'LAR',JAC:'JAX',JAX:'JAX',WAS:'WSH',WSH:'WSH',NEP:'NE',NWE:'NE',NE:'NE'};
 const pos=p=>positionAlias(p.position||p.pos);
-const team=p=>{const t=String(p.nflTeam||p.team||'').trim().toUpperCase();return TEAM_ALIASES[t]||t};
-const identity=p=>[key(p.name||p.playerName),pos(p),team(p)].join('|');
+const nflTeam=p=>{const t=String(p.nflTeam||p.team||'').trim().toUpperCase();return TEAM_ALIASES[t]||t};
+const identity=p=>[key(p.name||p.playerName),pos(p),nflTeam(p)].join('|');
 const namePosition=p=>[key(p.name||p.playerName),pos(p)].join('|');
 const nameOnly=p=>key(p.name||p.playerName);
-const defenseTeam=p=>pos(p)==='DEF'&&team(p)?team(p):'';
+const defenseTeam=p=>pos(p)==='DEF'&&nflTeam(p)?nflTeam(p):'';
 const id=p=>String(p.playerId||p.id||'');
 const weekKey=(season,week)=>`${season||''}:${week}`;
 
@@ -78,7 +78,9 @@ function apply(p,row,week,{currentWeek=week,playProbabilities=DEFAULT_PLAY_PROBA
  const rosterStatus=Number(week)===Number(currentWeek)?normalizedStatus(p.status):'';
  const providerStatus=normalizedStatus(row.status);
  const currentOnlyStatus=normalizedStatus(p.status);
- const unresolvedFuture=Number(week)>Number(currentWeek)&&UNAVAILABLE.has(currentOnlyStatus)&&!providerStatus;
+ const futurePriorUnavailable=Number(week)>Number(currentWeek)&&UNAVAILABLE.has(currentOnlyStatus);
+ const unresolvedFuture=futurePriorUnavailable&&!providerStatus;
+ const futureProviderConflict=futurePriorUnavailable&&providerStatus&&!UNAVAILABLE.has(providerStatus);
  const unavailable=UNAVAILABLE.has(rosterStatus)||UNAVAILABLE.has(providerStatus);
  const status=unavailable?(UNAVAILABLE.has(rosterStatus)?rosterStatus:providerStatus):(rosterStatus&&rosterStatus!=='ACTIVE'?rosterStatus:providerStatus||'ACTIVE');
  const conditionalProjection=Number(row.projection??row.projectedPoints);
@@ -91,7 +93,7 @@ function apply(p,row,week,{currentWeek=week,playProbabilities=DEFAULT_PLAY_PROBA
   projection:bye||unavailable?0:adjusted?conditionalProjection*playProbability:conditionalProjection,
   ...(adjusted&&!unavailable&&!bye?{rawProjection:conditionalProjection,playProbability,availabilitySource:UNAVAILABLE.has(rosterStatus)?'yahoo-roster':rosterStatus&&rosterStatus!=='ACTIVE'?'yahoo-roster':'projection-provider',availabilityModel:'heuristic-expected-value'}:{}),
   ...(unavailable?{rawProjection:Number(row.projection??row.projectedPoints),availabilitySource:UNAVAILABLE.has(rosterStatus)?'yahoo-roster':'projection-provider'}:{}),
-  ...(unresolvedFuture?{availabilityUncertain:true,availabilitySource:'prior-week-yahoo-status'}:{}),
+  ...(futurePriorUnavailable?{availabilityUncertain:true,availabilitySource:futureProviderConflict?'provider-prior-status-conflict':'prior-week-yahoo-status',priorRosterStatus:currentOnlyStatus,...(futureProviderConflict?{providerStatus}: {})}:{}),
   status:bye?'BYE':status,
   ...(Number.isInteger(byeWeek)?{byeWeek}:{}),
   projectionStatus:bye?'bye':unavailable?'unavailable':'matched'
@@ -120,11 +122,11 @@ export function enrichWeeklyProjections(snapshot,projectionRows,{weeks=null,seas
     total++;
     const row=find(index,p,season,week);
     const median=medianDefense.get(week);
-    const conflictingDefense=(projectionRows||[]).some(candidate=>Number(candidate.week)===Number(week)&&Number(candidate.season??season)===Number(season)&&pos(candidate)==='DEF'&&key(candidate.name||candidate.playerName)===key(p.name||p.playerName)&&team(candidate)&&team(p)&&team(candidate)!==team(p));
+    const conflictingDefense=(projectionRows||[]).some(candidate=>Number(candidate.week)===Number(week)&&Number(candidate.season??season)===Number(season)&&pos(candidate)==='DEF'&&key(candidate.name||candidate.playerName)===key(p.name||p.playerName)&&nflTeam(candidate)&&nflTeam(p)&&nflTeam(candidate)!==nflTeam(p));
     const peerCount=(projectionRows||[]).filter(candidate=>Number(candidate.week)===Number(week)&&Number(candidate.season??season)===Number(season)&&pos(candidate)==='DEF'&&Number.isFinite(Number(candidate.projection??candidate.projectedPoints))).length;
     const imputed=!row&&!conflictingDefense&&pos(p)==='DEF'&&peerCount>=2&&Number.isFinite(median);
     const out=imputed?{...p,projection:median,projectionStatus:'imputed-defense',projectionSource:'weekly-defense-median',projectionConfidence:0.5}:apply(p,row,week,{currentWeek:Number(snapshot.currentWeek??snapshot.source?.currentWeek??Math.min(...targetWeeks)),playProbabilities});
-    if(out.projectionStatus==='unavailable'||out.availabilityUncertain||['QUESTIONABLE','DOUBTFUL','Q','D'].includes(normalizedStatus(out.status)))availabilityAudit.push({teamId:team.id,teamName:team.name,week,playerId:id(p),name:p.name,status:out.status,source:out.availabilitySource??'yahoo-roster',uncertain:Boolean(out.availabilityUncertain||['QUESTIONABLE','DOUBTFUL','Q','D'].includes(normalizedStatus(out.status))),playProbability:out.playProbability??null,adjustedProjection:out.projection,rawProjection:out.rawProjection??out.projection});
+    if(out.projectionStatus==='unavailable'||out.availabilityUncertain||['QUESTIONABLE','DOUBTFUL','Q','D'].includes(normalizedStatus(out.status)))availabilityAudit.push({teamId:team.id,teamName:team.name,week,playerId:id(p),name:p.name,status:out.status,source:out.availabilitySource??'yahoo-roster',...(out.priorRosterStatus?{priorRosterStatus:out.priorRosterStatus}:{}),...(out.providerStatus?{providerStatus:out.providerStatus}:{}),uncertain:Boolean(out.availabilityUncertain||['QUESTIONABLE','DOUBTFUL','Q','D'].includes(normalizedStatus(out.status))),playProbability:out.playProbability??null,adjustedProjection:out.projection,rawProjection:out.rawProjection??out.projection});
     if(imputed)imputations.push({teamId:team.id,teamName:team.name,week,playerId:id(p),name:p.name,projection:median,method:'weekly-defense-median'});
     if(out.projectionStatus==='matched'||out.projectionStatus==='unavailable'||imputed)matched++;
     else if(out.projectionStatus==='bye')bye++;

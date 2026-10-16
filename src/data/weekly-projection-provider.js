@@ -10,30 +10,34 @@ const fileProvider=(name,priority,path)=>createProjectionProvider({name,priority
 export function buildWeeklyProjectionProviders({apiKey=process.env.FANTASYPROS_API_KEY,jerryGMApiKey=process.env.JERRYGM_API_KEY,fixturePath=null,cachePath=process.env.PROJECTION_CACHE_PATH??'data/private/projection-cache.json',fetchImpl=globalThis.fetch}={}){
  const providers=[];
  if(apiKey)providers.push(createProjectionProvider({name:'fantasypros',priority:100,load:async({season,week,scoring='HALF'})=>normalizeFantasyProsProjections(await new FantasyProsClient({apiKey,fetchImpl}).projections({season,week,scoring}),{season,week})}));
- if(jerryGMApiKey)providers.push(createProjectionProvider({name:'jerrygm',priority:75,load:async({season,week,scoring='HALF'})=>normalizeJerryGMProjections(await new JerryGMClient({apiKey:jerryGMApiKey,fetchImpl}).projections({season,week,scoring}),{season,week})}));
+ if(jerryGMApiKey)providers.push(createProjectionProvider({name:'jerrygm',priority:75,load:async({season,week,scoring='HALF',projectionNames=[]})=>normalizeJerryGMProjections(await new JerryGMClient({apiKey:jerryGMApiKey,fetchImpl}).projections({season,week,scoring,names:projectionNames}),{season,week})}));
  if(cachePath&&fs.existsSync(cachePath))providers.push(fileProvider('cache',50,cachePath));
  if(fixturePath)providers.push(fileProvider('fixture',10,fixturePath));
  return providers;
 }
 export async function loadWeeklyProjections({season,week,scoring='HALF',minimumRows=1,projectionNames=[],apiKey=process.env.FANTASYPROS_API_KEY,jerryGMApiKey=process.env.JERRYGM_API_KEY,fixturePath=null,cachePath=process.env.PROJECTION_CACHE_PATH??'data/private/projection-cache.json',fetchImpl=globalThis.fetch,preferCache=process.env.PROJECTION_REFRESH!=='true'}={}){
  const providers=buildWeeklyProjectionProviders({apiKey,jerryGMApiKey,fixturePath,cachePath,fetchImpl});
- if(preferCache&&cachePath){const cache=providers.find(p=>p.name==='cache');if(cache){cache.priority=1000;}}
+ // Untargeted requests may reuse an existing cache without making API calls.
+ // Targeted roster-wide requests must prefer live data: a partial top-100 cache
+ // cannot establish coverage for the requested names.
+ if(preferCache&&cachePath&&(!Array.isArray(projectionNames)||projectionNames.length===0)){const cache=providers.find(p=>p.name==='cache');if(cache)cache.priority=1000;}
 
  if(!providers.length)throw new Error('No weekly projection providers configured. Set FANTASYPROS_API_KEY or JERRYGM_API_KEY, provide a projection cache, or provide fixturePath.');
  const result=await loadProjectionRows(providers,{season,week,scoring,projectionNames},{minimumRows});
  if(cachePath&&result.provider!=='cache'&&result.rows.length){let existing=[];try{if(fs.existsSync(cachePath)){const raw=JSON.parse(fs.readFileSync(cachePath,'utf8'));existing=Array.isArray(raw)?raw:(raw.rows??raw.projections??[]);}}catch{}writeProjectionCache(cachePath,mergeProjectionCache(existing,result.rows));}
- return {...result,trust:projectionProviderTrust(result,{minimumRows})};
+ const observedAt=['fantasypros','jerrygm'].includes(result.provider)?new Date().toISOString():null;
+ return {...result,observedAt,trust:projectionProviderTrust(result,{minimumRows})};
 }
-export async function loadWeeklyProjectionHorizon({season,weeks,week,scoring='HALF',minimumRows=1,projectionNames=[],apiKey=process.env.FANTASYPROS_API_KEY,jerryGMApiKey=process.env.JERRYGM_API_KEY,fixturePath=null,cachePath=process.env.PROJECTION_CACHE_PATH??'data/private/projection-cache.json',fetchImpl=globalThis.fetch}={}){
+export async function loadWeeklyProjectionHorizon({season,weeks,week,scoring='HALF',minimumRows=1,projectionNames=[],apiKey=process.env.FANTASYPROS_API_KEY,jerryGMApiKey=process.env.JERRYGM_API_KEY,fixturePath=null,cachePath=process.env.PROJECTION_CACHE_PATH??'data/private/projection-cache.json',fetchImpl=globalThis.fetch,preferCache=process.env.PROJECTION_REFRESH!=='true'}={}){
  const targetWeeks=[...new Set((weeks?.length?weeks:[week]).map(Number).filter(Number.isInteger))].sort((a,b)=>a-b);
  if(!targetWeeks.length)throw new Error('At least one projection week is required.');
  const results=[];
- for(const targetWeek of targetWeeks)results.push(await loadWeeklyProjections({season,week:targetWeek,scoring,minimumRows,projectionNames,apiKey,jerryGMApiKey,fixturePath,cachePath,fetchImpl}));
+ for(const targetWeek of targetWeeks)results.push(await loadWeeklyProjections({season,week:targetWeek,scoring,minimumRows,projectionNames,apiKey,jerryGMApiKey,fixturePath,cachePath,fetchImpl,preferCache}));
  const rows=results.flatMap(result=>result.rows);
  const providers=[...new Set(results.map(result=>result.provider))];
  const attempts=results.flatMap((result,index)=>result.attempts.map(attempt=>({...attempt,week:targetWeeks[index]})));
  const degraded=results.some(result=>result.degraded)||providers.length>1;
  const provider=providers.length===1?providers[0]:'mixed';
- const trust={ready:results.every(result=>result.trust.ready),provider,rows:rows.length,degraded,fallbacksUsed:results.reduce((sum,result)=>sum+result.trust.fallbacksUsed,0),attempts,weeks:targetWeeks,weekResults:results.map((result,index)=>({week:targetWeeks[index],provider:result.provider,rows:result.rows.length,degraded:result.degraded}))};
+ const trust={ready:results.every(result=>result.trust.ready),provider,rows:rows.length,degraded,fallbacksUsed:results.reduce((sum,result)=>sum+result.trust.fallbacksUsed,0),attempts,weeks:targetWeeks,weekResults:results.map((result,index)=>({week:targetWeeks[index],provider:result.provider,rows:result.rows.length,degraded:result.degraded,observedAt:result.observedAt??null}))};
  return {provider,rows,attempts,degraded,trust,weeks:targetWeeks};
 }

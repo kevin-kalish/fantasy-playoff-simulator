@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {assessProspectiveCaptureReadiness} from '../src/data/prospective-capture-readiness.js';
+const empty=assessProspectiveCaptureReadiness();
+assert.equal(empty.v3Archives,0);
+assert.match(empty.nextAction,/fresh immutable v3/);
+const observed='2026-10-10T11:00:00Z';
+const archive={data:{schemaVersion:3,immutableArchive:true,capturedAt:'2026-10-10T12:00:00Z',rows:[{season:2026,week:6,playerId:'p1',projectedAt:observed,kickoffAt:'2026-10-11T18:00:00Z',forecastProvenance:{kind:'fresh-provider-response',provider:'jerrygm',observedAt:observed,retrievedAt:observed}},{season:2026,week:7,playerId:'p2',forecastProvenance:{kind:'unverified-cache-or-fallback'}}]}};
+const result=assessProspectiveCaptureReadiness([archive,{data:{schemaVersion:2,rows:[{}]}}],[{season:2026,week:6,actual:11,actualRecordedAt:'2026-10-15T12:00:00Z'}]);
+assert.equal(result.v3Archives,1);
+assert.equal(result.legacyArchives,1);
+assert.equal(result.totals.pregameKickoffVerifiedRows,1);
+assert.equal(result.weeks[0].completedActualWeek,true);
+assert.equal(result.weeks[1].missingKickoffRows,1);
+assert.match(result.nextAction,/strict historical import/);
+assert.equal(result.parameterUpdatesAllowed,false);
+console.log('prospective-capture-readiness-tests: all checks passed');

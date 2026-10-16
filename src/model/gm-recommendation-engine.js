@@ -1,4 +1,5 @@
 import {simulateLeague} from '../simulator.js';
+import {assessRecommendationSignal,assessReplicatedRecommendationSignal} from './recommendation-uncertainty.js';
 import {rankWaiverCandidates} from './waiver-ranker.js';
 import {evaluateTradeScenario} from './trade-evaluator.js';
 import {enumerateStartSitChoices,evaluateStartSitChoices} from './start-sit-evaluator.js';
@@ -79,6 +80,35 @@ export function buildWeeklyGMRecommendations(input,{teamId,week,projectionRows=[
   actions=actions.map(action=>{const hit=confirmed.get(action.label);if(hit)return {...hit,confirmationStatus:'CONFIRMED'};return action.type==='trade'?{...action,confirmationStatus:'REQUIRED'}:action;});confirmedCount=confirmed.size;
  }
  channelTiming.confirmationSeconds=seconds(channelStart);channelStart=perfNow();
- const checked=validateRecommendationSet(actions,{simulations:screenN,...validation}),scored=checked.map(r=>{const strategic=strategicScore(r,weights),counterparty=r.counterparty?{...r.counterparty,strategicScore:strategicScore(r.counterparty,weights)}:null,next={...r,strategicScore:strategic,strategyPosture:weights.posture,...(counterparty?{counterparty}: {})};return {...next,...(r.type==='trade'?{tradeFeasibility:tradeFeasibility(next,options)}:{})};}).sort(compare),rejected=scored.filter(r=>!beneficial(r)),ranked=scored.filter(beneficial).map((r,i)=>({...r,rank:i+1,summary:summary(r),explanation:explanation(r)})),reviewCount=ranked.filter(r=>r.validation?.confidence==='review').length,lowConfidenceCount=ranked.filter(r=>r.validation?.confidence==='low').length,rejectionCounts=rejected.reduce((out,r)=>{const reason=rejectionReason(r);out[reason]=(out[reason]??0)+1;return out;},{}),bestRejectedByType=Object.fromEntries(['start-sit','waiver','trade'].map(type=>{const candidates=rejected.filter(r=>r.type===type);return [type,candidates[0]?nearMiss(candidates[0]):null];})),coverage={...scanCoverage({startSitDiagnostics,waiverDiagnostics,trades:screenTrades}),tradeInputCount:(trades||[]).length,tradePrefilteredCount:tradePrefiltered};
- const confirmationPassed=ranked.filter(r=>r.confirmationStatus==='CONFIRMED').length;return {teamId:team.id,teamName:team.name,week:Number(week),simulations:input.simulations,seed:input.seed,actionCount:ranked.length,strategy:{...weights,urgency:leverage?.urgency??null,reason:leverage?.reason??null},validation:{reviewCount,lowConfidenceCount},confirmation:{screeningSimulations:screenN,precheckSimulations:precheckN,precheckCount,precheckPassedCount,simulations:confirmationN,candidateCount:confirmationCandidates.length,finalCandidateCount:finalConfirmationCandidates.length,evaluatedCount:confirmedCount,passedCount:confirmationPassed,confirmedCount},diagnostics:{evaluatedActionCount:scored.length,beneficialActionCount:ranked.length,rejectedActionCount:rejected.length,rejectionCounts,nearMisses:rejected.slice(0,3).map(nearMiss),bestRejectedByType,timing:channelTiming,startSit:startSitDiagnostics,waivers:waiverDiagnostics,trades:{inputCount:(trades||[]).length,evaluatedCount:screenTrades.length,prefilteredCount:tradePrefiltered,maxValueGap:tradeMaxValueGap},coverage,noActionExplanation:noActionExplanation({ranked,rejected,coverage})},recommendations:ranked.slice(0,limit)};
+ const checked=validateRecommendationSet(actions,{simulations:screenN,...validation}),scored=checked.map(r=>{const strategic=strategicScore(r,weights),counterparty=r.counterparty?{...r.counterparty,strategicScore:strategicScore(r.counterparty,weights)}:null,next={...r,strategicScore:strategic,strategyPosture:weights.posture,...(counterparty?{counterparty}: {})};return {...next,...(r.type==='trade'?{tradeFeasibility:tradeFeasibility(next,options)}:{})};}).sort(compare),rejected=scored.filter(r=>!beneficial(r)),ranked=scored.filter(beneficial).map((r,i)=>({...r,rank:i+1,summary:summary(r),explanation:explanation(r),championshipSignal:assessRecommendationSignal(r),decisionReadiness:r.confirmationStatus==='CONFIRMED'&&assessRecommendationSignal(r).status==='POSITIVE_SIGNAL'?'CHAMPIONSHIP_SUPPORTED':r.confirmationStatus==='REQUIRED'?'CONFIRMATION_REQUIRED':'REVIEW_REQUIRED'})),reviewCount=ranked.filter(r=>r.validation?.confidence==='review').length,lowConfidenceCount=ranked.filter(r=>r.validation?.confidence==='low').length,rejectionCounts=rejected.reduce((out,r)=>{const reason=rejectionReason(r);out[reason]=(out[reason]??0)+1;return out;},{}),bestRejectedByType=Object.fromEntries(['start-sit','waiver','trade'].map(type=>{const candidates=rejected.filter(r=>r.type===type);return [type,candidates[0]?nearMiss(candidates[0]):null];})),coverage={...scanCoverage({startSitDiagnostics,waiverDiagnostics,trades:screenTrades}),tradeInputCount:(trades||[]).length,tradePrefilteredCount:tradePrefiltered};
+ const replicationCount=Math.max(0,Math.min(2,Math.floor(Number(options.replicateTopRecommendationSeeds??0))));
+ const replicationStart=perfNow();
+ if(replicationCount&&ranked.length){
+  const target=ranked[0],samples=[target],baseSeed=Number(input.seed??2026);
+  for(let i=1;i<=replicationCount;i++){
+   const alternate={...input,seed:baseSeed+i*100003};
+   let matched=null;
+   try{
+    const baseline=simulateLeague({...alternate,simulations:target.simulations}),replicaOptions={...options,simulations:target.simulations,baselineResults:baseline};
+    if(target.type==='start-sit'){
+     const d=target.details;
+     const evaluated=evaluateStartSitChoices(alternate,{teamId,week,projectionRows,choices:[{slot:d.slot,startPlayerId:d.startPlayerId,startPlayerName:d.startPlayerName,sitPlayerId:d.sitPlayerId,sitPlayerName:d.sitPlayerName,projectedPointDelta:d.projectedPointDelta}]},replicaOptions)[0];
+     if(evaluated)matched=actionFromStartSit(evaluated);
+    }else if(target.type==='trade'){
+     const d=target.details.trade;
+     const trade=(trades||[]).find(t=>String(t.teamAId)===String(d.teamAId)&&String(t.teamBId)===String(d.teamBId)&&JSON.stringify(t.teamAGives.map(String))===JSON.stringify(d.teamAGives)&&JSON.stringify(t.teamBGives.map(String))===JSON.stringify(d.teamBGives));
+     if(trade){const evaluated=evaluateTradeScenario(alternate,{...trade,projectionRows:trade.projectionRows??projectionRows},replicaOptions);matched=actionFromTrade(trade,evaluated,teamId);}
+    }else if(target.type==='waiver'){
+     const d=target.details,candidate=(waivers?.candidates??[]).find(p=>String(p.id??p.playerId??'')===String(d.addPlayerId));
+     if(candidate){const evaluated=rankWaiverCandidates(alternate,{teamId,candidates:[candidate],dropPlayerIds:[d.dropPlayerId??null],projectionRows,weeks:waivers.weeks,lineupSlots:waivers.lineupSlots,week},replicaOptions);const exact=evaluated.find(r=>String(r.addPlayerId)===String(d.addPlayerId)&&String(r.dropPlayerId??'')===String(d.dropPlayerId??''));if(exact)matched=actionFromWaiver(exact);}
+    }
+   }catch(error){if(options.throwOnInvalid)throw error}
+   if(matched)samples.push(matched);
+  }
+  target.seedStability=assessReplicatedRecommendationSignal(samples);
+  target.seedStability.requestedReplications=replicationCount+1;
+  target.seedStability.missingReplications=replicationCount+1-samples.length;
+ }
+ channelTiming.seedReplicationSeconds=seconds(replicationStart);
+ const readinessCounts=ranked.reduce((counts,r)=>{counts[r.decisionReadiness]=(counts[r.decisionReadiness]??0)+1;return counts;},{});const confirmationPassed=ranked.filter(r=>r.confirmationStatus==='CONFIRMED').length;return {teamId:team.id,teamName:team.name,week:Number(week),simulations:input.simulations,seed:input.seed,actionCount:ranked.length,strategy:{...weights,urgency:leverage?.urgency??null,reason:leverage?.reason??null},validation:{reviewCount,lowConfidenceCount},confirmation:{screeningSimulations:screenN,precheckSimulations:precheckN,precheckCount,precheckPassedCount,simulations:confirmationN,candidateCount:confirmationCandidates.length,finalCandidateCount:finalConfirmationCandidates.length,evaluatedCount:confirmedCount,passedCount:confirmationPassed,confirmedCount},diagnostics:{readinessCounts,evaluatedActionCount:scored.length,beneficialActionCount:ranked.length,rejectedActionCount:rejected.length,rejectionCounts,nearMisses:rejected.slice(0,3).map(nearMiss),bestRejectedByType,timing:channelTiming,startSit:startSitDiagnostics,waivers:waiverDiagnostics,trades:{inputCount:(trades||[]).length,evaluatedCount:screenTrades.length,prefilteredCount:tradePrefiltered,maxValueGap:tradeMaxValueGap},coverage,noActionExplanation:noActionExplanation({ranked,rejected,coverage})},recommendations:ranked.slice(0,limit)};
 }

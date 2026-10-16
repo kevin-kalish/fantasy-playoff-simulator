@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {buildCalibrationGateReport} from '../src/data/calibration-gate-report.js';
+const empty=buildCalibrationGateReport({sources:{readyForLiveAttempt:false}});
+assert.equal(empty.networkRequests,0);
+assert.equal(empty.parameterUpdatesAllowed,false);
+assert.equal(empty.evidence.strictVerifiedPairs,'not-evaluated');
+assert.ok(empty.blockers.includes('no-fresh-provider-archives'));
+const observed='2026-10-10T11:00:00Z';
+const archive={schemaVersion:3,immutableArchive:true,capturedAt:'2026-10-10T12:00:00Z',rows:[{season:2026,week:6,playerId:'p1',projectedAt:observed,kickoffAt:'2026-10-11T18:00:00Z',forecastProvenance:{kind:'fresh-provider-response',provider:'jerrygm',observAt:observed,observedAt:observed,retrievedAt:observed}}]};
+const result=buildCalibrationGateReport({archives:[archive],actuals:[{season:2026,week:6,actual:10,actualRecordedAt:'2026-10-15T12:00:00Z'}],sources:{readyForLiveAttempt:true}});
+assert.equal(result.evidence.pregameKickoffVerifiedRows,1);
+assert.equal(result.evidence.weeksWithPregameAndActuals,1);
+assert.equal(result.evidence.strictVerifiedPairs,'not-evaluated');
+assert.deepEqual(result.blockers,[]);
+console.log('calibration-gate-report-tests: all checks passed');

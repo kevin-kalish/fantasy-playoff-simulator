@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {assessSeasonBaselineSource} from '../src/data/season-baseline-quality.js';
+const rows=[{position:'QB'},{position:'RB'},{position:'QB'}];
+const quality=assessSeasonBaselineSource({players:rows,count:3,total:60,truncated:true,truncatedNote:'top 3',generatedAt:'2026-10-08T18:20:03.056Z',dataThroughWeek:4},rows);
+assert.equal(quality.status,'truncated');
+assert.equal(quality.sourceFraction,.05);
+assert.equal(quality.returned,3);
+assert.equal(quality.byPosition.QB,2);
+assert.equal(quality.byPosition.RB,1);
+assert.equal(quality.dataThroughWeek,4);
+assert.match(quality.rosterMatchingInterpretation,/do not classify/);
+const unknown=assessSeasonBaselineSource({players:rows},rows);
+assert.equal(unknown.status,'unverified-completeness');
+assert.equal(unknown.sourceFraction,null);
+assert.equal(unknown.truncated,false);
+console.log('season-baseline-quality-tests: all checks passed');

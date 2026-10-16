@@ -8,6 +8,10 @@ const rows=[{week:1,playerId:'A-RB',projection:10},{week:1,playerId:'A-BRB',proj
 const choices=enumerateStartSitChoices(input,{teamId:'A',week:1,projectionRows:rows,slot:'RB'});assert.equal(choices.length,1);assert.equal(choices[0].projectedPointDelta,10);
 const changed=applyStartSitChoice(input,{teamId:'A',week:1,startPlayerId:'A-BRB',sitPlayerId:'A-RB',projectionRows:rows});assert.equal(changed.teams[0].weeklyLineups[1][1].id,'A-BRB');
 const ranked=evaluateStartSitChoices(input,{teamId:'A',week:1,projectionRows:rows,slot:'RB'});assert.equal(ranked[0].rank,1);assert.equal(ranked[0].startPlayerId,'A-BRB');assert.ok(ranked[0].winsDelta>=0);
+const divergentRows=[{week:1,playerId:'A-RB',projection:11},{week:1,playerId:'A-BRB',projection:20}];
+const divergent=evaluateStartSitChoices(input,{teamId:'A',week:1,projectionRows:divergentRows,slot:'RB'});
+assert.equal(divergent[0].projectedPointDelta,10,'reported point delta must match simulated lineup projections');
+assert.equal(divergent[0].screenedPointDelta,9,'retain provider screening difference for discrepancy diagnostics');
 const yahooIdInput=structuredClone(input);
 yahooIdInput.teams[0].roster.push(p('yahoo-bench','Provider Bench','RB',0));
 const yahooRows=[{week:1,playerId:'provider-bench',yahooId:'yahoo-bench',name:'Provider Bench',projection:16},{week:1,playerId:'provider-starter',yahooId:'A-RB',name:'Starter RB',projection:10}];

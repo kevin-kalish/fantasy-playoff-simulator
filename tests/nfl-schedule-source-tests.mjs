@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {easternKickoffToISO,normalizeNflverseSchedule,fetchNflverseSchedule} from '../src/data/nfl-schedule-source.js';
+assert.equal(easternKickoffToISO('2026-10-18','13:00'),'2026-10-18T17:00:00.000Z');
+assert.equal(easternKickoffToISO('2026-11-08','13:00'),'2026-11-08T18:00:00.000Z');
+assert.equal(easternKickoffToISO('invalid','13:00'),null);
+const csv='season,week,game_type,gameday,gametime,home_team,away_team,game_id\n2026,7,REG,2026-10-18,13:00,NE,NYJ,game1\n2025,7,REG,2025-10-19,13:00,NE,NYJ,game2\n';
+const result=normalizeNflverseSchedule(csv,{season:2026});
+assert.equal(result.rows.length,1);assert.equal(result.rows[0].kickoffAt,'2026-10-18T17:00:00.000Z');
+await assert.rejects(()=>fetchNflverseSchedule(2026,{fetchImpl:async()=>({ok:true,text:async()=>csv})}),/Incomplete/);
+console.log('nfl-schedule-source-tests: all checks passed');

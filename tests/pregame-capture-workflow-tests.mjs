@@ -1,0 +1,29 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {executePregameCapture} from '../src/data/pregame-capture-workflow.js';
+import {buildProjectionArchive} from '../src/data/projection-archive.js';
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'capture-workflow-'));
+try{
+ const file=path.join(dir,'snapshot.json');fs.writeFileSync(file,'{}');
+ const now=Date.now(),timestamp=new Date(now-30000).toISOString(),capture=new Date(now).toISOString(),kickoff=new Date(now+86400000).toISOString();
+ const spec={season:2026,week:6,yahoo:{leagueKey:'470.l.244897'},sourceAudit:{passed:true,checks:[{pass:true}],leagueKey:'470.l.244897',week:6,generatedAt:timestamp}};
+ const league={teams:[{id:'t1',roster:[{id:'p1'}],lineup:[{id:'p1',lineupSlot:'QB'}]},{id:'t2',roster:[{id:'p2'}],lineup:[{id:'p2',lineupSlot:'RB'}]}],schedule:[{week:6,matchups:[['t1','t2']]}]};
+ const archive=buildProjectionArchive([{season:2026,week:6,playerId:'p1',name:'Player',position:'QB',projection:14,kickoffAt:kickoff}],{capturedAt:capture,provider:'jerrygm',providerByWeek:{6:'jerrygm'},observedAtByWeek:{6:timestamp}});
+ let jobs=0;
+ const base={spec,snapshot:league,snapshotPath:file,now,readLiveYahoo:async()=>({report:{passed:true,checks:[{pass:true}]},league:structuredClone(league)}),runProjectionJob:async()=>{jobs++;},readNewArchives:async()=>[{path:'private-archive.json',data:archive}]};
+ const success=await executePregameCapture(base);
+ assert.equal(success.calibrationReady,true);assert.equal(success.eligibility.pregameKickoffVerifiedRows,1);assert.equal(jobs,1);
+ const rejects=async(opts,pattern)=>{const before=jobs;await assert.rejects(executePregameCapture({...base,...opts}),pattern);assert.equal(jobs,before,'No projection job may run after failed preflight');};
+ await rejects({readLiveYahoo:async()=>({report:{passed:false},league})},/Yahoo reconciliation failed/);
+ const drift=structuredClone(league);drift.teams[0].roster=[{id:'other'}];
+ await rejects({readLiveYahoo:async()=>({report:{passed:true},league:drift})},/roster:t1/);
+ await rejects({spec:{...spec,projectionFixturePath:'fixture.json'}},/Fixture projections/);
+ await rejects({spec:{...spec,sourceAudit:{...spec.sourceAudit,generatedAt:new Date(now-3600000).toISOString()}}},/stale/);
+ await assert.rejects(executePregameCapture({...base,readNewArchives:async()=>[]}),/exactly one new immutable archive/);
+ const cached=buildProjectionArchive([{season:2026,week:6,playerId:'p1',name:'Player',position:'QB',projection:14,kickoffAt:kickoff}],{capturedAt:capture,provider:'cache'});
+ const result=await executePregameCapture({...base,readNewArchives:async()=>[{path:'cache.json',data:cached}]});
+ assert.equal(result.calibrationReady,false);assert.equal(result.eligibility.pregameKickoffVerifiedRows,0);
+ console.log('pregame-capture-workflow-tests: all checks passed');
+}finally{fs.rmSync(dir,{recursive:true,force:true});}
