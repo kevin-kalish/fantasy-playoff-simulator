@@ -12,9 +12,14 @@ const renderer=fs.readFileSync(path.join(root,'src/ui/live-dashboard-v1.js'),'ut
 const reportName=/^fightin-kali-week-(\d+)-report\.json$/;
 export function latestReport(){
  const names=fs.existsSync(privateDir)?fs.readdirSync(privateDir).filter(x=>reportName.test(x)):[];
- const selected=names.map(name=>({name,week:Number(name.match(reportName)[1]),mtime:fs.statSync(path.join(privateDir,name)).mtimeMs})).sort((a,b)=>b.mtime-a.mtime)[0];
- if(!selected)throw Error('No private weekly report. Run npm run fightin-kali:weekly first.');
- return JSON.parse(fs.readFileSync(path.join(privateDir,selected.name),'utf8'));
+ const selected=names.map(name=>({name,mtime:fs.statSync(path.join(privateDir,name)).mtimeMs})).sort((a,b)=>b.mtime-a.mtime);
+ for(const candidate of selected){
+  try{
+   const document=JSON.parse(fs.readFileSync(path.join(privateDir,candidate.name),'utf8'));
+   if(document?.readiness?.ready===true&&document?.report?.team?.id&&Number.isFinite(Date.parse(document?.report?.generatedAt??'')))return document;
+  }catch{/* Preserve the last usable report if a newer file is partial or invalid. */}
+ }
+ throw Error('No readiness-passing private report. Run npm run fightin-kali:weekly first.');
 }
 export function makeLocalDashboardHandler({token,loadReport=latestReport,controller=null}){
  const refreshController=controller??createRefreshController({readReport:loadReport});
