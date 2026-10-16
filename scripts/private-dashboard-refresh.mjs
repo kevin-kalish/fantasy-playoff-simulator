@@ -17,7 +17,7 @@ export function createRefreshController({start=null,readReport=null}={}){
   let settled=false;
   let child;try{child=runner()}catch{complete(false);return true}
   // Drain subprocess output without logging raw provider responses or credentials.
-  child.stderr?.resume();
+  child.stderr?.on('data',()=>{});
   child.stdout?.resume();
   child.on('error',()=>complete(false));
   child.on('close',code=>complete(code===0));
