@@ -1,3 +1,4 @@
+import {assessPositionSourceCoverage} from '../src/data/position-source-coverage.js';
 import {assessTeamProjectionQuality} from '../src/model/team-projection-quality.js';
 import {assessProjectionFreshness} from '../src/data/projection-freshness.js';
 import fs from 'node:fs';
@@ -66,6 +67,10 @@ const prepared=prepareLeagueSimulation(snapshot,loaded.rows,{calibrationReport,s
 const teamProjectionQuality=assessTeamProjectionQuality(prepared.league,{directWeeks:prepared.diagnostics.directProjectionWeeks??weeks,derivedWeeks:prepared.diagnostics.longRangeProjectionWeeks??prepared.league.longRangeProjectionWeeks??[]});
 console.error('TEAM PROJECTION QUALITY (diagnostic; no model impact):');
 for(const t of teamProjectionQuality)console.error('  '+t.teamName+': season '+t.baseline.matched+'/'+t.baseline.eligible+' ('+(t.baseline.coverage===null?'n/a':(100*t.baseline.coverage).toFixed(0)+'%')+'); derived '+t.derived.withSeason+'/'+t.derived.samples+' season-backed, '+t.derived.horizonOnly+' horizon-only; confidence '+(t.derived.meanConfidence===null?'n/a':(100*t.derived.meanConfidence).toFixed(0)+'%')+'.');
+console.error('TEAM PROJECTED SCORING (diagnostic; submitted current week, modeled future lineups):');
+for(const t of teamProjectionQuality)console.error('  '+t.teamName+': direct mean '+(t.scoring.directMean===null?'n/a':t.scoring.directMean.toFixed(1))+'; derived mean '+(t.scoring.derivedMean===null?'n/a':t.scoring.derivedMean.toFixed(1))+' over '+t.scoring.derivedWeekCount+' weeks.');
+console.error('POSITION SOURCE ATTRIBUTION: '+assessPositionSourceCoverage(prepared.diagnostics.seasonProjectionCoverage,{sourceQuality:seasonBaselineSourceQuality}).map(p=>p.position+'='+p.unmatched+' unmatched ('+p.attribution+')').join(' | '));
+
 
 prepared.input.metadata={...prepared.input.metadata,projectionProvider:loaded.trust};
 const fingerprint=simulationFingerprint(prepared.input);
