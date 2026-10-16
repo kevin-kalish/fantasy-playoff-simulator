@@ -6,6 +6,7 @@ const projections=[{week:4,playerId:'rams',name:'Rams',position:'DEF',projection
 const seasonProjectionRows=[{name:'Los Angeles Rams',position:'DST',projection:9},{name:'Philadelphia Eagles',position:'DST',projection:10}];
 const result=prepareLeagueSimulation(snapshot,projections,{weeks:[4],seasonProjectionRows,simulations:10});
 assert.equal(result.diagnostics.seasonProjectionCoverage.matched,2);
+assert.deepEqual(result.diagnostics.seasonProjectionCoverage.byPosition.DEF,{eligible:2,matched:2,missing:0,matchRate:1});
 assert.equal(result.diagnostics.seasonProjectionCoverage.missing.length,0);
 assert.equal(result.diagnostics.longRangeConfidence.method,'horizon-decay-v1');
 assert.equal(result.diagnostics.longRangeConfidence.byWeek[4],1);
@@ -21,6 +22,7 @@ const partialRows=['r1','r2','r3','r4'].map((id,i)=>({season:2026,week:6,playerI
 const actual=prepareLeagueSimulation(partial,partialRows,{weeks:[6],simulations:100,lineupPolicy:'submitted'});
 const hypothetical=prepareLeagueSimulation(partial,partialRows,{weeks:[6],simulations:100,lineupPolicy:'optimized-hypothetical'});
 assert.equal(actual.diagnostics.incompleteLineups.find(x=>x.teamId==='a').emptySlots,1);
+assert.equal(actual.diagnostics.seasonProjectionCoverage.byPosition.RB.missing,4);
 assert.equal(actual.league.teams[0].weeklyLineups[6].length,1);
 assert.equal(hypothetical.league.teams[0].weeklyLineups[6].length,2);
 assert.equal(hypothetical.league.teams[0].submittedWeeklyLineups[6].length,1);
