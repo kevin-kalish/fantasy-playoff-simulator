@@ -16,8 +16,8 @@ export function createRefreshController({start=null,readReport=null}={}){
   try{before=readReport?.()??null}catch{before=null}
   let settled=false;
   let child;try{child=runner()}catch{complete(false);return true}
-  let stderr='';
-  child.stderr?.on('data',chunk=>{stderr=(stderr+String(chunk)).slice(-8192)});
+  // Drain subprocess output without logging raw provider responses or credentials.
+  child.stderr?.resume();
   child.stdout?.resume();
   child.on('error',()=>complete(false));
   child.on('close',code=>complete(code===0));
@@ -37,7 +37,7 @@ export function createRefreshController({start=null,readReport=null}={}){
     }catch(error){ok=false;reportError=error.message}
    }
    state={...state,phase:ok?'succeeded':'failed',finishedAt:new Date().toISOString(),error:ok?null:reportError??'Yahoo refresh failed. Check the private PowerShell console for details.'};
-   if(!ok)console.error('PRIVATE DASHBOARD REFRESH: failed; see local Yahoo credentials/provider status. '+stderr.replace(/[^\x20-\x7e\n]/g,' ').slice(-1000));
+   if(!ok)console.error('PRIVATE DASHBOARD REFRESH: failed; see local Yahoo credentials/provider status.');
   }
   return true;
  }
