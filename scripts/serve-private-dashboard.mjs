@@ -22,7 +22,7 @@ export function makeLocalDashboardHandler({token,loadReport=latestReport,control
   const send=(code,type,body)=>{res.writeHead(code,{...headers,'Content-Type':type});res.end(body)};
   const fail=(code,message)=>send(code,'text/plain; charset=utf-8',message);
   const host=String(req.headers.host??'');
-  if(!/^127\\.0\\.0\\.1(?::\\d+)?$/.test(host))return fail(403,'Loopback host required');
+  if(!/^127\.0\.0\.1(?::\d+)?$/.test(host))return fail(403,'Loopback host required');
   let url;try{url=new URL(req.url??'/', 'http://127.0.0.1')}catch{return fail(400,'Invalid URL')}
   const supplied=req.headers['x-private-session']??url.searchParams.get('token')??'';
   if(typeof supplied!=='string')return fail(403,'Invalid private session');
