@@ -1,0 +1,30 @@
+/** Team-level source coverage and derived forecast dependence; diagnostic only. */
+export function assessTeamProjectionQuality(league,{directWeeks=[],derivedWeeks=[]}={}){
+ return (league?.teams??[]).map(team=>{
+  const roster=team.roster??[];
+  const rosterIds=new Set(roster.map(p=>String(p.id??p.playerId??'')));
+  const byPosition={};
+  const baselineSeen=new Map();
+  let derivedPlayers=0,derivedWithSeason=0,derivedHorizonOnly=0,derivedMissing=0,confidenceSum=0,confidenceCount=0;
+  for(const week of derivedWeeks){
+   for(const p of team.weeklyRosters?.[week]??[]){
+    const id=String(p.id??p.playerId??'');
+    if(!rosterIds.has(id))continue;
+    const pos=String(p.position??p.pos??'UNKNOWN').toUpperCase();
+    const record=byPosition[pos]??={eligible:0,matched:0};
+    if(!baselineSeen.has(id)){baselineSeen.set(id,Number.isFinite(Number(p.seasonBaseline))&&p.seasonBaseline!==null);record.eligible++;if(baselineSeen.get(id))record.matched++;}
+    derivedPlayers++;
+    const source=p.projectionSource;
+    if(source==='season-horizon-blend'||source==='season-baseline')derivedWithSeason++;
+    else if(source==='recency-weighted-horizon')derivedHorizonOnly++;
+    else derivedMissing++;
+    if(Number.isFinite(Number(p.projectionConfidence))){confidenceSum+=Number(p.projectionConfidence);confidenceCount++;}
+   }
+  }
+  // No derived weeks: do not claim baseline coverage from absent data.
+  const matched=[...baselineSeen.values()].filter(Boolean).length;
+  const eligible=baselineSeen.size;
+  const projectedPointsByWeek=Object.fromEntries([...directWeeks,...derivedWeeks].map(w=>[w,team.lineupDiagnostics?.[w]?.projectedPoints??null]));
+  return {teamId:team.id,teamName:team.name,rosterCount:roster.length,baseline:{eligible,matched,coverage:eligible?matched/eligible:null,byPosition},derived:{samples:derivedPlayers,withSeason:derivedWithSeason,horizonOnly:derivedHorizonOnly,missing:derivedMissing,seasonShare:derivedPlayers?derivedWithSeason/derivedPlayers:null,meanConfidence:confidenceCount?confidenceSum/confidenceCount:null},projectedPointsByWeek};
+ }).sort((a,b)=>String(a.teamName).localeCompare(String(b.teamName)));
+}
