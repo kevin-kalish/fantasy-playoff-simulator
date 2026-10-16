@@ -16,7 +16,8 @@ export function latestReport(){
  if(!selected)throw Error('No private weekly report. Run npm run fightin-kali:weekly first.');
  return JSON.parse(fs.readFileSync(path.join(privateDir,selected.name),'utf8'));
 }
-export function makeLocalDashboardHandler({token,loadReport=latestReport,controller=createRefreshController()}){
+export function makeLocalDashboardHandler({token,loadReport=latestReport,controller=null}){
+ const refreshController=controller??createRefreshController({readReport:loadReport});
  return (req,res)=>{
   const headers={'Cache-Control':'no-store','Pragma':'no-cache','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY'};
   const send=(code,type,body)=>{res.writeHead(code,{...headers,'Content-Type':type});res.end(body)};
@@ -28,14 +29,14 @@ export function makeLocalDashboardHandler({token,loadReport=latestReport,control
   if(typeof supplied!=='string')return fail(403,'Invalid private session');
   const a=Buffer.from(supplied),b=Buffer.from(token);
   if(a.length!==b.length||!timingSafeEqual(a,b))return fail(403,'Invalid private session');
-  if(url.pathname==='/status'&&req.method==='GET')return send(200,'application/json; charset=utf-8',JSON.stringify(controller.status()));
+  if(url.pathname==='/status'&&req.method==='GET')return send(200,'application/json; charset=utf-8',JSON.stringify(refreshController.status()));
   if(url.pathname==='/refresh'&&req.method==='POST'){
    // Exact same-origin check plus custom header prevent cross-site form/CSRF.
    const origin=String(req.headers.origin??'');
    if(origin!=='http://'+host||req.headers['x-private-session']!==token)return fail(403,'Same-origin session required');
    if(req.headers['content-length']&&Number(req.headers['content-length'])>0)return fail(413,'No request body allowed');
-   const accepted=controller.refresh();
-   return send(accepted?202:409,'application/json; charset=utf-8',JSON.stringify(controller.status()));
+   const accepted=refreshController.refresh();
+   return send(accepted?202:409,'application/json; charset=utf-8',JSON.stringify(refreshController.status()));
   }
   if(req.method!=='GET'||url.pathname!=='/')return fail(404,'Not found');
   try{
