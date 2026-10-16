@@ -8,7 +8,7 @@ assert.equal(a.baseline.coverage,.5);
 assert.equal(a.derived.samples,4);
 assert.equal(a.derived.withSeason,2);
 assert.equal(a.derived.horizonOnly,2);
-assert.equal(a.derived.meanConfidence,.75);
+assert.ok(Math.abs(a.derived.meanConfidence-.75)<1e-10);
 assert.equal(a.projectedPointsByWeek[9],99);
 assert.equal(assessTeamProjectionQuality(league,{derivedWeeks:[]})[0].baseline.coverage,null);
 console.log('team-projection-quality-tests: all checks passed');
