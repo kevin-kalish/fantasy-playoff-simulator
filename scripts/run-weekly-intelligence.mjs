@@ -1,3 +1,4 @@
+import {assessLongRangeJump} from '../src/model/long-range-jump-diagnostic.js';
 import {simulateLeague} from '../src/simulator.js';
 import {assessPositionSourceCoverage} from '../src/data/position-source-coverage.js';
 import {assessTeamProjectionQuality} from '../src/model/team-projection-quality.js';
@@ -70,6 +71,15 @@ console.error('TEAM PROJECTION QUALITY (diagnostic; no model impact):');
 for(const t of teamProjectionQuality)console.error('  '+t.teamName+': season '+t.baseline.matched+'/'+t.baseline.eligible+' ('+(t.baseline.coverage===null?'n/a':(100*t.baseline.coverage).toFixed(0)+'%')+'); derived '+t.derived.withSeason+'/'+t.derived.samples+' season-backed, '+t.derived.horizonOnly+' horizon-only; confidence '+(t.derived.meanConfidence===null?'n/a':(100*t.derived.meanConfidence).toFixed(0)+'%')+'.');
 console.error('TEAM PROJECTED SCORING (diagnostic; submitted current week, modeled future lineups):');
 for(const t of teamProjectionQuality)console.error('  '+t.teamName+': direct mean '+(t.scoring.directMean===null?'n/a':t.scoring.directMean.toFixed(1))+'; derived mean '+(t.scoring.derivedMean===null?'n/a':t.scoring.derivedMean.toFixed(1))+' over '+t.scoring.derivedWeekCount+' weeks.');
+if(process.env.LONG_RANGE_JUMP_DIAGNOSTIC==='true'){
+ console.error('LONG RANGE JUMP DECOMPOSITION (diagnostic; no model impact):');
+ const jump=assessLongRangeJump(prepared.league,{directWeeks:prepared.diagnostics.directProjectionWeeks,derivedWeeks:prepared.diagnostics.longRangeProjectionWeeks,slots:prepared.diagnostics.lineupSlots});
+ const fmt=n=>n===null?'n/a':n.toFixed(1);
+ for(const t of jump){
+  console.error('  '+t.teamName+': submitted direct '+fmt(t.directSubmittedMean)+' | optimized direct '+fmt(t.directOptimizedMean)+' | derived '+fmt(t.derivedMean)+' | optimization gap '+fmt(t.optimizationGap)+' | post-optimization gap '+fmt(t.postOptimizationGap));
+  if(/aili|fightin|captain|james/i.test(t.teamName))for(const p of t.topContributors)console.error('    '+p.name+' ('+p.position+'): player delta '+fmt(p.playerDelta)+' | starts direct '+p.directStarts+', derived '+p.derivedStarts+' | '+p.source+' | baseline '+(p.seasonBaseline??'missing'));
+ }
+}
 console.error('PLAYOFF SCORING (diagnostic; modeled lineup means):');
 for(const t of teamProjectionQuality)console.error('  '+t.teamName+': derived regular '+(t.scoring.regularDerivedMean===null?'n/a':t.scoring.regularDerivedMean.toFixed(1))+'; playoffs '+(t.scoring.playoffMean===null?'n/a':t.scoring.playoffMean.toFixed(1))+'; delta '+(t.scoring.playoffVsRegularDelta===null?'n/a':t.scoring.playoffVsRegularDelta.toFixed(1))+'; playoff weeks '+t.scoring.playoffWeekCount+'.');
 console.error('POSITION SOURCE ATTRIBUTION: '+assessPositionSourceCoverage(prepared.diagnostics.seasonProjectionCoverage,{sourceQuality:seasonBaselineSourceQuality}).map(p=>p.position+'='+p.unmatched+' unmatched ('+p.attribution+')').join(' | '));
