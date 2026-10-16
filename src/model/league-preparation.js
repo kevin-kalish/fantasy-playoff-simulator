@@ -68,7 +68,7 @@ function addLongRangeProjections(league,directWeeks,{seasonProjectionRows=[],sea
  const direct=new Set(directWeeks.map(Number));
  const derivedWeeks=allFuture.filter(w=>!direct.has(w));
  const seasonIndex=seasonProjectionIndex(seasonProjectionRows),blendWeight=Math.max(0,Math.min(1,Number(seasonWeight)));
- let seasonMatches=0,eligiblePlayers=0;const seasonMissing=[];
+ let seasonMatches=0,eligiblePlayers=0;const seasonMissing=[];const byPosition={};
  const confidenceByWeek=Object.fromEntries(directWeeks.map(week=>[week,1]));
  const confidenceSamples=new Map(derivedWeeks.map(week=>[week,[]]));
  const teams=(league.teams||[]).map(team=>{
@@ -76,7 +76,7 @@ function addLongRangeProjections(league,directWeeks,{seasonProjectionRows=[],sea
   const roster=team.roster?.length?team.roster:team.lineup||[];
   eligiblePlayers+=roster.length;
   const seasonByPlayer=new Map(roster.map(player=>[playerId(player),seasonProjectionFor(player,seasonIndex)]));
-  for(const player of roster){const projection=seasonByPlayer.get(playerId(player));if(Number.isFinite(projection))seasonMatches++;else seasonMissing.push({teamId:team.id,teamName:team.name,id:playerId(player),name:player.name,position:player.position??player.pos??null,nflTeam:player.nflTeam??player.team??null});}
+  for(const player of roster){const projection=seasonByPlayer.get(playerId(player));const position=String(player.position??player.pos??'UNKNOWN').toUpperCase();byPosition[position]??={eligible:0,matched:0};byPosition[position].eligible++;if(Number.isFinite(projection)){seasonMatches++;byPosition[position].matched++;}else seasonMissing.push({teamId:team.id,teamName:team.name,id:playerId(player),name:player.name,position:player.position??player.pos??null,nflTeam:player.nflTeam??player.team??null});}
   for(const week of derivedWeeks){
    weeklyRosters[week]=roster.map(player=>{
     const pid=playerId(player);
@@ -95,7 +95,7 @@ function addLongRangeProjections(league,directWeeks,{seasonProjectionRows=[],sea
  });
  for(const week of derivedWeeks){const values=confidenceSamples.get(week);confidenceByWeek[week]=values.length?values.reduce((a,b)=>a+b,0)/values.length:0;}
  const hasSeasonRows=seasonProjectionRows.length>0;
- return {...league,teams,longRangeProjectionWeeks:derivedWeeks,directProjectionWeeks:[...direct].sort((a,b)=>a-b),longRangeProjectionMethod:hasSeasonRows?'season-horizon-blend':'recency-weighted-horizon',longRangeRecencyDecay:LONG_RANGE_RECENCY_DECAY,longRangeSeasonWeight:hasSeasonRows?blendWeight:0,longRangeConfidence:{method:'horizon-decay-v1',decay:LONG_RANGE_CONFIDENCE_DECAY,floor:LONG_RANGE_CONFIDENCE_FLOOR,byWeek:confidenceByWeek},seasonProjectionCoverage:{eligible:eligiblePlayers,matched:seasonMatches,missing:seasonMissing,matchRate:eligiblePlayers?seasonMatches/eligiblePlayers:1}};
+ return {...league,teams,longRangeProjectionWeeks:derivedWeeks,directProjectionWeeks:[...direct].sort((a,b)=>a-b),longRangeProjectionMethod:hasSeasonRows?'season-horizon-blend':'recency-weighted-horizon',longRangeRecencyDecay:LONG_RANGE_RECENCY_DECAY,longRangeSeasonWeight:hasSeasonRows?blendWeight:0,longRangeConfidence:{method:'horizon-decay-v1',decay:LONG_RANGE_CONFIDENCE_DECAY,floor:LONG_RANGE_CONFIDENCE_FLOOR,byWeek:confidenceByWeek},seasonProjectionCoverage:{eligible:eligiblePlayers,matched:seasonMatches,missing:seasonMissing,byPosition:Object.fromEntries(Object.entries(byPosition).map(([position,counts])=>[position,{...counts,missing:counts.eligible-counts.matched,matchRate:counts.eligible?counts.matched/counts.eligible:1}])),matchRate:eligiblePlayers?seasonMatches/eligiblePlayers:1}};
 }
 
 export function prepareLeagueSimulation(snapshot,projectionRows,{slots=null,weeks=null,season=snapshot?.source?.season,strictProjections=false,minimumProjectionMatchRate=.9,calibrationReport=null,simulations=50000,seed=20260923,modelVariant='correlated',seasonProjectionRows=[],longRangeSeasonWeight=LONG_RANGE_SEASON_WEIGHT,lineupPolicy='submitted'}={}){
