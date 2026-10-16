@@ -208,7 +208,17 @@ Trade-model hardening for this phase is complete. Net roster need is calculated 
 
 ## Front-end readiness
 
-The public GitHub Pages browser UI remains a synthetic/demo dashboard. Separately, a private read-only live-report dashboard now supports a stable schema-v1 export, local offline HTML preview, 10-team synthetic acceptance coverage, section navigation, schedule ordering, team detail, matchup and leverage analysis, and GM diagnostics subject to the publication gate. Before treating the UI as a live production view, the remaining integration work is to expose the refreshed Yahoo/weekly report through a stable browser-facing data contract, render trust/projection-horizon and provisional-postseason states, surface recommendation/near-miss diagnostics without implying rejected scenarios are recommendations, and verify team/week drill-down against live league state.
+The public GitHub Pages browser UI remains a synthetic/demo dashboard. Separately, a private read-only live-report dashboard now supports a stable schema-v1 export, local offline HTML preview, 10-team synthetic acceptance coverage, section navigation, schedule ordering, team detail, matchup and leverage analysis, and GM diagnostics subject to the publication gate. The private localhost server now exposes the refreshed Yahoo/weekly report through a browser-facing contract and supports browser-initiated refresh with safe failure recovery. Remaining UI acceptance is a manual trust-label and live team/week drill-down audit; this is not an internet-hosted production service.
+
+## October 16, 2026 handoff — Milestone A to Milestone B
+
+**Milestone A: provisionally accepted for single-user, localhost-only Yahoo private beta.** The user confirmed browser refresh, dashboard opening, and all four provider-free browser failure/retry checks. Following the security logging fix (commit `c759c85`), the local Windows run of `npm test` completed successfully through `production-readiness-review-tests` (110 suites), including private-dashboard server and refresh tests. `git ls-files data/private` and `git ls-files .env` returned no tracked files. The public GitHub Pages experience remains synthetic only.
+
+**Explicitly not yet signed off:** manual restart/session-token rotation, browser Network inspection for third-party requests, complete visual audit of provisional forecast/trust labels, and final operational release rehearsal. These are documented in [Milestone A acceptance](docs/PRIVATE_BETA_MILESTONE_A.md); do not treat provisional acceptance as unrestricted production security approval.
+
+**How to resume locally:** checkout/pull `dashboard-contract-v1`, run `npm test`, then `npm run dashboard:private`. Open only the generated localhost session URL; never share the token or publish `data/private/`. The separate provider-free failure harness is `node scripts/accept-private-dashboard-failure.mjs`. A real browser refresh may contact Yahoo and the projection provider; the failure harness does not.
+
+**Milestone B (next work session, October 17 or 19): Projection quality and calibration.** Start by auditing current direct JerryGM versus derived long-range coverage, observation-time/freshness provenance, historical pregame data eligibility, and championship forecast limitations. Define measurable calibration/validation baselines and acceptance criteria before changing model coefficients. Then prioritize long-range mean forecasts, horizon-dependent uncertainty, and playoff-probability calibration. Preserve trust/publication gates, read-only Yahoo behavior, and synthetic-only public demo. Do not assume missing historical projection archives can be reconstructed without leakage.
 
 ## Development roadmap
 
