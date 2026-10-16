@@ -17,8 +17,8 @@ assert.equal(controller.refresh(),true);
 child.emit('close',1);
 assert.equal(controller.status().phase,'failed');
 assert.match(controller.status().error,/failed/);
-let timestamp='2026-10-16T21:00:00.000Z',ready=true,reportChild;
-const checked=createRefreshController({readReport:()=>({readiness:{ready},report:{generatedAt:timestamp}}),start:()=>{
+let timestamp='2026-10-16T21:00:00.000Z',ready=true,teamId='team-1',reportChild;
+const checked=createRefreshController({readReport:()=>({readiness:{ready},report:{generatedAt:timestamp,team:{id:teamId}}}),start:()=>{
  reportChild=new EventEmitter();reportChild.stdout=new EventEmitter();reportChild.stdout.resume=()=>{};reportChild.stderr=new EventEmitter();return reportChild;
 }});
 checked.refresh();reportChild.emit('close',0);
@@ -29,4 +29,7 @@ assert.equal(checked.status().phase,'succeeded');
 checked.refresh();timestamp='2026-10-16T21:02:00.000Z';ready=false;reportChild.emit('close',0);
 assert.equal(checked.status().phase,'failed');
 assert.match(checked.status().error,/readiness/);
+ready=true;checked.refresh();timestamp='2026-10-16T21:03:00.000Z';teamId='different-team';reportChild.emit('close',0);
+assert.equal(checked.status().phase,'failed');
+assert.match(checked.status().error,/different team/);
 console.log('private-dashboard-refresh-tests: all checks passed');
