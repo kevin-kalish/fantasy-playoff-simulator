@@ -14,6 +14,7 @@ import {simulationFingerprint} from '../src/model/simulation-fingerprint.js';
 import {discoverTradeCandidates} from '../src/model/trade-candidate-source.js';
 import {loadWeeklyProjectionHorizon} from '../src/data/weekly-projection-provider.js';
 import {JerryGMClient,normalizeJerryGMSeasonProjections} from '../src/data/jerrygm.js';
+import {assessSeasonBaselineSource} from '../src/data/season-baseline-quality.js';
 
 const [snapshotPath,specPath]=process.argv.slice(2);
 if(!snapshotPath||!specPath){console.error('Usage: npm run intelligence:weekly -- <league-snapshot.json> <weekly-spec.json>');process.exit(1)}
@@ -28,11 +29,16 @@ const projectionNames=[...new Set([...rosterNames,...waiverNames])],projectionCa
 let loaded;
 try{loaded=await loadWeeklyProjectionHorizon({season,weeks,scoring:spec.scoring??'HALF',minimumRows:Number(spec.minimumProjectionRows??1),projectionNames,fixturePath:spec.projectionFixturePath??process.env.PROJECTION_FIXTURE_PATH??null});}
 catch(error){console.error(`PROJECTIONS: FAIL; ${error.message}`);process.exit(2)}
-let seasonProjectionRows=[];
+let seasonProjectionRows=[];let seasonBaselineSourceQuality=null;
 if(process.env.JERRYGM_API_KEY&&spec.useJerryGMSeasonBaseline!==false){
  try{
   let payload,seasonSource='jerrygm';if(!forceProjectionRefresh&&fs.existsSync(seasonCachePath)){payload=JSON.parse(fs.readFileSync(seasonCachePath,'utf8'));seasonSource='cache';}else{payload=await new JerryGMClient({apiKey:process.env.JERRYGM_API_KEY}).seasonProjections({season,scoring:spec.scoring??'HALF'});fs.mkdirSync('data/private',{recursive:true});fs.writeFileSync(seasonCachePath,JSON.stringify(payload,null,2)+'\n');}
   seasonProjectionRows=normalizeJerryGMSeasonProjections(payload,{season});
+  seasonBaselineSourceQuality=assessSeasonBaselineSource(payload,seasonProjectionRows);
+  const q=seasonBaselineSourceQuality;
+  console.error(`SEASON SOURCE QUALITY: ${q.status}; returned ${q.returned}/${q.total??'unknown'}; ${(q.sourceFraction===null?'unknown':(100*q.sourceFraction).toFixed(1)+'%')} of reported provider pool; generated ${q.generatedAt??'unknown'}; data through week ${q.dataThroughWeek??'unknown'}.`);
+  console.error(`SEASON SOURCE POSITIONS: ${Object.entries(q.byPosition).sort((a,b)=>a[0].localeCompare(b[0])).map(([p,n])=>p+'='+n).join(' | ')}`);
+  if(q.truncated)console.error('SEASON SOURCE WARNING: provider response truncated; roster baseline misses cannot be attributed to identifier matching alone.');
   console.error(`SEASON BASELINE: ${seasonSource}; ${seasonProjectionRows.length} projections.`);
  }catch(error){console.error(`SEASON BASELINE: unavailable; ${error.message}; continuing with horizon-only long-range model.`);}
 }
