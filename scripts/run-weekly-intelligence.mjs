@@ -42,6 +42,7 @@ const minimumProjectionMatchRate=Number(spec.minimumProjectionMatchRate??process
 const simulations=Number(spec.simulations??process.env.SIMULATIONS??50000);
 const scenarioSimulations=Number(spec.scenarioSimulations??process.env.SCENARIO_SIMULATIONS??250);
 const confirmationSimulations=Number(spec.confirmationSimulations??process.env.CONFIRMATION_SIMULATIONS??20000);
+const matchupImpactSimulations=Number(spec.matchupImpactSimulations??process.env.MATCHUP_IMPACT_SIMULATIONS??1000);
 const longRangeSeasonWeight=Number(spec.longRangeSeasonWeight??process.env.LONG_RANGE_SEASON_WEIGHT??.65);
 // Archive only live Yahoo-audited runs. Fixtures and unaudited imports are excluded.
 if(spec.sourceAudit?.passed===true&&process.env.PROJECTION_ARCHIVE!=='false'){
@@ -92,7 +93,7 @@ else{
  if(spec.sourceAudit)console.error(`SOURCE AUDIT: ${spec.sourceAudit.passed?'PASS':'FAIL'}; ${spec.sourceAudit.checks?.length??0} checks; league ${spec.sourceAudit.leagueKey??'unknown'} week ${spec.sourceAudit.week??week}.`);
  console.error(`MONTE CARLO: running ${simulations.toLocaleString()} core simulations; scenario screening uses ${scenarioSimulations.toLocaleString()} each; promising actions confirm at ${confirmationSimulations.toLocaleString()}...`);
  const started=Date.now();
- const report=buildLeagueIntelligenceReport(prepared.input,{...spec,week,projectionRows:loaded.rows,providerHealth:loaded.trust,enrichedLeague:prepared.league,trust:simulationTrust,scenarioSimulations,confirmationSimulations,replicateTopRecommendationSeeds:Number(spec.replicateTopRecommendationSeeds??process.env.GM_ACTION_REPLICATION_SEEDS??2)});
+ const report=buildLeagueIntelligenceReport(prepared.input,{...spec,week,projectionRows:loaded.rows,providerHealth:loaded.trust,enrichedLeague:prepared.league,trust:simulationTrust,scenarioSimulations,confirmationSimulations,matchupImpactSimulations,replicateTopRecommendationSeeds:Number(spec.replicateTopRecommendationSeeds??process.env.GM_ACTION_REPLICATION_SEEDS??2)});
  console.error(`MONTE CARLO: complete in ${((Date.now()-started)/1000).toFixed(1)}s.`);
  const seedRuns=Number(spec.seedValidationRuns??process.env.SEED_VALIDATION_RUNS??0);
  let seedValidation=null;
