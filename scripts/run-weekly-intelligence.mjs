@@ -1,3 +1,4 @@
+import {applyLineupManagementStress} from '../src/model/lineup-management-stress.js';
 import {assessLongRangeJump} from '../src/model/long-range-jump-diagnostic.js';
 import {simulateLeague} from '../src/simulator.js';
 import {assessPositionSourceCoverage} from '../src/data/position-source-coverage.js';
@@ -106,6 +107,25 @@ if(process.env.LONG_RANGE_SENSITIVITY==='true'){
  }
 }
 
+if(process.env.LINEUP_MANAGEMENT_STRESS==='true'){
+ if(!readiness.ready)console.error('LINEUP MANAGEMENT STRESS: SKIPPED; readiness failed.');
+ else{
+  const n=Math.max(1000,Math.min(50000,Number(process.env.LINEUP_MANAGEMENT_STRESS_SIMULATIONS??10000)));
+  const base={...prepared.input,simulations:n};
+  const control=simulateLeague(base);
+  console.error('LINEUP MANAGEMENT STRESS: diagnostic only; '+n+' simulations per case; shared seed; same assumptions for all managers.');
+  for(const rate of [.25,.5,.75]){
+   const scenario=applyLineupManagementStress(base,prepared.league,{missRate:rate,seed:base.seed});
+   const results=simulateLeague(scenario.input);
+   console.error('  miss rate '+rate+': '+scenario.diagnostics.swaps+'/'+scenario.diagnostics.opportunities+' downgraded team-weeks; mean downgrade '+scenario.diagnostics.averageLoss.toFixed(1)+' pts.');
+   for(const t of results){
+    const baseline=control.find(x=>String(x.id)===String(t.id));
+    console.error('    '+t.name+': title '+(100*t.championshipProbability).toFixed(1)+'% (delta '+(100*(t.championshipProbability-baseline.championshipProbability)).toFixed(1)+' pp); playoffs '+(100*t.playoffProbability).toFixed(1)+'% (delta '+(100*(t.playoffProbability-baseline.playoffProbability)).toFixed(1)+' pp)');
+   }
+  }
+  console.error('LINEUP MANAGEMENT STRESS WARNING: synthetic uniform missed-upgrade assumptions, not observed manager behavior or calibrated probabilities; production unchanged.');
+ }
+}
 console.error(`PROJECTIONS: ${loaded.provider}; ${loaded.rows.length} rows across weeks ${loaded.weeks.join(',')}; ${loaded.trust.degraded?'DEGRADED/FALLBACK':'PRIMARY'}.`);console.error(`PROJECTION SOURCE: ${loaded.provider}; ${loaded.trust.weekResults.map(x=>`W${x.week}=${x.provider}`).join(', ')}${forceProjectionRefresh?' [REFRESH REQUESTED]':''}.`);
 const weeklyCacheUpdatedAt=fs.existsSync(projectionCachePath)?(()=>{try{return JSON.parse(fs.readFileSync(projectionCachePath,'utf8')).updatedAt??null}catch{return null}})():null;
 const freshness=assessProjectionFreshness({weekResults:loaded.trust.weekResults,seasonSource:seasonBaselineSourceQuality,weeklyCacheUpdatedAt});
