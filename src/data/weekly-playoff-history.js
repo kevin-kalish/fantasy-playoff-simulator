@@ -30,3 +30,21 @@ export function captureCompletedWeekProbability({document,currentWeek,season,lea
  try{fs.writeFileSync(temporary,JSON.stringify(next,null,2)+'\n',{flag:'wx',mode:0o600});fs.renameSync(temporary,archivePath);}finally{if(fs.existsSync(temporary))fs.rmSync(temporary,{force:true});}
  return {status:'recorded',week,probability:focus.playoffProbability};
 }
+
+/** Attach a verified Yahoo W/L/T to an existing immutable forecast point.
+ * Forecast probability, generatedAt and original snapshot are never changed.
+ */
+export function reconcileCompletedWeekResult({week,result,teamId,season,leagueKey,archivePath='data/private/playoff-probability-history.json'}){
+ if(!Number.isInteger(week)||week<1||week>18||!['W','L','T'].includes(result))return {status:'skipped',reason:'Invalid verified result'};
+ if(!fs.existsSync(archivePath))return {status:'skipped',reason:'No archived forecast'};
+ const prior=JSON.parse(fs.readFileSync(archivePath,'utf8'));
+ if(String(prior.teamId)!==String(teamId)||Number(prior.season)!==Number(season)||String(prior.leagueKey)!==String(leagueKey))return {status:'skipped',reason:'Archive identity mismatch'};
+ const point=prior.history?.find(x=>x.week===week);
+ if(!point)return {status:'skipped',reason:'No forecast point for completed week'};
+ if(point.result===result)return {status:'unchanged',week,result};
+ if(point.result!=null)return {status:'conflict',reason:'Existing result differs; manual review required'};
+ const next={...prior,history:prior.history.map(x=>x.week===week?{...x,result}:x)};
+ const temporary=archivePath+'.tmp-'+process.pid;
+ try{fs.writeFileSync(temporary,JSON.stringify(next,null,2)+'\n',{flag:'wx',mode:0o600});fs.renameSync(temporary,archivePath);}finally{if(fs.existsSync(temporary))fs.rmSync(temporary,{force:true});}
+ return {status:'updated',week,result};
+}
