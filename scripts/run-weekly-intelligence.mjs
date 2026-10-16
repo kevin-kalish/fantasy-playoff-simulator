@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import {captureCompletedWeekProbability} from '../src/data/weekly-playoff-history.js';
+import {captureCompletedWeekProbability,reconcileCompletedWeekResult} from '../src/data/weekly-playoff-history.js';
 import {buildPrivatePreview} from './build-private-dashboard-preview.mjs';
 import path from 'node:path';
 import {buildProjectionArchive,saveProjectionArchive} from '../src/data/projection-archive.js';
