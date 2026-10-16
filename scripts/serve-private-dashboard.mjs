@@ -44,14 +44,18 @@ export function makeLocalDashboardHandler({token,loadReport=latestReport,control
    const script=`<script>(function(){
     const token=new URLSearchParams(location.search).get('token');
     const button=document.getElementById('refresh-yahoo'),label=document.getElementById('refresh-status');
+    const reloadKey='privateDashboardLastReload';
     async function status(){
      try{
       const r=await fetch('/status',{headers:{'x-private-session':token},cache:'no-store'});
       if(!r.ok)throw Error('Status unavailable');
       const s=await r.json();button.disabled=s.phase==='running';
-      label.textContent=s.phase==='running'?'Refreshing Yahoo data…':s.phase==='succeeded'?'Refresh complete. Reloading…':s.phase==='failed'?(s.error||'Refresh failed'):'Ready';
-      if(s.phase==='succeeded'&&window.__refreshStarted)location.reload();
-      if(s.phase==='running'||window.__refreshStarted&&s.phase==='running')setTimeout(status,2000);
+      const alreadyReloaded=s.finishedAt&&sessionStorage.getItem(reloadKey)===s.finishedAt;
+      label.textContent=s.phase==='running'?'Refreshing Yahoo data…':s.phase==='succeeded'?(alreadyReloaded?'Last refresh completed; report loaded.':'Refresh complete.') :s.phase==='failed'?(s.error||'Refresh failed'):'Ready';
+      if(s.phase==='succeeded'&&window.__refreshStarted&&!alreadyReloaded){
+       sessionStorage.setItem(reloadKey,s.finishedAt);location.reload();return;
+      }
+      if(s.phase==='running')setTimeout(status,2000);
      }catch{label.textContent='Unable to check refresh status';button.disabled=false}
     }
     button.addEventListener('click',async()=>{
