@@ -1,3 +1,4 @@
+import {assessTeamProjectionQuality} from '../src/model/team-projection-quality.js';
 import {assessProjectionFreshness} from '../src/data/projection-freshness.js';
 import fs from 'node:fs';
 import {captureCompletedWeekProbability,reconcileCompletedWeekResult} from '../src/data/weekly-playoff-history.js';
@@ -62,6 +63,10 @@ if(spec.sourceAudit?.passed===true&&process.env.PROJECTION_ARCHIVE!=='false'){
  }catch(error){console.error(`PROJECTION ARCHIVE: FAIL; ${error.message}; simulation continues, but no historical archive is claimed.`);}
 }
 const prepared=prepareLeagueSimulation(snapshot,loaded.rows,{calibrationReport,simulations,seed:Number(spec.seed??process.env.SEED??20260923),modelVariant:spec.modelVariant??process.env.MODEL_VARIANT??'correlated',minimumProjectionMatchRate,weeks,season,seasonProjectionRows,longRangeSeasonWeight});
+const teamProjectionQuality=assessTeamProjectionQuality(prepared.league,{directWeeks:prepared.diagnostics.directProjectionWeeks??weeks,derivedWeeks:prepared.diagnostics.longRangeProjectionWeeks??prepared.league.longRangeProjectionWeeks??[]});
+console.error('TEAM PROJECTION QUALITY (diagnostic; no model impact):');
+for(const t of teamProjectionQuality)console.error('  '+t.teamName+': season '+t.baseline.matched+'/'+t.baseline.eligible+' ('+(t.baseline.coverage===null?'n/a':(100*t.baseline.coverage).toFixed(0)+'%')+'); derived '+t.derived.withSeason+'/'+t.derived.samples+' season-backed, '+t.derived.horizonOnly+' horizon-only; confidence '+(t.derived.meanConfidence===null?'n/a':(100*t.derived.meanConfidence).toFixed(0)+'%')+'.');
+
 prepared.input.metadata={...prepared.input.metadata,projectionProvider:loaded.trust};
 const fingerprint=simulationFingerprint(prepared.input);
 prepared.input.metadata.simulationFingerprint=fingerprint;
