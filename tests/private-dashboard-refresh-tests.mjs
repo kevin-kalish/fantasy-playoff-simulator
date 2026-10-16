@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import {EventEmitter} from 'node:events';
+import {createRefreshController} from '../scripts/private-dashboard-refresh.mjs';
+let runs=0,child;
+const controller=createRefreshController({start:()=>{
+ runs++;child=new EventEmitter();child.stdout=new EventEmitter();child.stdout.resume=()=>{};child.stderr=new EventEmitter();return child;
+}});
+assert.equal(controller.status().phase,'idle');
+assert.equal(controller.refresh(),true);
+assert.equal(controller.status().phase,'running');
+assert.equal(controller.refresh(),false);
+assert.equal(runs,1);
+child.emit('close',0);
+assert.equal(controller.status().phase,'succeeded');
+assert.ok(controller.status().finishedAt);
+assert.equal(controller.refresh(),true);
+child.emit('close',1);
+assert.equal(controller.status().phase,'failed');
+assert.match(controller.status().error,/failed/);
+console.log('private-dashboard-refresh-tests: all checks passed');
