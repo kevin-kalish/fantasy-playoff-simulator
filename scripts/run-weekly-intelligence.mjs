@@ -122,6 +122,12 @@ const c=report.recommendations?.confirmation;if(c){const staged=c.precheckCount?
    console.error(`PLAYOFF HISTORY: ${captured.status}; ${captured.reason??('completed week '+captured.week)}`);
   }catch(error){console.error(`PLAYOFF HISTORY: FAIL; ${error.message}; report preserved; archive unchanged.`);}
  }
+ if(spec.sourceAudit?.passed===true&&spec.sourceAudit.week===week&&spec.sourceAudit.leagueKey&&spec.completedYahooResult?.week===week-1){
+  try{
+   const outcome=reconcileCompletedWeekResult({week:week-1,result:spec.completedYahooResult.result,teamId:spec.teamId,season,leagueKey:spec.sourceAudit.leagueKey});
+   console.error(`PLAYOFF RESULT: ${outcome.status}; ${outcome.reason??('completed week '+outcome.week+' '+outcome.result)}`);
+  }catch(error){console.error(`PLAYOFF RESULT: unavailable; ${error.message}; archived forecast preserved.`);}
+ }
  if(spec.sourceAudit?.passed===true && spec.sourceAudit.week===week && spec.sourceAudit.leagueKey && spec.outputPath && process.env.DASHBOARD_AUTO_PREVIEW!=='false'){
   try{
    const privateRoot=path.resolve('data/private');
