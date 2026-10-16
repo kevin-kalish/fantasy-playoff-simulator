@@ -1,3 +1,4 @@
+import {simulateLeague} from '../src/simulator.js';
 import {assessPositionSourceCoverage} from '../src/data/position-source-coverage.js';
 import {assessTeamProjectionQuality} from '../src/model/team-projection-quality.js';
 import {assessProjectionFreshness} from '../src/data/projection-freshness.js';
@@ -64,11 +65,13 @@ if(spec.sourceAudit?.passed===true&&process.env.PROJECTION_ARCHIVE!=='false'){
  }catch(error){console.error(`PROJECTION ARCHIVE: FAIL; ${error.message}; simulation continues, but no historical archive is claimed.`);}
 }
 const prepared=prepareLeagueSimulation(snapshot,loaded.rows,{calibrationReport,simulations,seed:Number(spec.seed??process.env.SEED??20260923),modelVariant:spec.modelVariant??process.env.MODEL_VARIANT??'correlated',minimumProjectionMatchRate,weeks,season,seasonProjectionRows,longRangeSeasonWeight});
-const teamProjectionQuality=assessTeamProjectionQuality(prepared.league,{directWeeks:prepared.diagnostics.directProjectionWeeks??weeks,derivedWeeks:prepared.diagnostics.longRangeProjectionWeeks??prepared.league.longRangeProjectionWeeks??[]});
+const teamProjectionQuality=assessTeamProjectionQuality(prepared.league,{directWeeks:prepared.diagnostics.directProjectionWeeks??weeks,derivedWeeks:prepared.diagnostics.longRangeProjectionWeeks??prepared.league.longRangeProjectionWeeks??[],playoffWeeks:prepared.input.playoffWeeks??[]});
 console.error('TEAM PROJECTION QUALITY (diagnostic; no model impact):');
 for(const t of teamProjectionQuality)console.error('  '+t.teamName+': season '+t.baseline.matched+'/'+t.baseline.eligible+' ('+(t.baseline.coverage===null?'n/a':(100*t.baseline.coverage).toFixed(0)+'%')+'); derived '+t.derived.withSeason+'/'+t.derived.samples+' season-backed, '+t.derived.horizonOnly+' horizon-only; confidence '+(t.derived.meanConfidence===null?'n/a':(100*t.derived.meanConfidence).toFixed(0)+'%')+'.');
 console.error('TEAM PROJECTED SCORING (diagnostic; submitted current week, modeled future lineups):');
 for(const t of teamProjectionQuality)console.error('  '+t.teamName+': direct mean '+(t.scoring.directMean===null?'n/a':t.scoring.directMean.toFixed(1))+'; derived mean '+(t.scoring.derivedMean===null?'n/a':t.scoring.derivedMean.toFixed(1))+' over '+t.scoring.derivedWeekCount+' weeks.');
+console.error('PLAYOFF SCORING (diagnostic; modeled lineup means):');
+for(const t of teamProjectionQuality)console.error('  '+t.teamName+': derived regular '+(t.scoring.regularDerivedMean===null?'n/a':t.scoring.regularDerivedMean.toFixed(1))+'; playoffs '+(t.scoring.playoffMean===null?'n/a':t.scoring.playoffMean.toFixed(1))+'; delta '+(t.scoring.playoffVsRegularDelta===null?'n/a':t.scoring.playoffVsRegularDelta.toFixed(1))+'; playoff weeks '+t.scoring.playoffWeekCount+'.');
 console.error('POSITION SOURCE ATTRIBUTION: '+assessPositionSourceCoverage(prepared.diagnostics.seasonProjectionCoverage,{sourceQuality:seasonBaselineSourceQuality}).map(p=>p.position+'='+p.unmatched+' unmatched ('+p.attribution+')').join(' | '));
 
 
@@ -76,6 +79,23 @@ prepared.input.metadata={...prepared.input.metadata,projectionProvider:loaded.tr
 const fingerprint=simulationFingerprint(prepared.input);
 prepared.input.metadata.simulationFingerprint=fingerprint;
 const readiness=assessSimulationReadiness(prepared,{minimumProjectionMatchRate});
+if(process.env.LONG_RANGE_SENSITIVITY==='true'){
+ const weights=[.35,.65,.85],n=Math.max(1000,Math.min(50000,Number(process.env.LONG_RANGE_SENSITIVITY_SIMULATIONS??5000)));
+ if(!seasonProjectionRows.length)console.error('LONG RANGE SENSITIVITY: SKIPPED; no season baselines available.');
+ else if(!readiness.ready)console.error('LONG RANGE SENSITIVITY: SKIPPED; baseline readiness failed.');
+ else{
+  console.error('LONG RANGE SENSITIVITY: diagnostic only; weights '+weights.join(', ')+'; '+n+' simulations each; common seed '+(spec.seed??process.env.SEED??20260923)+'.');
+  for(const weight of weights){
+   const candidate=prepareLeagueSimulation(snapshot,loaded.rows,{calibrationReport,simulations:n,seed:Number(spec.seed??process.env.SEED??20260923),modelVariant:spec.modelVariant??process.env.MODEL_VARIANT??'correlated',minimumProjectionMatchRate,weeks,season,seasonProjectionRows,longRangeSeasonWeight:weight});
+   const check=assessSimulationReadiness(candidate,{minimumProjectionMatchRate});
+   if(!check.ready){console.error('  weight '+weight.toFixed(2)+': SKIPPED (readiness failed)');continue;}
+   const result=simulateLeague(candidate.input);
+   console.error('  weight '+weight.toFixed(2)+': '+result.map(t=>t.name+' '+(100*t.championshipProbability).toFixed(1)+'% title / '+(100*t.playoffProbability).toFixed(1)+'% playoffs').join(' | '));
+  }
+  console.error('LONG RANGE SENSITIVITY WARNING: scenario odds are provisional, Monte Carlo estimates; changes may reflect projected lineups as well as blend values. This is not historical calibration.');
+ }
+}
+
 console.error(`PROJECTIONS: ${loaded.provider}; ${loaded.rows.length} rows across weeks ${loaded.weeks.join(',')}; ${loaded.trust.degraded?'DEGRADED/FALLBACK':'PRIMARY'}.`);console.error(`PROJECTION SOURCE: ${loaded.provider}; ${loaded.trust.weekResults.map(x=>`W${x.week}=${x.provider}`).join(', ')}${forceProjectionRefresh?' [REFRESH REQUESTED]':''}.`);
 const weeklyCacheUpdatedAt=fs.existsSync(projectionCachePath)?(()=>{try{return JSON.parse(fs.readFileSync(projectionCachePath,'utf8')).updatedAt??null}catch{return null}})():null;
 const freshness=assessProjectionFreshness({weekResults:loaded.trust.weekResults,seasonSource:seasonBaselineSourceQuality,weeklyCacheUpdatedAt});
