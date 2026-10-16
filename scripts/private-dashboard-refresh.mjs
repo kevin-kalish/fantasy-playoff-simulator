@@ -29,6 +29,8 @@ export function createRefreshController({start=null,readReport=null}={}){
     try{
      const after=readReport();
      if(after?.readiness?.ready!==true)throw Error('New report did not pass readiness.');
+     if(!after?.report?.team?.id)throw Error('New report is missing the target team.');
+     if(before?.report?.team?.id&&String(after.report.team.id)!==String(before.report.team.id))throw Error('Refreshed report belongs to a different team.');
      const fresh=Date.parse(after?.report?.generatedAt??'');
      const prior=Date.parse(before?.report?.generatedAt??'');
      if(!Number.isFinite(fresh)||before&&(!Number.isFinite(prior)||fresh<=prior))throw Error('No newer valid report was produced.');
