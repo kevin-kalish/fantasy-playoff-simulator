@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {assessPositionSourceCoverage} from '../src/data/position-source-coverage.js';
+import {assessTeamProjectionQuality} from '../src/model/team-projection-quality.js';
+const coverage={byPosition:{TE:{eligible:3,matched:1},QB:{eligible:2,matched:2}}};
+const rows=assessPositionSourceCoverage(coverage,{sourceQuality:{truncated:true}});
+assert.equal(rows[1].unmatched,2);
+assert.equal(rows[1].attribution,'source-truncated-unattributed');
+assert.equal(assessPositionSourceCoverage(coverage)[1].attribution,'source-completeness-unverified');
+const league={teams:[{id:'1',name:'Example',roster:[{id:'p'}],weeklyRosters:{9:[{id:'p',position:'QB',seasonBaseline:15,projectionSource:'season-baseline',projectionConfidence:.8}]},weeklyLineups:{6:[{projection:20},{projection:10}],9:[{projection:25}]}}]};
+const [team]=assessTeamProjectionQuality(league,{directWeeks:[6],derivedWeeks:[9]});
+assert.equal(team.scoring.directMean,30);
+assert.equal(team.scoring.derivedMean,25);
+assert.equal(team.scoring.derivedWeekCount,1);
+assert.equal(team.baseline.coverage,1);
+console.log('position-source-attribution-tests: all checks passed');
