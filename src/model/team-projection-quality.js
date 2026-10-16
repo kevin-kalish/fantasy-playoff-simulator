@@ -24,7 +24,14 @@ export function assessTeamProjectionQuality(league,{directWeeks=[],derivedWeeks=
   // No derived weeks: do not claim baseline coverage from absent data.
   const matched=[...baselineSeen.values()].filter(Boolean).length;
   const eligible=baselineSeen.size;
-  const projectedPointsByWeek=Object.fromEntries([...directWeeks,...derivedWeeks].map(w=>[w,team.lineupDiagnostics?.[w]?.projectedPoints??null]));
-  return {teamId:team.id,teamName:team.name,rosterCount:roster.length,baseline:{eligible,matched,coverage:eligible?matched/eligible:null,byPosition},derived:{samples:derivedPlayers,withSeason:derivedWithSeason,horizonOnly:derivedHorizonOnly,missing:derivedMissing,seasonShare:derivedPlayers?derivedWithSeason/derivedPlayers:null,meanConfidence:confidenceCount?confidenceSum/confidenceCount:null},projectedPointsByWeek};
+  const projectedPointsByWeek=Object.fromEntries([...new Set([...directWeeks,...derivedWeeks])].map(w=>{
+   const lineup=team.weeklyLineups?.[w];
+   const points=Array.isArray(lineup)&&lineup.length&&lineup.every(p=>p.projection!==null&&p.projection!==undefined&&Number.isFinite(Number(p.projection)))?lineup.reduce((sum,p)=>sum+Number(p.projection),0):null;
+   return [w,points??team.lineupDiagnostics?.[w]?.projectedPoints??null];
+  }));
+  const scores=weeks=>weeks.map(w=>projectedPointsByWeek[w]).filter(Number.isFinite);
+  const mean=values=>values.length?values.reduce((a,b)=>a+b,0)/values.length:null;
+  const directScoring=mean(scores(directWeeks)),derivedScoring=mean(scores(derivedWeeks));
+  return {teamId:team.id,teamName:team.name,rosterCount:roster.length,baseline:{eligible,matched,coverage:eligible?matched/eligible:null,byPosition},derived:{samples:derivedPlayers,withSeason:derivedWithSeason,horizonOnly:derivedHorizonOnly,missing:derivedMissing,seasonShare:derivedPlayers?derivedWithSeason/derivedPlayers:null,meanConfidence:confidenceCount?confidenceSum/confidenceCount:null},projectedPointsByWeek,scoring:{directMean:directScoring,derivedMean:derivedScoring,derivedWeekCount:scores(derivedWeeks).length}};
  }).sort((a,b)=>String(a.teamName).localeCompare(String(b.teamName)));
 }
