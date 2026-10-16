@@ -1,3 +1,4 @@
+import {assessProjectionFreshness} from '../src/data/projection-freshness.js';
 import fs from 'node:fs';
 import {captureCompletedWeekProbability,reconcileCompletedWeekResult} from '../src/data/weekly-playoff-history.js';
 import {buildPrivatePreview} from './build-private-dashboard-preview.mjs';
@@ -66,6 +67,11 @@ const fingerprint=simulationFingerprint(prepared.input);
 prepared.input.metadata.simulationFingerprint=fingerprint;
 const readiness=assessSimulationReadiness(prepared,{minimumProjectionMatchRate});
 console.error(`PROJECTIONS: ${loaded.provider}; ${loaded.rows.length} rows across weeks ${loaded.weeks.join(',')}; ${loaded.trust.degraded?'DEGRADED/FALLBACK':'PRIMARY'}.`);console.error(`PROJECTION SOURCE: ${loaded.provider}; ${loaded.trust.weekResults.map(x=>`W${x.week}=${x.provider}`).join(', ')}${forceProjectionRefresh?' [REFRESH REQUESTED]':''}.`);
+const weeklyCacheUpdatedAt=fs.existsSync(projectionCachePath)?(()=>{try{return JSON.parse(fs.readFileSync(projectionCachePath,'utf8')).updatedAt??null}catch{return null}})():null;
+const freshness=assessProjectionFreshness({weekResults:loaded.trust.weekResults,seasonSource:seasonBaselineSourceQuality,weeklyCacheUpdatedAt});
+console.error('PROJECTION FRESHNESS: '+freshness.weeks.map(w=>'W'+w.week+'='+w.provenance+(w.ageHours===null?' (age unknown)':' ('+w.ageHours+'h old)')).join(' | ')+'.');
+if(freshness.unknownAgeWeeks.length)console.error('PROJECTION FRESHNESS WARNING: original provider observation time unverified for weeks '+freshness.unknownAgeWeeks.join(', ')+'; cache updatedAt is not projection age.');
+if(freshness.seasonBaseline)console.error('SEASON FRESHNESS: baseline generated '+(freshness.seasonBaseline.generatedAt??'unknown')+'; age '+(freshness.seasonBaseline.ageHours??'unknown')+'h; source data through W'+(freshness.seasonBaseline.dataThroughWeek??'?')+'.');
 if(seasonProjectionRows.length){const c=prepared.diagnostics.seasonProjectionCoverage;console.error(`LONG RANGE: ${prepared.diagnostics.longRangeProjectionMethod}; season weight ${(100*prepared.diagnostics.longRangeSeasonWeight).toFixed(0)}%; season coverage ${(100*c.matchRate).toFixed(1)}%.`);if(c.byPosition)console.error(`SEASON BASELINE BY POSITION: ${Object.entries(c.byPosition).sort((a,b)=>a[0].localeCompare(b[0])).map(([position,v])=>`${position}=${v.matched}/${v.eligible} (${(100*v.matchRate).toFixed(0)}%)`).join(' | ')}`);if(c.missing?.length)console.error(`SEASON BASELINE MISSES (${c.missing.length}): ${c.missing.slice(0,30).map(x=>x.name??x.playerName??x.id).join(', ')}${c.missing.length>30?' ...':''}`);}
 const confidence=prepared.diagnostics.longRangeConfidence;
 if(confidence){const derived=prepared.diagnostics.longRangeProjectionWeeks??[];if(derived.length){const first=derived[0],last=derived.at(-1);console.error(`HORIZON CONFIDENCE: W${first} ${(100*confidence.byWeek[first]).toFixed(0)}% -> W${last} ${(100*confidence.byWeek[last]).toFixed(0)}% (${confidence.method}; diagnostic only).`);}}
