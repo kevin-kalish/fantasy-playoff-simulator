@@ -1,3 +1,7 @@
+### Truncated JerryGM season baseline diagnostics
+
+The cached JerryGM season response may include `truncated: true`, `count`, `total`, `generatedAt`, and `dataThroughWeek`. The weekly run now reports `SEASON SOURCE QUALITY` and `SEASON SOURCE POSITIONS` separately from **roster match coverage**. A 100-of-1,868 provider response is a source limit, not proof of 1,768 failed identity matches. Genuine season baselines are retained where matched; other roster players continue using the existing lower-confidence, recency-weighted weekly horizon. No synthetic projections are counted as provider baselines. The cache remains private, and these diagnostics make no additional API calls or change the simulation model.
+
 ### Completed Yahoo results and matchup leverage precision
 
 On a successful audited Yahoo refresh, the weekly workflow requests the previous week's Yahoo scoreboard. It adds a **verified** W/L/T to the matching private playoff-history observation, without changing the original probability or timestamp. Ambiguous or missing winner information leaves the result blank; conflicting results are flagged rather than overwritten. No retrospective forecast backfill occurs. This extra Yahoo scoreboard read does not use projection-provider quota. The history remains private under `data/private/`.
