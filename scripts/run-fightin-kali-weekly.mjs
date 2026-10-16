@@ -8,6 +8,7 @@ import {loadYahooWaiverPool,prescreenWaiverScenarios} from '../src/data/yahoo-wa
 import {buildWaiverCandidatePool} from '../src/data/waiver-candidate-source.js';
 import {resolveYahooAccessToken} from '../src/data/yahoo-auth-session.js';
 import {applyFightinKaliConfig} from '../src/data/fightin-kali-snapshot.js';
+import {verifiedYahooCompletedResult} from '../src/data/yahoo-completed-result.js';
 
 const snapshotPath=process.argv[2]??'data/private/fightin-kali-current.json';
 const weekArg=process.argv[3]?Number(process.argv[3]):undefined;
@@ -58,6 +59,18 @@ if(!sourceAudit?.passed)fail('Live Yahoo reconciliation is required before simul
 if(!snapshot)fail('Yahoo API did not produce a league snapshot.');
 let plan;try{const outputPath=focusTeamArg?`data/private/${slug(focusTeamArg)}-week-${weekArg??Number(process.env.WEEK??snapshot.currentWeek??snapshot.source?.currentWeek??1)}-report.json`:undefined;plan=buildWeeklyRefreshPlan(snapshot,runConfig,{week:weekArg,outputPath});}catch(e){fail(e.message)}
 if(sourceAudit)plan.sourceAudit=sourceAudit;
+if(get&&leagueKey&&sourceAudit?.passed&&Number(plan.week)>1){
+ try{
+  const completedWeek=Number(plan.week)-1;
+  const scoreboard=await get(`league/${leagueKey}/scoreboard;week=${completedWeek}`);
+  const verified=verifiedYahooCompletedResult(scoreboard,{week:completedWeek,teamId:plan.teamId});
+  if(verified.status==='verified'){
+   plan.completedYahooResult={week:completedWeek,result:verified.result};
+   console.error(`YAHOO RESULT: verified completed week ${completedWeek} ${verified.result}; forecast history will be reconciled if an archived point exists.`);
+  }else console.error(`YAHOO RESULT: unverified; ${verified.reason}; no result will be written.`);
+ }catch(error){console.error(`YAHOO RESULT: unavailable; ${error.message}; no result will be written.`);}
+}
+
 plan.tradeDiscovery={enabled:true,maxPartners:Number(process.env.TRADE_MAX_PARTNERS??9),maxPlayersPerTeam:Number(process.env.TRADE_MAX_PLAYERS_PER_TEAM??7),maxScenarios:Number(process.env.TRADE_MAX_SCENARIOS??24),valueTolerance:Number(process.env.TRADE_VALUE_TOLERANCE??.35),includePackages:process.env.TRADE_INCLUDE_PACKAGES!=='false'};
 plan.scanAvailability={startSit:{status:'available'},waivers:{status:'unavailable',reason:'Yahoo waiver source not attempted.'},trades:{status:'not-configured',reason:'Trade discovery runs after projections are loaded.'}};
 if(leagueKey)plan.yahoo={leagueKey,leagueKeySource:'live-state'};
