@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {captureCompletedWeekProbability} from '../src/data/weekly-playoff-history.js';
+import {captureCompletedWeekProbability,reconcileCompletedWeekResult} from '../src/data/weekly-playoff-history.js';
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'fantasy-week-history-'));
 try{
  const archivePath=path.join(dir,'history.json');
@@ -26,6 +26,17 @@ try{
  assert.equal(captureCompletedWeekProbability({...options,currentWeek:6}).status,'skipped');
  assert.equal(captureCompletedWeekProbability({...options,currentWeek:8}).status,'recorded');
  assert.deepEqual(JSON.parse(fs.readFileSync(archivePath,'utf8')).history.map(x=>x.week),[6,7]);
+ const beforeReconcile=JSON.parse(fs.readFileSync(archivePath,'utf8'));
+ assert.equal(reconcileCompletedWeekResult({week:6,result:'W',teamId:'A',season:2026,leagueKey:'470.l.244897',archivePath}).status,'updated');
+ const afterReconcile=JSON.parse(fs.readFileSync(archivePath,'utf8'));
+ assert.equal(afterReconcile.history[0].result,'W');
+ assert.equal(afterReconcile.history[0].playoffProbability,beforeReconcile.history[0].playoffProbability);
+ assert.equal(afterReconcile.history[0].generatedAt,beforeReconcile.history[0].generatedAt);
+ assert.equal(reconcileCompletedWeekResult({week:6,result:'W',teamId:'A',season:2026,leagueKey:'470.l.244897',archivePath}).status,'unchanged');
+ assert.equal(reconcileCompletedWeekResult({week:6,result:'L',teamId:'A',season:2026,leagueKey:'470.l.244897',archivePath}).status,'conflict');
+ assert.equal(reconcileCompletedWeekResult({week:6,result:'W',teamId:'A',season:2025,leagueKey:'470.l.244897',archivePath}).status,'skipped');
+ assert.equal(reconcileCompletedWeekResult({week:5,result:'W',teamId:'A',season:2026,leagueKey:'470.l.244897',archivePath}).status,'skipped');
+ assert.equal(reconcileCompletedWeekResult({week:7,result:'T',teamId:'A',season:2026,leagueKey:'470.l.244897',archivePath}).status,'updated');
  const legacyPath=path.join(dir,'legacy.json');
  fs.writeFileSync(legacyPath,JSON.stringify({teamId:'A',history:[]}));
  assert.equal(captureCompletedWeekProbability({...options,archivePath:legacyPath}).status,'skipped');
