@@ -1,5 +1,5 @@
 /** Team-level source coverage and derived forecast dependence; diagnostic only. */
-export function assessTeamProjectionQuality(league,{directWeeks=[],derivedWeeks=[]}={}){
+export function assessTeamProjectionQuality(league,{directWeeks=[],derivedWeeks=[],playoffWeeks=[]}={}){
  return (league?.teams??[]).map(team=>{
   const roster=team.roster??[];
   const rosterIds=new Set(roster.map(p=>String(p.id??p.playerId??'')));
@@ -32,6 +32,10 @@ export function assessTeamProjectionQuality(league,{directWeeks=[],derivedWeeks=
   const scores=weeks=>weeks.map(w=>projectedPointsByWeek[w]).filter(Number.isFinite);
   const mean=values=>values.length?values.reduce((a,b)=>a+b,0)/values.length:null;
   const directScoring=mean(scores(directWeeks)),derivedScoring=mean(scores(derivedWeeks));
-  return {teamId:team.id,teamName:team.name,rosterCount:roster.length,baseline:{eligible,matched,coverage:eligible?matched/eligible:null,byPosition},derived:{samples:derivedPlayers,withSeason:derivedWithSeason,horizonOnly:derivedHorizonOnly,missing:derivedMissing,seasonShare:derivedPlayers?derivedWithSeason/derivedPlayers:null,meanConfidence:confidenceCount?confidenceSum/confidenceCount:null},projectedPointsByWeek,scoring:{directMean:directScoring,derivedMean:derivedScoring,derivedWeekCount:scores(derivedWeeks).length}};
+  const playoffSet=new Set(playoffWeeks.map(Number));
+  const regularDerivedWeeks=derivedWeeks.filter(w=>!playoffSet.has(Number(w)));
+  const regularDerivedMean=mean(scores(regularDerivedWeeks));
+  const playoffMean=mean(scores(playoffWeeks));
+  return {teamId:team.id,teamName:team.name,rosterCount:roster.length,baseline:{eligible,matched,coverage:eligible?matched/eligible:null,byPosition},derived:{samples:derivedPlayers,withSeason:derivedWithSeason,horizonOnly:derivedHorizonOnly,missing:derivedMissing,seasonShare:derivedPlayers?derivedWithSeason/derivedPlayers:null,meanConfidence:confidenceCount?confidenceSum/confidenceCount:null},projectedPointsByWeek,scoring:{directMean:directScoring,derivedMean:derivedScoring,derivedWeekCount:scores(derivedWeeks).length,regularDerivedMean,playoffMean,playoffWeekCount:scores(playoffWeeks).length,playoffVsRegularDelta:playoffMean===null||regularDerivedMean===null?null:playoffMean-regularDerivedMean}};
  }).sort((a,b)=>String(a.teamName).localeCompare(String(b.teamName)));
 }
