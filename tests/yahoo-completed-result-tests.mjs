@@ -10,4 +10,7 @@ assert.equal(verifiedYahooCompletedResult(wrap(match(null)),{week:5,teamId:a}).s
 assert.equal(verifiedYahooCompletedResult(wrap(match(a,{is_tied:'1'})),{week:5,teamId:a}).status,'unverified');
 assert.equal(verifiedYahooCompletedResult(wrap(match(a)),{week:4,teamId:a}).status,'unverified');
 assert.equal(verifiedYahooCompletedResult(wrap(match('unrelated')),{week:5,teamId:a}).status,'unverified');
+const yahooArray={fantasy_content:{league:[{scoreboard:{week:'5',matchups:{0:{matchup:[[{teams:{0:{team:[[{team_key:a}]]},1:{team:[[{team_key:b}]]},count:2}},{winner_team_key:a}]]},count:1}}}]}};
+assert.deepEqual(verifiedYahooCompletedResult(yahooArray,{week:5,teamId:a}),{status:'verified',result:'W'});
+assert.equal(verifiedYahooCompletedResult(yahooArray,{week:4,teamId:a}).status,'unverified');
 console.log('yahoo-completed-result-tests: all checks passed');
