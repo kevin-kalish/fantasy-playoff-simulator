@@ -12,6 +12,7 @@ export function createRefreshController({start=null}={}){
  function refresh(){
   if(busy)return false;
   busy=true;state={phase:'running',startedAt:new Date().toISOString(),finishedAt:null,error:null};
+  let settled=false;
   let child;try{child=runner()}catch{complete(false);return true}
   let stderr='';
   child.stderr?.on('data',chunk=>{stderr=(stderr+String(chunk)).slice(-8192)});
@@ -19,8 +20,8 @@ export function createRefreshController({start=null}={}){
   child.on('error',()=>complete(false));
   child.on('close',code=>complete(code===0));
   function complete(ok){
-   if(!busy)return;
-   busy=false;
+   if(settled)return;
+   settled=true;busy=false;
    state={...state,phase:ok?'succeeded':'failed',finishedAt:new Date().toISOString(),error:ok?null:'Yahoo refresh failed. Check the private PowerShell console for details.'};
    if(!ok)console.error('PRIVATE DASHBOARD REFRESH: failed; see local Yahoo credentials/provider status. '+stderr.replace(/[^\x20-\x7e\n]/g,' ').slice(-1000));
   }
