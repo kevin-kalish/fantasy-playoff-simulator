@@ -58,6 +58,7 @@
     "dashboard:demo": "node scripts/build-synthetic-dashboard-preview.mjs",
     "dashboard:record-week": "node scripts/record-playoff-history.mjs",
     "calibration:accuracy": "node scripts/calibrate-projection-accuracy.mjs",
+    "calibration:identity-audit": "node scripts/audit-player-identity.mjs",
     "calibration:import": "node scripts/import-historical-projections.mjs",
     "calibration:kickoffs": "node scripts/enrich-projection-kickoffs.mjs",
     "calibration:fetch-kickoffs": "node scripts/fetch-nfl-kickoffs.mjs",
