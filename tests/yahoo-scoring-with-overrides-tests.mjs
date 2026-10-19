@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {auditYahooScoresWithOverrides} from '../src/data/yahoo-scoring-with-overrides.js';
+const nfl=[{season:2026,week:1,playerId:'n1',name:'Player One',position:'WR',nflTeam:'NE',actual:10},{season:2026,week:1,playerId:'n2',name:'Player Two',position:'WR',nflTeam:'ARI',actual:5}];
+const yahoo=[{season:2026,week:1,playerId:'y1',name:'Player One',position:'WR',nflTeam:'NE',actual:10},{season:2026,week:1,playerId:'y2',name:'Player Two',position:'WR',nflTeam:'HOU',actual:5},{season:2026,week:1,playerId:'d1',position:'DEF',actual:3}];
+const override={season:2026,week:1,yahooPlayerId:'y2',nflversePlayerId:'n2',reason:'reviewed-trade'};
+const base=auditYahooScoresWithOverrides(nfl,yahoo);
+assert.equal(base.summary.totalMatched,1);assert.equal(base.summary.unmatchedIndividuals,1);assert.equal(base.summary.excludedDefenses,1);
+const fixed=auditYahooScoresWithOverrides(nfl,yahoo,{overrides:[override]});
+assert.equal(fixed.summary.totalMatched,2);assert.equal(fixed.summary.unmatchedIndividuals,0);assert.equal(fixed.pass,true);
+const collision=auditYahooScoresWithOverrides(nfl,yahoo,{overrides:[{...override,nflversePlayerId:'n1'}]});
+assert.equal(collision.exceptionAudit.rejected[0].reason,'already-matched-nflverse-player');
+assert.equal(collision.summary.totalMatched,1);
+const duplicate=auditYahooScoresWithOverrides(nfl,yahoo,{overrides:[override,{...override,yahooPlayerId:'y1'}]});
+assert.equal(duplicate.exceptionAudit.rejected.length,1);
+console.log('yahoo-scoring-with-overrides-tests: all checks passed');
