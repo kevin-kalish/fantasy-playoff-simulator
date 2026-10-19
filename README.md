@@ -220,6 +220,10 @@ The public GitHub Pages browser UI remains a synthetic/demo dashboard. Separatel
 
 **Milestone B (next work session, October 17 or 19): Projection quality and calibration.** Start by auditing current direct JerryGM versus derived long-range coverage, observation-time/freshness provenance, historical pregame data eligibility, and championship forecast limitations. Define measurable calibration/validation baselines and acceptance criteria before changing model coefficients. Then prioritize long-range mean forecasts, horizon-dependent uncertainty, and playoff-probability calibration. Preserve trust/publication gates, read-only Yahoo behavior, and synthetic-only public demo. Do not assume missing historical projection archives can be reconstructed without leakage.
 
+## Milestone B — active (October 19, 2026)
+
+Projection quality and calibration work has begun with a **baseline/evidence audit**, not a parameter change. See [Milestone B plan and acceptance criteria](docs/MILESTONE_B_PROJECTION_CALIBRATION.md). Next deliverable: a read-only local diagnostic for eligible pregame archives, forecast accuracy, source freshness, and long-range coverage. Existing private-beta security and publication gates remain in force.
+
 ## Development roadmap
 
 1. **Harden end-to-end live-state integration.** Add deterministic tests proving that Yahoo standings/roster/lineup changes propagate through weekly preparation and GM recommendations, including a tested fallback path when Yahoo is unavailable.
