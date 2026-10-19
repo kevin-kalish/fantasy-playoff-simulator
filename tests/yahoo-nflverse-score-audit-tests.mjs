@@ -10,4 +10,9 @@ const ambiguous=reconcileYahooNflverseScores([...nfl,{...nfl[0],playerId:'nfl-2'
 assert.equal(ambiguous.summary.ambiguous,1);assert.equal(ambiguous.summary.compared,0);
 const missing=reconcileYahooNflverseScores(nfl,[{...yahoo[0],name:'Other Player'}]);
 assert.equal(missing.summary.unmatched,1);
+const suffix=reconcileYahooNflverseScores([{...nfl[0],name:'James Cook'}],[{...yahoo[0],name:'James Cook III'}]);
+assert.equal(suffix.summary.compared,1);
+const suffixAmbiguous=reconcileYahooNflverseScores([{...nfl[0],name:'James Cook'},{...nfl[0],name:'James Cook Jr.',playerId:'nfl-2'}],[{...yahoo[0],name:'James Cook III'}]);
+assert.equal(suffixAmbiguous.summary.ambiguous,1);
+assert.equal(suffixAmbiguous.summary.compared,0);
 console.log('yahoo-nflverse-score-audit-tests: all checks passed');
