@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {diagnoseUnmatchedYahooPlayers} from '../src/data/yahoo-unmatched-diagnostics.js';
+const n={season:2026,week:1,playerId:'n1',name:'Example Player',position:'WR',nflTeam:'NE',actual:10};
+const y={season:2026,week:1,playerId:'y1',name:'Example Player',position:'WR',nflTeam:'NE',actual:10};
+assert.equal(diagnoseUnmatchedYahooPlayers([n],[y]).unmatched,0);
+assert.equal(diagnoseUnmatchedYahooPlayers([n],[{...y,nflTeam:'NYJ'}]).reasons['team-disagreement'],1);
+assert.equal(diagnoseUnmatchedYahooPlayers([n],[{...y,position:'RB'}]).reasons['position-disagreement'],1);
+assert.equal(diagnoseUnmatchedYahooPlayers([n],[{...y,name:'Different Player'}]).reasons['name-or-roster-coverage'],1);
+assert.equal(diagnoseUnmatchedYahooPlayers([],[y]).reasons['no-nflverse-week'],1);
+assert.equal(diagnoseUnmatchedYahooPlayers([n,{...n,playerId:'n2'}],[y]).reasons['ambiguous-exact-identity'],1);
+console.log('yahoo-unmatched-diagnostics-tests: all checks passed');
