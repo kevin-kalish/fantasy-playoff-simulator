@@ -13,6 +13,15 @@ try{
  const options={snapshotPath,specPath,root:dir,referencePath,kickoffPath,now,env:{FANTASYPROS_API_KEY:'fixture-key'}};
  const ok=preflightPregameCapture(options);assert.equal(ok.ready,true);assert.equal(ok.networkRequests,0);
  assert.equal(preflightPregameCapture({...options,env:{}}).ready,false);
+ const blockedQuota=path.join(dir,'quota.json');
+ const {createHash}=await import('node:crypto');
+ const quotaHash=createHash('sha256').update('https://api.jerrygm.com/api/ext/v1:test-jerrygm').digest('hex');
+ fs.writeFileSync(blockedQuota,JSON.stringify({[quotaHash]:now+86400000}));
+ const blocked=preflightPregameCapture({...options,env:{JERRYGM_API_KEY:'test-jerrygm'},quotaPath:blockedQuota});
+ assert.equal(blocked.ready,false);
+ assert.equal(blocked.checks.find(c=>c.name==='usable-provider-candidate').pass,false);
+ const fallback=preflightPregameCapture({...options,env:{JERRYGM_API_KEY:'test-jerrygm',FANTASYPROS_API_KEY:'test-fantasypros'},quotaPath:blockedQuota});
+ assert.equal(fallback.checks.find(c=>c.name==='usable-provider-candidate').pass,true);
  assert.equal(preflightPregameCapture({...options,kickoffPath:path.join(dir,'missing.csv')}).ready,false);
  fs.writeFileSync(kickoffPath,'season,week,kickoffAt,home_team,away_team\n2026,6,'+new Date(now-86400000).toISOString()+',NE,NYJ');
  const past=preflightPregameCapture(options);assert.equal(past.ready,false);assert.equal(past.checks.find(c=>c.name==='kickoff-week-future').pass,false);
