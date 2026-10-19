@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {auditCompletedActuals} from '../src/data/completed-actuals-quality.js';
+const good={season:2026,week:1,playerId:'nfl-1',name:'Example Player',position:'RB',nflTeam:'NE',scoring:'HALF',actual:12.5,actualRecordedAt:'2026-09-12T00:00:00Z',kickoffAt:'2026-09-06T17:00:00Z',source:'nflverse'};
+const clean=auditCompletedActuals([good]);
+assert.equal(clean.pass,true);
+assert.equal(clean.uniquePlayerWeeks,1);
+assert.equal(clean.scoringVerifiedAgainstYahoo,false);
+const bad=auditCompletedActuals([good,{...good,actual:NaN,scoring:'PPR',actualRecordedAt:'2026-09-01T00:00:00Z'}]);
+assert.equal(bad.pass,false);
+for(const reason of ['duplicate-player-week','invalid-actual-score','scoring-mismatch','invalid-timeline'])assert.equal(bad.reasons[reason],1);
+console.log('completed-actuals-quality-tests: all checks passed');
