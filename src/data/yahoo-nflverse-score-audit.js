@@ -1,4 +1,4 @@
-const canonical=s=>String(s??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/(?:[\\s.,]+)(?:jr|sr|ii|iii|iv|v)\\.?$/i,'').replace(/[^a-z0-9]/g,'');
+const canonical=s=>String(s??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/(?:[\s.,]+)(?:jr|sr|ii|iii|iv|v)\.?$/i,'').replace(/[^a-z0-9]/g,'');
 const team=s=>({JAC:'JAX',WSH:'WAS',OAK:'LV',SD:'LAC',STL:'LA',LAR:'LA'}[String(s??'').toUpperCase()]??String(s??'').toUpperCase());
 const identity=r=>[Number(r.season),Number(r.week),canonical(r.name),String(r.position??'').toUpperCase(),team(r.nflTeam)].join('|');
 export function reconcileYahooNflverseScores(nflRows,yahooRows,{tolerance=0.02}={}){
