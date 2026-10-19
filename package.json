@@ -64,6 +64,7 @@
     "calibration:fetch-yahoo-scores": "node scripts/fetch-yahoo-weekly-scores.mjs",
     "calibration:cross-provider-scores": "node scripts/audit-yahoo-nflverse-scores.mjs",
     "calibration:unmatched": "node scripts/diagnose-yahoo-unmatched.mjs",
+    "calibration:identity-review": "node scripts/prepare-yahoo-identity-review.mjs",
     "calibration:import": "node scripts/import-historical-projections.mjs",
     "calibration:kickoffs": "node scripts/enrich-projection-kickoffs.mjs",
     "calibration:fetch-kickoffs": "node scripts/fetch-nfl-kickoffs.mjs",
