@@ -44,5 +44,6 @@ export function preflightPregameCapture({snapshotPath,specPath,env=process.env,n
   catch{add('quota-state-readable',false,'JerryGM quota state cannot be parsed');}
  }
  add('jerrygm-quota',!jg||!blockedUntil||fp,blockedUntil?'JerryGM blocked until '+blockedUntil+(fp?'; FantasyPros credential available':''):'No active local JerryGM quota block detected');
+ add('usable-provider-candidate',fp||(jg&&!blockedUntil),fp?'FantasyPros credential configured; availability not verified':jg&&!blockedUntil?'JerryGM credential configured with no local quota block; availability not verified':'No configured provider can currently be attempted; cache-only projections are not calibration eligible');
  return {schemaVersion:1,mode:'offline-preflight',networkRequests:0,ready:checks.every(c=>c.pass),checks,providerCredentials:{fantasypros:fp,jerrygm:jg},jerrygmBlockedUntil:blockedUntil,note:'Preflight does not guarantee provider success, valid Yahoo credentials, or fresh provider observations. It never makes a network request.'};
 }
