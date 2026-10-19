@@ -1,16 +1,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {createYahooClient} from '../src/data/yahoo-client.js';
+import {createYahooClient,discoverYahooNflLeagues} from '../src/data/yahoo-client.js';
 import {resolveYahooAccessToken} from '../src/data/yahoo-auth-session.js';
 import {extractYahooRosterWeeklyScores} from '../src/data/yahoo-weekly-player-scores.js';
 const season=Number(process.argv[2]??2026),start=Number(process.argv[3]??1),end=Number(process.argv[4]??5);
 const config=JSON.parse(fs.readFileSync('config/fightin-kali-2026.json','utf8'));
-const leagueKey=process.env.YAHOO_LEAGUE_KEY??config.leagueKey;
-if(!leagueKey)throw new Error('Yahoo league key not configured');
+let leagueKey=process.env.YAHOO_LEAGUE_KEY??config.leagueKey;
 if(!Number.isInteger(start)||!Number.isInteger(end)||start<1||end>18||end<start)throw new Error('Invalid completed week range');
 const auth=await resolveYahooAccessToken();
 if(!auth.accessToken)throw new Error('Yahoo authentication unavailable');
 const get=createYahooClient({accessToken:auth.accessToken});
+if(!leagueKey){
+ const leagues=await discoverYahooNflLeagues(get,{season});
+ const configuredLeagueId=String(process.env.YAHOO_LEAGUE_ID??config.leagueId??'244897');
+ const matches=leagues.filter(x=>String(x.leagueId??x.leagueKey?.split('.').at(-1))===configuredLeagueId);
+ if(matches.length===1)leagueKey=matches[0].leagueKey;
+ else if(leagues.length===1)leagueKey=leagues[0].leagueKey;
+ else throw new Error('Could not uniquely discover Yahoo league; set YAHOO_LEAGUE_KEY.');
+ console.log('YAHOO WEEKLY SCORES: discovered league '+leagueKey);
+}
 const teams=await get(`league/${leagueKey}/teams`);
 function collectKeys(node,found=new Set()){
  if(!node||typeof node!=='object')return found;
