@@ -3,9 +3,10 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {validatePregameCaptureInputs} from './pregame-capture-validation.js';
 import {parseKickoffScheduleCSV} from './projection-kickoff-enrichment.js';
+import {inspectKickoffVerificationEvidence} from './kickoff-verification-evidence.js';
 const quotaKey=apiKey=>createHash('sha256').update('https://api.jerrygm.com/api/ext/v1:'+apiKey).digest('hex');
 const inside=(root,file)=>{const relative=path.relative(path.resolve(root),path.resolve(file));return relative!==''&&!relative.startsWith('..'+path.sep)&&relative!=='..'&&!path.isAbsolute(relative);};
-export function preflightPregameCapture({snapshotPath,specPath,env=process.env,now=Date.now(),root='data/private',referencePath=env.YAHOO_REFERENCE??'fixtures/yahoo-reference-2026-week3.json',kickoffPath='data/private/nfl-kickoffs.csv',quotaPath='data/private/jerrygm-quota-state.json'}={}){
+export function preflightPregameCapture({snapshotPath,specPath,env=process.env,now=Date.now(),root='data/private',referencePath=env.YAHOO_REFERENCE??'fixtures/yahoo-reference-2026-week3.json',kickoffPath='data/private/nfl-kickoffs.csv',quotaPath='data/private/jerrygm-quota-state.json',verificationPath='data/private/kickoff-verification.json'}={}){
  const checks=[];
  const add=(name,pass,detail)=>checks.push({name,pass:Boolean(pass),detail});
  let spec=null;
@@ -36,6 +37,7 @@ export function preflightPregameCapture({snapshotPath,specPath,env=process.env,n
    if(valid)add('kickoff-week-future',kickoff.every(v=>Date.parse(v)>now),kickoff.every(v=>Date.parse(v)>now)?'All scheduled games have future kickoff timestamps':'At least one game has already started; cannot establish whole-week pregame capture');
   }catch(e){add('kickoff-week-covered',false,'Kickoff CSV could not be parsed: '+e.message);}
  }
+ if(spec&&scheduleExists){const evidence=inspectKickoffVerificationEvidence({file:kickoffPath,season:spec.season,week:spec.week,now,evidencePath:verificationPath});add('kickoff-source-verified',evidence.ready,evidence.reason);}
  const fp=Boolean(env.FANTASYPROS_API_KEY),jg=Boolean(env.JERRYGM_API_KEY);
  add('provider-credentials',fp||jg,'FantasyPros or JerryGM credential must be available');
  let blockedUntil=null;
