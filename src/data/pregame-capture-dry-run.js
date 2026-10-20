@@ -24,8 +24,12 @@ export function dryRunPregameCapture({snapshotPath,specPath,now=Date.now(),env=p
   const snapshot=JSON.parse(fs.readFileSync(snapshotPath,'utf8'));
   const value=String(spec.scoring??snapshot.scoring??snapshot.scoringType??'').toUpperCase();
   scoring=value||null;
-  add(checks,'scoring-declared',Boolean(scoring),scoring??'Missing explicit scoring declaration; no scoring inference');
+  add(checks,'scoring-declared',Boolean(scoring),scoring??'No explicit scoring declaration in snapshot/spec; Yahoo scoring verification remains required');
   add(checks,'week-aligned',Number(spec.season)===Number(source.season)&&Number(spec.week)===Number(source.week),'Capture spec and source diagnostics must target the same season/week');
  }catch(e){add(checks,'scoring-declared',false,e.message);add(checks,'week-aligned',false,'Unable to inspect capture spec');}
- return {schemaVersion:1,mode:'offline-dry-run',networkRequests:0,archiveCreated:false,season:source.season,week:source.week,ready:checks.every(c=>c.pass),checks,roster:{ready:roster.ready,teamCount:roster.teamCount??0,expectedPlayers:roster.expectedPlayers.length,errors:roster.errors},scoring,sourceReadiness:source.readyForLiveAttempt,note:'No live Yahoo reconciliation or provider retrieval performed; ready does not certify calibration eligibility.'};
+ const structuralNames=new Set(['preflight:snapshot-private-path','preflight:snapshot-exists','preflight:spec-private-path','preflight:spec-exists','preflight:valid-input-json','preflight:no-projection-fixture','preflight:week-and-season','preflight:yahoo-reference','preflight:kickoff-schedule','preflight:kickoff-week-covered','preflight:kickoff-week-future','preflight:kickoff-source-verified','schedule-source-verified','schedule-future','yahoo-roster-identities','week-aligned']);
+ const structuralChecks=checks.filter(c=>structuralNames.has(c.name));
+ const structuralReady=structuralChecks.length===structuralNames.size&&structuralChecks.every(c=>c.pass);
+ const captureReady=checks.every(c=>c.pass);
+ return {schemaVersion:2,mode:'offline-dry-run',networkRequests:0,archiveCreated:false,season:source.season,week:source.week,ready:captureReady,structuralReady,captureReady,scoringVerified:false,scoringStatus:scoring?'declared-not-independently-verified':'missing-declaration',structuralChecks:structuralChecks.map(c=>c.name),checks,roster:{ready:roster.ready,teamCount:roster.teamCount??0,expectedPlayers:roster.expectedPlayers.length,errors:roster.errors},scoring,sourceReadiness:source.readyForLiveAttempt,note:'Structural readiness excludes provider availability, Yahoo audit freshness and independent scoring verification. Capture readiness is a local prerequisite check only; no live Yahoo reconciliation or provider retrieval performed.'};
 }
