@@ -17,7 +17,7 @@ export function assessProjectionCoverage(rows,{expectedPlayers=[],season,week,mi
  const expected=expectedPlayers.filter(r=>POSITIONS.includes(position(r.position??r.pos)));
  const availableIds=new Set(valid.filter(r=>identity(r)).map(r=>position(r.position??r.pos)+'|'+identity(r)));
  const availableNames=new Set(valid.map(rowKey));
- const missing=expected.filter(r=>!((identity(r)&&availableIds.has(position(r.position??r.pos)+'|'+identity(r)))||availableNames.has(rowKey(r))));
+ const missing=expected.filter(r=>!((!r.yahooPlayerId&&identity(r)&&availableIds.has(position(r.position??r.pos)+'|'+identity(r)))||availableNames.has(rowKey(r))));
  const required=Object.fromEntries(POSITIONS.map(p=>[p,Math.max(0,Math.ceil(Number(minimumByPosition[p]??0)))]));
  const shortages=Object.fromEntries(POSITIONS.filter(p=>counts[p]<required[p]).map(p=>[p,required[p]-counts[p]]));
  const coverage=expected.length?(expected.length-missing.length)/expected.length:null;
