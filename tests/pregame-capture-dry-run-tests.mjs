@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {dryRunPregameCapture} from '../src/data/pregame-capture-dry-run.js';
+import {writeKickoffVerificationEvidence} from '../src/data/kickoff-verification-evidence.js';
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'pregame-dry-run-'));
+try{
+ const privateDir=path.join(dir,'private');fs.mkdirSync(privateDir);
+ const now=Date.now(),snapshotPath=path.join(privateDir,'snapshot.json'),specPath=path.join(privateDir,'spec.json'),schedulePath=path.join(privateDir,'schedule.csv'),verificationPath=path.join(privateDir,'verification.json'),referencePath=path.join(dir,'reference.json');
+ const auditTime=new Date(now-30000).toISOString();
+ fs.writeFileSync(snapshotPath,JSON.stringify({scoring:'HALF',teams:[{id:'t1',roster:[{id:'y1',name:'Test QB',position:'QB',nflTeam:'NE'}]}]}));
+ fs.writeFileSync(specPath,JSON.stringify({season:2026,week:7,yahoo:{leagueKey:'470.l.244897'},sourceAudit:{passed:true,checks:[{pass:true}],generatedAt:auditTime,leagueKey:'470.l.244897',week:7}}));
+ fs.writeFileSync(referencePath,'{}');
+ fs.writeFileSync(schedulePath,'season,week,kickoffAt,home_team,away_team\n2026,7,'+new Date(now+86400000).toISOString()+',NE,NYJ');
+ writeKickoffVerificationEvidence({file:schedulePath,season:2026,week:7,referenceSource:'independent-test',comparison:{match:true,localGames:1,referenceGames:1},verifiedAt:new Date(now).toISOString(),output:verificationPath});
+ const options={snapshotPath,specPath,now,env:{FANTASYPROS_API_KEY:'test'},preflightOptions:{root:privateDir,referencePath,kickoffPath:schedulePath,verificationPath},sourceOptions:{season:2026,week:7,schedulePath,verificationPath,quotaPath:path.join(dir,'missing.json')}};
+ const good=dryRunPregameCapture(options);
+ assert.equal(good.ready,true);assert.equal(good.networkRequests,0);assert.equal(good.archiveCreated,false);assert.equal(good.roster.expectedPlayers,1);
+ const noProvider=dryRunPregameCapture({...options,env:{}});
+ assert.equal(noProvider.ready,false);
+ const noScoring=dryRunPregameCapture({...options,env:{FANTASYPROS_API_KEY:'test'},specPath:path.join(privateDir,'spec.json')});
+ assert.equal(noScoring.scoring,'HALF');
+ fs.writeFileSync(snapshotPath,JSON.stringify({teams:[{id:'t1',roster:[{id:'y1',name:'Test QB',position:'QB',nflTeam:'NE'}]}]}));
+ assert.equal(dryRunPregameCapture(options).checks.find(c=>c.name==='scoring-declared').pass,false);
+ console.log('pregame-capture-dry-run-tests: all checks passed');
+}finally{fs.rmSync(dir,{recursive:true,force:true});}
