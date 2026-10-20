@@ -1,4 +1,4 @@
-﻿const aliases={JAC:'JAX',WSH:'WAS',OAK:'LV',SD:'LAC',STL:'LA',LAR:'LA'};
+const aliases={JAC:'JAX',WSH:'WAS',OAK:'LV',SD:'LAC',STL:'LA',LAR:'LA'};
 const team=v=>aliases[String(v??'').trim().toUpperCase()]??String(v??'').trim().toUpperCase();
 const key=r=>[Number(r.season),Number(r.week),team(r.nflTeam??r.team)].join('|');
 export function reconcileYahooDstScores(yahooRows,dstRows,{tolerance=0.02,verifiedByeWeeks=[]}={}){const byeKeys = new Set(
@@ -41,5 +41,6 @@ if (matches.length === 0) {
   compared.push({season:Number(y.season),week:Number(y.week),team:team(y.nflTeam),yahooPlayerId:y.playerId,yahoo:yv,model:nv,difference,withinTolerance:Math.abs(difference)<=tolerance,pointsAllowed:n.pointsAllowed});
  }
  const mismatches=compared.filter(r=>!r.withinTolerance);
- return {schemaVersion:1,source:'Yahoo roster DEF scores vs nflverse hybrid DST reconstruction',tolerance,summary:{yahooDefenses:yahoo.length,modelTeamWeeks:dstRows.length,compared:compared.length,mismatches:mismatches.length,unmatched:unmatched.length,ambiguous:ambiguous.length},compared,mismatches,unmatched,ambiguous,pass:compared.length>0&&mismatches.length===0&&unmatched.length===0&&ambiguous.length===0,calibrationEligible:false,note:'Direct DST fantasy-score comparison; even a passing result does not independently certify the complete calibration gate.'};
+ return {schemaVersion:1,source:'Yahoo roster DEF scores vs nflverse hybrid DST reconstruction',tolerance,summary:{yahooDefenses:yahoo.length,modelTeamWeeks:dstRows.length,compared:compared.length,mismatches:mismatches.length,unmatched:unmatched.length,ambiguous:ambiguous.length},compared,mismatches,unmatched,ambiguous,verifiedByes,pass:compared.length>0&&mismatches.length===0&&unmatched.length===0&&ambiguous.length===0,calibrationEligible:false,note:'Direct DST fantasy-score comparison; even a passing result does not independently certify the complete calibration gate.'};
 }
+
