@@ -2,6 +2,7 @@ import {validatePregameCaptureInputs} from './pregame-capture-validation.js';
 import {reconcileCaptureSnapshot} from './capture-snapshot-reconciliation.js';
 import {evaluatePregameCaptureArchive} from './pregame-capture-eligibility.js';
 import {assessProjectionCoverage} from './projection-coverage-gate.js';
+import {expectedProjectionPlayersFromSnapshot} from './yahoo-projection-coverage.js';
 
 // This boundary accepts injected IO, so integration tests can exercise the
 // production gates without making network requests or spending API quota.
@@ -20,6 +21,8 @@ export async function executePregameCapture({spec,snapshot,snapshotPath,readLive
  // Coverage is opt-in until the production Yahoo roster-to-projection identity bridge is verified.
  // An incomplete archive remains available for diagnosis, but must not be called calibration-ready.
  const coverageConfig=spec.projectionCoverage;
- const coverage=coverageConfig?assessProjectionCoverage(archive.rows,{...coverageConfig,season:expected.season,week:expected.week}):null;
- return {expected,liveAuditChecks:live.report.checks?.length??0,archive:entry.path??null,capturedAt:archive.capturedAt,eligibility,coverage,calibrationReady:eligibility.pregameKickoffVerifiedRows>0&&(!coverage||coverage.ready)};
+ const roster=expectedProjectionPlayersFromSnapshot(live.league);
+ const coverage=assessProjectionCoverage(archive.rows,{...coverageConfig,expectedPlayers:roster.expectedPlayers,season:expected.season,week:expected.week});
+ const coverageReady=roster.ready&&coverage.ready;
+ return {expected,liveAuditChecks:live.report.checks?.length??0,archive:entry.path??null,capturedAt:archive.capturedAt,eligibility,rosterCoverage:{ready:roster.ready,errors:roster.errors,expectedPlayers:roster.expectedPlayers.length,teamCount:roster.teamCount},coverage,calibrationReady:eligibility.pregameKickoffVerifiedRows>0&&coverageReady};
 }
