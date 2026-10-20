@@ -62,6 +62,7 @@
     "calibration:actuals-quality": "node scripts/audit-completed-actuals.mjs",
     "calibration:yahoo-scoring": "node scripts/reconcile-yahoo-actuals.mjs",
     "calibration:capture-yahoo-settings": "node scripts/capture-yahoo-scoring-settings.mjs",
+    "calibration:compare-yahoo-scoring": "node scripts/compare-yahoo-scoring.mjs",
     "calibration:fetch-yahoo-scores": "node scripts/fetch-yahoo-weekly-scores.mjs",
     "calibration:cross-provider-scores": "node scripts/audit-yahoo-nflverse-scores.mjs",
     "calibration:unmatched": "node scripts/diagnose-yahoo-unmatched.mjs",
