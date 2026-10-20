@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import {compareYahooScoringToModel} from '../src/data/yahoo-scoring-comparison.js';
+const scoringRules=[{statId:'4',value:0.04},{statId:'11',value:0.5}];
+const fingerprint=crypto.createHash('sha256').update(JSON.stringify(scoringRules)).digest('hex');
+const record={valid:true,source:'yahoo-league-settings',leagueKey:'470.l.244897',season:2026,scoringRules,fingerprint};
+const base=compareYahooScoringToModel(record);
+assert.equal(base.verified,false);
+assert.equal(base.mismatches.length,0);
+assert.ok(base.missing.length>0);
+assert.ok(base.unresolved.length>0);
+assert.equal(compareYahooScoringToModel({...record,fingerprint:'tampered'}).errors.includes('Scoring fingerprint mismatch'),true);
+assert.equal(compareYahooScoringToModel({...record,scoringRules:[...scoringRules,{statId:'999',value:3}]}).unknown.length,1);
+assert.equal(compareYahooScoringToModel({...record,scoringRules:[{statId:'4',value:1},scoringRules[1]]}).mismatches.length,1);
+console.log('yahoo-scoring-comparison-tests: all checks passed');
