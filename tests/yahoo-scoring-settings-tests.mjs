@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {extractYahooScoringSettings} from '../src/data/yahoo-scoring-settings.js';
+const response={fantasy_content:{league:[{settings:[{stat_modifiers:{stats:{'0':{stat:{stat_id:'4',value:'0.04'}},'1':{stat:{stat_id:'12',value:'0.5'}},count:2}}}]}]}};
+const options={leagueKey:'470.l.244897',season:2026,capturedAt:'2026-10-20T12:00:00.000Z'};
+const result=extractYahooScoringSettings(response,options);
+assert.equal(result.valid,true);
+assert.deepEqual(result.scoringRules,[{statId:'4',value:0.04},{statId:'12',value:0.5}]);
+assert.equal(result.fingerprint.length,64);
+assert.equal(result.verifiedAgainstModel,false);
+assert.equal(extractYahooScoringSettings({fantasy_content:{}},options).valid,false);
+console.log('yahoo-scoring-settings-tests: all checks passed');
