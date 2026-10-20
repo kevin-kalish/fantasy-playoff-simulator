@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {expectedProjectionPlayersFromSnapshot} from '../src/data/yahoo-projection-coverage.js';
+import {assessProjectionCoverage} from '../src/data/projection-coverage-gate.js';
+const snapshot={teams:[{id:'t1',roster:[{id:'y1',name:'John Smith',position:'QB',nflTeam:'BUF'},{id:'EMPTY-1',name:'EMPTY QB',position:'QB'}]},{id:'t2',roster:[{id:'y2',name:'Jane Doe',position:'RB',nflTeam:'PHI'}]}]};
+const roster=expectedProjectionPlayersFromSnapshot(snapshot);
+assert.equal(roster.ready,true);assert.equal(roster.expectedPlayers.length,2);
+const rows=[{season:2026,week:7,playerId:'fp999',name:'John Smith',position:'QB',nflTeam:'BUF',projection:20},{season:2026,week:7,playerId:'fp888',name:'Jane Doe',position:'RB',nflTeam:'PHI',projection:12}];
+assert.equal(assessProjectionCoverage(rows,{season:2026,week:7,expectedPlayers:roster.expectedPlayers}).ready,true);
+const mismatched=assessProjectionCoverage([{...rows[0],name:'Wrong Name',playerId:'y1'},rows[1]],{season:2026,week:7,expectedPlayers:roster.expectedPlayers});
+assert.equal(mismatched.ready,false,'Yahoo ID must not match provider ID');
+assert.equal(mismatched.missing.length,1);
+const invalid=expectedProjectionPlayersFromSnapshot({teams:[{id:'t1',roster:[{id:'y1',name:'John Smith',position:'QB'}]}]});
+assert.equal(invalid.ready,false);assert.ok(invalid.errors[0].startsWith('incomplete-identity'));
+console.log('yahoo-projection-coverage-tests: all checks passed');
