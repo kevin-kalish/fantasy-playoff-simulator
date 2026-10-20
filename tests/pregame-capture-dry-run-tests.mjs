@@ -16,12 +16,16 @@ try{
  writeKickoffVerificationEvidence({file:schedulePath,season:2026,week:7,referenceSource:'independent-test',comparison:{match:true,localGames:1,referenceGames:1},verifiedAt:new Date(now).toISOString(),output:verificationPath});
  const options={snapshotPath,specPath,now,env:{FANTASYPROS_API_KEY:'test'},preflightOptions:{root:privateDir,referencePath,kickoffPath:schedulePath,verificationPath},sourceOptions:{season:2026,week:7,schedulePath,verificationPath,quotaPath:path.join(dir,'missing.json')}};
  const good=dryRunPregameCapture(options);
+ assert.equal(good.structuralReady,true);assert.equal(good.captureReady,true);assert.equal(good.scoringVerified,false);
  assert.equal(good.ready,true);assert.equal(good.networkRequests,0);assert.equal(good.archiveCreated,false);assert.equal(good.roster.expectedPlayers,1);
  const noProvider=dryRunPregameCapture({...options,env:{}});
- assert.equal(noProvider.ready,false);
+ assert.equal(noProvider.ready,false);assert.equal(noProvider.structuralReady,true);assert.equal(noProvider.captureReady,false);
  const noScoring=dryRunPregameCapture({...options,env:{FANTASYPROS_API_KEY:'test'},specPath:path.join(privateDir,'spec.json')});
  assert.equal(noScoring.scoring,'HALF');
  fs.writeFileSync(snapshotPath,JSON.stringify({teams:[{id:'t1',roster:[{id:'y1',name:'Test QB',position:'QB',nflTeam:'NE'}]}]}));
- assert.equal(dryRunPregameCapture(options).checks.find(c=>c.name==='scoring-declared').pass,false);
+ const missingScoring=dryRunPregameCapture(options);
+ assert.equal(missingScoring.checks.find(c=>c.name==='scoring-declared').pass,false);
+ assert.equal(missingScoring.structuralReady,true);
+ assert.equal(missingScoring.captureReady,false);
  console.log('pregame-capture-dry-run-tests: all checks passed');
 }finally{fs.rmSync(dir,{recursive:true,force:true});}
