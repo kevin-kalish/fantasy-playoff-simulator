@@ -15,6 +15,11 @@ try{
  const base={spec,snapshot:league,snapshotPath:file,now,readLiveYahoo:async()=>({report:{passed:true,checks:[{pass:true}]},league:structuredClone(league)}),runProjectionJob:async()=>{jobs++;},readNewArchives:async()=>[{path:'private-archive.json',data:archive}]};
  const success=await executePregameCapture(base);
  assert.equal(success.calibrationReady,true);assert.equal(success.eligibility.pregameKickoffVerifiedRows,1);assert.equal(jobs,1);
+ const coverageSpec={...spec,projectionCoverage:{expectedPlayers:[{name:'Player',position:'QB'}],minimumByPosition:{QB:1}}};
+ const covered=await executePregameCapture({...base,spec:coverageSpec});
+ assert.equal(covered.coverage.ready,true);assert.equal(covered.calibrationReady,true);
+ const incomplete=await executePregameCapture({...base,spec:{...spec,projectionCoverage:{expectedPlayers:[{name:'Player',position:'QB'},{name:'Missing Player',position:'RB'}],minimumByPosition:{QB:1,RB:1}}}});
+ assert.equal(incomplete.coverage.ready,false);assert.equal(incomplete.coverage.missing.length,1);assert.equal(incomplete.calibrationReady,false);
  const rejects=async(opts,pattern)=>{const before=jobs;await assert.rejects(executePregameCapture({...base,...opts}),pattern);assert.equal(jobs,before,'No projection job may run after failed preflight');};
  await rejects({readLiveYahoo:async()=>({report:{passed:false},league})},/Yahoo reconciliation failed/);
  const drift=structuredClone(league);drift.teams[0].roster=[{id:'other'}];
