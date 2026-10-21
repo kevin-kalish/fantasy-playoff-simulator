@@ -13,6 +13,11 @@ const queue=buildParticipationReviewQueue([
   row(6,'provisional'),row(1,'matched',0,'matched')
 ],readiness,games);
 assert.equal(queue.summary.total,3);
+assert.deepEqual(queue.summary.priorityCounts,{week5WrRb:1,week4WrRb:1,other:1});
+assert.equal(queue.records[0].reviewPriority,'first');
+assert.equal(queue.records[1].reviewPriority,'second');
+assert.equal(queue.records[2].reviewPriority,'later');
+assert.ok(queue.records.every(r=>r.evidenceChecklist.includes('independent-https-source')));
 assert.equal(queue.summary.teamScheduled,2);
 assert.equal(queue.summary.teamNotScheduled,1);
 assert.equal(queue.summary.unverified,3);
@@ -35,4 +40,5 @@ assert.equal(rams.summary.teamScheduled,2);
 assert.equal(rams.summary.teamNotScheduled,0);
 assert.ok(rams.records.every(r=>r.reviewStatus==='unverified'&&r.evidenceRequired));
 assert.ok(rams.records.every(r=>r.nflTeam==='LAR'));
+assert.ok(rams.records.every(r=>r.reviewPriority==='later'));
 console.log('yahoo-participation-review-queue-tests: all checks passed');
