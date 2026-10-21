@@ -122,9 +122,23 @@ try {
     note: 'Diagnostic only. Team coverage does not prove player completeness or scoring parity.'
   };
 
+  // Diagnostic partition only: source lag never excuses an unmatched score.
+  const unresolvedByWeek = weekReadiness.map(source => {
+    const rows = coverage.unresolved.filter(row =>
+      Number(row.season) === source.season && Number(row.week) === source.week);
+    const nonzero = rows.filter(row =>
+      !Number.isFinite(row.yahooActual) || row.yahooActual !== 0).length;
+    return {
+      season: source.season, week: source.week, actualsStatus: source.status,
+      unresolved: rows.length, unresolvedNonzero: nonzero,
+      unresolvedZero: rows.length - nonzero,
+      participationUnverified: rows.filter(row => row.participation === 'unverified').length
+    };
+  });
   report.participationCoverage = {
     ...coverage.summary,
-    unresolvedRecords: coverage.unresolved
+    unresolvedRecords: coverage.unresolved,
+    unresolvedByWeek
   };
 
   fs.mkdirSync(path.dirname(out), {recursive: true});
@@ -163,6 +177,8 @@ try {
     coverage.summary.unresolvedNonzero +
     ' unresolved nonzero records.'
   );
+
+  console.log('UNRESOLVED BY WEEK: ' + JSON.stringify(unresolvedByWeek));
 
   console.log(
     'PARTICIPATION EVIDENCE: ' +
