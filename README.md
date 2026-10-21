@@ -316,3 +316,7 @@ The private participation queue is sorted by review priority first (`first`, `se
 ### Local-only first-priority evidence review
 
 After generating the private queue, run `npm run calibration:review-participation` to display the Week 5 WR/RB first-priority cases locally with blank source URL, review date, and documented status fields. This command is read-only, does not contact outside sources, does not write evidence or accept any status, and prints private player details to the local terminal only. Do not paste the output into public issues or commits. Confirm participation independently with an HTTPS source and exact player/week before entering any evidence through the existing validated private process. Run `node tests/yahoo-participation-review-batch-tests.mjs` for eligibility checks.
+
+### Documented inactive participation evidence
+
+The private `data/private/yahoo-participation-evidence.json` validator also recognizes `officially-inactive` for an independently confirmed game-day inactive player-week. It is distinct from `injured-reserve` and `participated-no-fantasy-stats`; do not infer it from a blank game log, zero Yahoo score, or absence from nflverse. Existing evidence requirements remain: exact season/week/Yahoo player ID, `verified:true`, valid `reviewedAt` date and independent HTTPS `sourceUrl`. This status explains an unmatched zero only; it never converts the row into a scoring match or makes calibration eligible. Leave unsupported cases unverified. Test with `node tests/yahoo-participation-coverage-tests.mjs`.
