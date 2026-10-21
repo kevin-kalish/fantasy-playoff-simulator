@@ -290,3 +290,7 @@ The live-dashboard exporter now labels a missing `report.remainingSchedule` as `
 ### Provider-free schedule and leverage integration regression
 
 `node tests/league-intelligence-report-tests.mjs` includes a synthetic eight-week (weeks 7–14) report-to-dashboard integration scenario. It checks that the report builder emits one conditional matchup impact per remaining week, that the dashboard exporter preserves all eight, and that the renderer displays the schedule and leverage panels with provisional championship labeling. The fixture is **not** evidence of Yahoo/ESPN scoring parity, live projection quality, or a historical pregame forecast. It performs no provider requests and does not write to `data/private/`.
+
+### Yahoo scoring evidence: yardage bonus confirmation
+
+`npm run calibration:review-scoring` no longer claims `bonusConfirmed: true` without independent evidence. The evidence review reports `yardage-bonus-not-confirmed` until an explicit verified source and corresponding review workflow are implemented. This is a conservative diagnostic correction only: it does not alter league scoring, player actuals, identity matching, the capture gate, or historical forecasts. Scoring parity and participation remain separate unresolved acceptance requirements.
