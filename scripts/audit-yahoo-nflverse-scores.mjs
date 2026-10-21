@@ -13,6 +13,7 @@ const overridePath = 'data/private/yahoo-identity-overrides.json';
 const evidencePath = 'data/private/yahoo-participation-evidence.json';
 const schedulePath = 'data/private/nfl-kickoffs.csv';
 const scheduleEvidencePrefix = 'data/private/kickoff-verification-week-';
+const actualsFinalizationBufferMs = 5 * 86400000;
 const scheduleSource = 'https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv';
 
 function verifiedByeWeeks() {
@@ -90,6 +91,37 @@ try {
     {participationEvidence, verifiedByeWeeks: verifiedByeWeeks()}
   );
 
+  // Report source-lag separately; never remove unresolved rows or relax parity.
+  const scheduleGames = fs.existsSync(schedulePath)
+    ? parseCSV(fs.readFileSync(schedulePath, 'utf8')) : [];
+  const now = Date.now();
+  const weekReadiness = [...new Set(yahoo.map(r =>
+    [Number(r.season), Number(r.week)].join('|')))]
+    .sort().map(pair => {
+      const [season, week] = pair.split('|').map(Number);
+      const games = scheduleGames.filter(g => Number(g.season) === season && Number(g.week) === week);
+      const kickoffs = games.map(g => Date.parse(g.kickoffAt));
+      const validSchedule = games.length >= 13 && games.length <= 16 &&
+        kickoffs.every(Number.isFinite) &&
+        new Set(games.flatMap(g => [g.home_team, g.away_team])).size === games.length * 2;
+      const eligible = validSchedule && kickoffs.every(t => t + actualsFinalizationBufferMs <= now);
+      const actualRows = nfl.filter(r => Number(r.season) === season && Number(r.week) === week);
+      const actualTeams = new Set(actualRows.map(r => r.nflTeam));
+      const scheduledTeams = new Set(games.flatMap(g => [g.home_team, g.away_team]));
+      const completeTeams = eligible && [...scheduledTeams].every(t =>
+        actualTeams.has(t) || (t === 'LAR' && actualTeams.has('LA')));
+      return {season, week, status: !validSchedule ? 'unverified-schedule' :
+        !eligible ? 'provisional-five-day-buffer' :
+        !completeTeams ? 'provisional-source-incomplete' : 'team-coverage-ready',
+        actualRows: actualRows.length, actualTeams: actualTeams.size,
+        scheduledTeams: scheduledTeams.size};
+    });
+  report.actualsReadiness = {
+    schemaVersion: 1, finalizationBufferDays: 5,
+    weeks: weekReadiness,
+    note: 'Diagnostic only. Team coverage does not prove player completeness or scoring parity.'
+  };
+
   report.participationCoverage = {
     ...coverage.summary,
     unresolvedRecords: coverage.unresolved
@@ -120,6 +152,8 @@ try {
     'CROSS-PROVIDER POSITIONS: ' +
     JSON.stringify(report.byPosition)
   );
+
+  console.log('ACTUALS READINESS: ' + JSON.stringify(weekReadiness));
 
   console.log(
     'SCORING PARITY: ' +
