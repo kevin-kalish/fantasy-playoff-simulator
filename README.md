@@ -320,3 +320,7 @@ After generating the private queue, run `npm run calibration:review-participatio
 ### Documented inactive participation evidence
 
 The private `data/private/yahoo-participation-evidence.json` validator also recognizes `officially-inactive` for an independently confirmed game-day inactive player-week. It is distinct from `injured-reserve` and `participated-no-fantasy-stats`; do not infer it from a blank game log, zero Yahoo score, or absence from nflverse. Existing evidence requirements remain: exact season/week/Yahoo player ID, `verified:true`, valid `reviewedAt` date and independent HTTPS `sourceUrl`. This status explains an unmatched zero only; it never converts the row into a scoring match or makes calibration eligible. Leave unsupported cases unverified. Test with `node tests/yahoo-participation-coverage-tests.mjs`.
+
+### Missing Yahoo actuals fail closed
+
+Participation coverage does not interpret null, absent, or whitespace-only Yahoo actual scores as zero. These malformed inputs count as unresolved nonzero/invalid for parity diagnostics and cannot accept participation evidence or verified-bye classification. This defensive downstream check supplements the weekly Yahoo extractor; it does not retroactively change private actuals, historical forecasts, or the shared Yahoo/ESPN normalization contract. `node tests/yahoo-participation-coverage-tests.mjs` covers these cases.
