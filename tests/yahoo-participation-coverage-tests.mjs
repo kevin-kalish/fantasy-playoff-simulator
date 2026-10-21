@@ -302,6 +302,10 @@ const script = fs.readFileSync(
   'scripts/audit-yahoo-nflverse-scores.mjs', 'utf8'
 );
 
+assert.match(script, /provisional-five-day-buffer/);
+assert.match(script, /provisional-source-incomplete/);
+assert.match(script, /finalizationBufferDays: 5/);
+
 assert.match(
   script,
   /unresolvedRecords:\s*coverage\.unresolved/
