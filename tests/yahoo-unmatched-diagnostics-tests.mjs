@@ -89,8 +89,8 @@ assert.equal(mixed.unmatched, 4);
 assert.equal(mixed.individualUnmatched, 1);
 assert.equal(mixed.defenseUnmatched, 3);
 assert.equal(mixed.defenseNonzero, 1);
-assert.deepEqual(mixed.individualReasons, { 'name-or-roster-coverage': 1 });
-assert.equal(mixed.reasons['no-same-team-position-candidate'], 3);
+assert.deepEqual(mixed.individualReasons, { 'no-same-team-position-candidate': 1 });
+assert.equal(mixed.reasons['no-same-team-position-candidate'], 4);
 assert.equal(mixed.details.length, 4);
 assert.equal(diagnoseUnmatchedYahooPlayers([n], [y]).defenseUnmatched, 0);
 
