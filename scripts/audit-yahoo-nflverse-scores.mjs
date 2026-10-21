@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import {createHash} from 'node:crypto';
+import {parseCSV} from '../src/data/csv.js';
 
 import {auditYahooScoresWithOverrides} from '../src/data/yahoo-scoring-with-overrides.js';
 import {summarizeYahooParticipationCoverage} from '../src/data/yahoo-participation-coverage.js';
@@ -9,6 +11,41 @@ const yahooPath = 'data/private/yahoo-player-actuals.json';
 const out = 'data/private/yahoo-nflverse-score-audit.json';
 const overridePath = 'data/private/yahoo-identity-overrides.json';
 const evidencePath = 'data/private/yahoo-participation-evidence.json';
+const schedulePath = 'data/private/nfl-kickoffs.csv';
+const scheduleEvidencePrefix = 'data/private/kickoff-verification-week-';
+const scheduleSource = 'https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv';
+
+function verifiedByeWeeks() {
+  if (!fs.existsSync(schedulePath)) return [];
+  const bytes = fs.readFileSync(schedulePath);
+  const digest = createHash('sha256').update(bytes).digest('hex');
+  const games = parseCSV(bytes.toString('utf8'));
+  const seasonTeams = new Set(games.filter(g => Number(g.season) === 2026)
+    .flatMap(g => [g.home_team, g.away_team]));
+  if (seasonTeams.size !== 32) return [];
+  const result = [];
+  for (let week = 1; week <= 18; week++) {
+    const file = scheduleEvidencePrefix + week + '.json';
+    if (!fs.existsSync(file)) continue;
+    let e;
+    try { e = JSON.parse(fs.readFileSync(file, 'utf8')); }
+    catch { continue; }
+    const weekGames = games.filter(g => Number(g.season) === 2026 && Number(g.week) === week);
+    const playing = weekGames.flatMap(g => [g.home_team, g.away_team]);
+    const unique = new Set(playing);
+    if (e.schemaVersion !== 1 || e.match !== true || e.season !== 2026 ||
+        e.week !== week || e.referenceSource !== scheduleSource ||
+        e.localFile !== path.resolve(schedulePath) || e.localSha256 !== digest ||
+        e.localGames !== weekGames.length || e.referenceGames !== weekGames.length ||
+        !Number.isFinite(Date.parse(e.verifiedAt)) || Date.parse(e.verifiedAt) > Date.now() ||
+        weekGames.length < 13 || weekGames.length > 16 ||
+        playing.length !== unique.size || unique.size !== weekGames.length * 2 ||
+        playing.some(t => !seasonTeams.has(t))) continue;
+    result.push({season: 2026, week, verified: true,
+      byeTeams: [...seasonTeams].filter(t => !unique.has(t))});
+  }
+  return result;
+}
 
 try {
   const read = p => {
@@ -50,7 +87,7 @@ try {
     nfl,
     yahoo,
     report,
-    {participationEvidence}
+    {participationEvidence, verifiedByeWeeks: verifiedByeWeeks()}
   );
 
   report.participationCoverage = {
