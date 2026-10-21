@@ -75,7 +75,7 @@ export function summarizeYahooParticipationCoverage(
   nfl,
   yahoo,
   audit,
-  {participationEvidence = []} = {}
+  {participationEvidence = [], verifiedByeWeeks = []} = {}
 ) {
   const individuals = yahoo.filter(
     r => String(r.position).toUpperCase() !== 'DEF'
@@ -100,6 +100,20 @@ export function summarizeYahooParticipationCoverage(
     }
 
     nflIdentity.get(k).push(r);
+  }
+
+  // Bye weeks are derived only from independently verified, complete schedules.
+  // They explain absence; they never turn unmatched rows into scoring matches.
+  const byeKeys = new Set();
+  for (const entry of verifiedByeWeeks) {
+    if (!entry || !Number.isInteger(entry.season) ||
+        !Number.isInteger(entry.week) || !Array.isArray(entry.byeTeams) ||
+        entry.verified !== true) continue;
+    for (const team of entry.byeTeams) {
+      if (/^[A-Z]{2,3}$/.test(team)) {
+        byeKeys.add(key(entry.season, entry.week, team));
+      }
+    }
   }
 
   const evidenceByKey = new Map();
@@ -160,6 +174,10 @@ export function summarizeYahooParticipationCoverage(
         key(r.season, r.week, r.playerId)
       );
 
+      const verifiedBye = Number.isFinite(actual) && actual === 0 &&
+        typeof r.nflTeam === 'string' &&
+        byeKeys.has(key(r.season, r.week, r.nflTeam));
+
       const acceptedEvidence =
         evidence &&
         Number.isFinite(actual) &&
@@ -178,7 +196,9 @@ export function summarizeYahooParticipationCoverage(
         category,
         participation: acceptedEvidence
           ? acceptedEvidence.status
-          : 'unverified',
+          : verifiedBye && !evidence && sameWeek.length === 0
+            ? 'scheduled-bye'
+            : 'unverified',
         ...(acceptedEvidence
           ? {
               participationSource: acceptedEvidence.sourceUrl,
