@@ -294,3 +294,7 @@ The live-dashboard exporter now labels a missing `report.remainingSchedule` as `
 ### Yahoo scoring evidence: yardage bonus confirmation
 
 `npm run calibration:review-scoring` no longer claims `bonusConfirmed: true` without independent evidence. The evidence review reports `yardage-bonus-not-confirmed` until an explicit verified source and corresponding review workflow are implemented. This is a conservative diagnostic correction only: it does not alter league scoring, player actuals, identity matching, the capture gate, or historical forecasts. Scoring parity and participation remain separate unresolved acceptance requirements.
+
+### Week-level Yahoo reconciliation diagnostics
+
+`npm run calibration:cross-provider-scores` now prints `UNRESOLVED BY WEEK` and writes `participationCoverage.unresolvedByWeek` to the existing private `data/private/yahoo-nflverse-score-audit.json`. Each row includes source readiness, unmatched nonzero/zero counts, and unverified participation counts. Provisional weeks remain included in all overall failure totals; this breakdown is **diagnostic only**, not a waiver, verified participation record, scoring parity approval, or calibration gate. The command may exit 2 while unresolved records remain.
