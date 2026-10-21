@@ -324,3 +324,7 @@ The private `data/private/yahoo-participation-evidence.json` validator also reco
 ### Missing Yahoo actuals fail closed
 
 Participation coverage does not interpret null, absent, or whitespace-only Yahoo actual scores as zero. These malformed inputs count as unresolved nonzero/invalid for parity diagnostics and cannot accept participation evidence or verified-bye classification. This defensive downstream check supplements the weekly Yahoo extractor; it does not retroactively change private actuals, historical forecasts, or the shared Yahoo/ESPN normalization contract. `node tests/yahoo-participation-coverage-tests.mjs` covers these cases.
+
+### Read-only Week 5 participation candidate identity check
+
+Run `npm run calibration:review-candidates` locally to compare the three previously identified Week 5 Yahoo player IDs (Saquon Barkley, DeVonta Smith and Jordan Addison) with the private actuals file and existing participation evidence. The command prints private identifiers locally and **does not** verify game-day inactivity, fetch official sources, write evidence, or set `verified:true`. A positive `eligibleForManualReview` means only that player identity and explicit zero were found without a conflicting existing evidence entry. Official season/week-specific inactive source URLs must still be reviewed manually. Keep output private. `node tests/yahoo-participation-candidate-review-tests.mjs` checks duplicate and missing/incorrect data handling.
