@@ -286,3 +286,7 @@ Run `node tests/league-snapshot-tests.mjs` to exercise the shared V1 normalizati
 ### Historical dashboard schedule compatibility
 
 The live-dashboard exporter now labels a missing `report.remainingSchedule` as `scheduleDataStatus: unavailable-in-report`. The renderer explicitly says historical schedule and conditional leverage were unavailable instead of implying there are no future games. Reports containing `remainingSchedule` retain their existing schedule and leverage rendering. This is display-only compatibility; it does **not** reconstruct historical forecasts, infer leverage from top-level strategy fields, or relax the complete-dashboard readiness gate. A fresh source-backed report with conditional matchup estimates is still required for full private-beta acceptance.
+
+### Provider-free schedule and leverage integration regression
+
+`node tests/league-intelligence-report-tests.mjs` includes a synthetic eight-week (weeks 7–14) report-to-dashboard integration scenario. It checks that the report builder emits one conditional matchup impact per remaining week, that the dashboard exporter preserves all eight, and that the renderer displays the schedule and leverage panels with provisional championship labeling. The fixture is **not** evidence of Yahoo/ESPN scoring parity, live projection quality, or a historical pregame forecast. It performs no provider requests and does not write to `data/private/`.
