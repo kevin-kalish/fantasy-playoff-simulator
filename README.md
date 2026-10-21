@@ -281,3 +281,8 @@ The private cross-provider scoring audit now includes `actualsReadiness.weeks` w
 ### Provider-neutral league contract checkpoint (October 2026)
 
 Run `node tests/league-snapshot-tests.mjs` to exercise the shared V1 normalization boundary for both `yahoo` and `espn` provider labels, including team identity, lineup slots, playoff fields, and rejection of missing, unknown-team, self-opponent, or duplicate-participation schedules. These tests use constructed data, **not an ESPN adapter or live ESPN evidence**. The normalization layer still defaults missing playoff settings and projections; any future ESPN adapter must verify provider scoring, schedule coverage, roster identity, lineup assignments, and settings independently before passing readiness. The October 27 ESPN decision remains conditional on source-backed adapter and scoring parity evidence. Yahoo remains the private-beta priority.
+
+
+### Historical dashboard schedule compatibility
+
+The live-dashboard exporter now labels a missing `report.remainingSchedule` as `scheduleDataStatus: unavailable-in-report`. The renderer explicitly says historical schedule and conditional leverage were unavailable instead of implying there are no future games. Reports containing `remainingSchedule` retain their existing schedule and leverage rendering. This is display-only compatibility; it does **not** reconstruct historical forecasts, infer leverage from top-level strategy fields, or relax the complete-dashboard readiness gate. A fresh source-backed report with conditional matchup estimates is still required for full private-beta acceptance.
