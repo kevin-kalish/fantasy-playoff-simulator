@@ -39,8 +39,21 @@ export function buildParticipationReviewQueue(unresolved, readiness, games) {
     String(a.position).localeCompare(String(b.position)) ||
     String(a.yahooPlayerId).localeCompare(String(b.yahooPlayerId))
   );
+  // Human-review ordering is informational only; it never changes evidence.
+  const priorityCounts = {week5WrRb:0,week4WrRb:0,other:0};
+  for (const record of records) {
+    const bucket = [ 'WR', 'RB' ].includes(record.position)
+      ? record.week === 5 ? 'week5WrRb' : record.week === 4 ? 'week4WrRb' : 'other'
+      : 'other';
+    record.reviewPriority = bucket === 'week5WrRb' ? 'first'
+      : bucket === 'week4WrRb' ? 'second' : 'later';
+    record.evidenceChecklist = ['independent-https-source', 'review-date',
+      'player-and-week-confirmed', 'document-supported-status'];
+    priorityCounts[bucket]++;
+  }
   const summary = {
     total:records.length,
+    priorityCounts,
     teamScheduled:records.filter(r=>r.scheduleClassification==='team-scheduled').length,
     teamNotScheduled:records.filter(r=>r.scheduleClassification==='team-not-scheduled').length,
     unverified:records.length,
