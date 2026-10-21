@@ -21,11 +21,20 @@ export function auditWeeklyReport(document) {
  check('lineup-completeness',Array.isArray(readiness?.incompleteLineups)&&readiness.incompleteLineups.length===0,'No incomplete optimized lineups');
  check('simulation-count',Number(report?.outlook?.simulations)>=50000,'At least 50,000 core simulations');
  check('postseason-trust-label',report?.trust?.postseason?.trusted===true||report?.outlook?.championshipTrusted===false,'Derived postseason odds must not be labeled trusted');
+ // Dashboard acceptance is stricter than core simulation readiness.
+ const schedule=report?.remainingSchedule;
+ check('dashboard-schedule',Array.isArray(schedule)&&schedule.length>0&&
+   schedule.every(g=>Number.isInteger(g.week)&&g.week>=1&&g.week<=18&&
+     String(g.opponentId??'').trim().length>0)),
+   'Remaining schedule must be supplied for complete dashboard acceptance');
  const warnings=readiness?.warnings??[];
  check('empirical-calibration',!warnings.some(w=>/no empirical calibration/i.test(w)),'Historical calibration is missing', 'warning');
  check('injury-calibration',!warnings.some(w=>/uncalibrated heuristic play probabilities/i.test(w)),'Injury play probabilities are heuristic', 'warning');
  check('nfl-context',!warnings.some(w=>/no NFL game context/i.test(w)),'NFL game correlation context is missing', 'warning');
  check('postseason-direct',report?.trust?.postseason?.trusted===true,'Postseason projections remain provisional', 'warning');
+ check('dashboard-leverage',Array.isArray(schedule)&&schedule.length>0&&
+   schedule.every(g=>g.playoffImpact&&Number.isFinite(g.playoffImpact.swing)),
+   'Conditional schedule leverage is missing or incomplete','warning');
  const gm=report?.recommendations??{};
  check('gm-confirmation',Number(gm.confirmation?.passedCount??0)<=Number(gm.confirmation?.evaluatedCount??0),'Confirmation counts must be consistent');
  const seedValidation=document?.seedValidation;
