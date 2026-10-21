@@ -25,7 +25,7 @@ export function auditWeeklyReport(document) {
  const schedule=report?.remainingSchedule;
  check('dashboard-schedule',Array.isArray(schedule)&&schedule.length>0&&
    schedule.every(g=>Number.isInteger(g.week)&&g.week>=1&&g.week<=18&&
-     String(g.opponentId??'').trim().length>0)),
+     String(g.opponentId??'').trim().length>0),
    'Remaining schedule must be supplied for complete dashboard acceptance');
  const warnings=readiness?.warnings??[];
  check('empirical-calibration',!warnings.some(w=>/no empirical calibration/i.test(w)),'Historical calibration is missing', 'warning');
