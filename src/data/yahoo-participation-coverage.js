@@ -169,7 +169,10 @@ export function summarizeYahooParticipationCoverage(
           ? 'known-player-no-same-week-record'
           : 'identity-not-in-actuals';
 
-      const actual = Number(r.actual);
+      // Missing/blank actuals are not legitimate zero-point observations.
+      const actual = r.actual === null || r.actual === undefined ||
+        (typeof r.actual === 'string' && r.actual.trim() === '')
+        ? NaN : Number(r.actual);
 
       const evidence = evidenceByKey.get(
         key(r.season, r.week, r.playerId)
