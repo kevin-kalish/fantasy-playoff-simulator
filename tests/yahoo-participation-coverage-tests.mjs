@@ -276,6 +276,27 @@ assert.equal(
   false
 );
 
+// Schedule-backed bye classification must not relax scoring or matching gates.
+const byeYahoo = [
+  {season: 2026, week: 5, playerId: 'car1', name: 'Player One', position: 'RB', nflTeam: 'CAR', actual: 0},
+  {season: 2026, week: 5, playerId: 'kc1', name: 'Player Two', position: 'TE', nflTeam: 'KC', actual: 0},
+  {season: 2026, week: 5, playerId: 'other', name: 'Player Three', position: 'WR', nflTeam: 'NE', actual: 0},
+  {season: 2026, week: 5, playerId: 'nonzero', name: 'Player Four', position: 'QB', nflTeam: 'CAR', actual: 7}
+];
+const byeAudit = auditYahooScoresWithOverrides([], byeYahoo);
+const byeReport = options => summarizeYahooParticipationCoverage([], byeYahoo, byeAudit, options);
+const verifiedByes = [{season: 2026, week: 5, verified: true, byeTeams: ['CAR', 'KC']}];
+const byeResult = byeReport({verifiedByeWeeks: verifiedByes});
+assert.deepEqual(byeResult.unresolved.map(r => r.participation),
+  ['scheduled-bye', 'scheduled-bye', 'unverified', 'unverified']);
+assert.equal(byeResult.summary.participationEvidenceVerified, 2);
+assert.equal(byeResult.summary.unresolvedNonzero, 1);
+assert.equal(byeResult.summary.scoringParityPass, false);
+assert.equal(byeResult.summary.participationCoverageComplete, false);
+assert.equal(byeReport({}).summary.participationEvidenceVerified, 0);
+assert.equal(byeReport({verifiedByeWeeks: [{...verifiedByes[0], verified: false}]}).summary.participationEvidenceVerified, 0);
+assert.equal(byeReport({verifiedByeWeeks: [{...verifiedByes[0], week: 4}]}).summary.participationEvidenceVerified, 0);
+
 const fs = await import('node:fs');
 const script = fs.readFileSync(
   'scripts/audit-yahoo-nflverse-scores.mjs', 'utf8'
