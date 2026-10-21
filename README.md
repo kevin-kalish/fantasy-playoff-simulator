@@ -271,3 +271,8 @@ The private cross-provider audit optionally reads `data/private/nfl-kickoffs.csv
 ### Provisional completed-actuals reporting
 
 The private cross-provider scoring audit now includes `actualsReadiness.weeks` with schedule-based statuses: `provisional-five-day-buffer` while any scheduled kickoff is less than five days old, `provisional-source-incomplete` when the buffer has elapsed but scheduled teams are missing from nflverse actuals, `unverified-schedule` if schedule coverage cannot be established, and `team-coverage-ready` only after all scheduled teams are represented. These are diagnostic labels, not independent verification of player completeness. The existing scoring-parity and participation gates remain unchanged, and unresolved nonzero Yahoo rows are never removed. The audit does not refresh or overwrite private actuals or historical forecasts. `calibration:fetch-actuals` rewrites its private output; back up and review before invoking it.
+
+
+### Complete-dashboard acceptance gate
+
+`npm run review:readiness -- data/private/<report>.json` now fails complete-dashboard acceptance when the intelligence report has no valid `remainingSchedule` entries, and warns when any scheduled game lacks finite conditional playoff leverage (`playoffImpact.swing`). This is intentionally stricter than simulation readiness: an older trusted report may be useful for probabilities but is not a complete schedule/leverage demo. It does not synthesize schedule or impact data, change historical archives, or weaken existing trust checks. A warning alone does not constitute live browser acceptance.
