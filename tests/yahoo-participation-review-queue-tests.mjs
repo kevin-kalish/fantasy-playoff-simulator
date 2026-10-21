@@ -22,4 +22,17 @@ assert.ok(queue.records.every(r=>r.reviewStatus==='unverified'&&r.evidenceRequir
 assert.ok(queue.records.every(r=>!('verified' in r)));
 assert.equal(queue.records.find(r=>r.yahooPlayerId==='bye').scheduleClassification,'team-not-scheduled');
 assert.throws(()=>buildParticipationReviewQueue(null,readiness,games));
+// Rams are LA in nflverse schedule and LAR in Yahoo player records.
+const rams=buildParticipationReviewQueue([
+  row(2,'lar-week2',0,'unverified','WR','LAR'),
+  row(3,'lar-week3',0,'unverified','WR','LAR')
+],readiness,[
+  {season:2026,week:2,home_team:'LA',away_team:'NYG'},
+  {season:2026,week:3,home_team:'DEN',away_team:'LA'}
+]);
+assert.equal(rams.summary.total,2);
+assert.equal(rams.summary.teamScheduled,2);
+assert.equal(rams.summary.teamNotScheduled,0);
+assert.ok(rams.records.every(r=>r.reviewStatus==='unverified'&&r.evidenceRequired));
+assert.ok(rams.records.every(r=>r.nflTeam==='LAR'));
 console.log('yahoo-participation-review-queue-tests: all checks passed');
