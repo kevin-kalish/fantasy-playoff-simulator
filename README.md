@@ -276,3 +276,8 @@ The private cross-provider scoring audit now includes `actualsReadiness.weeks` w
 ### Complete-dashboard acceptance gate
 
 `npm run review:readiness -- data/private/<report>.json` now fails complete-dashboard acceptance when the intelligence report has no valid `remainingSchedule` entries, and warns when any scheduled game lacks finite conditional playoff leverage (`playoffImpact.swing`). This is intentionally stricter than simulation readiness: an older trusted report may be useful for probabilities but is not a complete schedule/leverage demo. It does not synthesize schedule or impact data, change historical archives, or weaken existing trust checks. A warning alone does not constitute live browser acceptance.
+
+
+### Provider-neutral league contract checkpoint (October 2026)
+
+Run `node tests/league-snapshot-tests.mjs` to exercise the shared V1 normalization boundary for both `yahoo` and `espn` provider labels, including team identity, lineup slots, playoff fields, and rejection of missing, unknown-team, self-opponent, or duplicate-participation schedules. These tests use constructed data, **not an ESPN adapter or live ESPN evidence**. The normalization layer still defaults missing playoff settings and projections; any future ESPN adapter must verify provider scoring, schedule coverage, roster identity, lineup assignments, and settings independently before passing readiness. The October 27 ESPN decision remains conditional on source-backed adapter and scoring parity evidence. Yahoo remains the private-beta priority.
