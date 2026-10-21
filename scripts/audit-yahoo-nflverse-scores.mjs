@@ -53,7 +53,10 @@ try {
     {participationEvidence}
   );
 
-  report.participationCoverage = coverage.summary;
+  report.participationCoverage = {
+    ...coverage.summary,
+    unresolvedRecords: coverage.unresolved
+  };
 
   fs.mkdirSync(path.dirname(out), {recursive: true});
 

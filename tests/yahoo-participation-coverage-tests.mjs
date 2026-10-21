@@ -276,6 +276,33 @@ assert.equal(
   false
 );
 
+const fs = await import('node:fs');
+const script = fs.readFileSync(
+  'scripts/audit-yahoo-nflverse-scores.mjs', 'utf8'
+);
+
+assert.match(
+  script,
+  /unresolvedRecords:\s*coverage\.unresolved/
+);
+
+const exportedCoverage = {
+  ...evidenced.summary,
+  unresolvedRecords: evidenced.unresolved
+};
+
+assert.equal(
+  exportedCoverage.unresolvedRecords.length,
+  exportedCoverage.unresolved
+);
+
+assert.equal(
+  exportedCoverage.unresolvedRecords.filter(
+    r => r.participation !== 'unverified'
+  ).length,
+  exportedCoverage.participationEvidenceVerified
+);
+
 console.log(
   'yahoo-participation-coverage-tests: all checks passed'
 );

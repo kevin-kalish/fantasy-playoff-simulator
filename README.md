@@ -248,3 +248,16 @@ The synthetic GM performance comparison can be run with `npm run benchmark:gm --
 ### Yahoo unmatched diagnostics: individual versus DEF (October 2026)
 
 Run `npm run calibration:unmatched` with private Yahoo and nflverse actuals and a verified kickoff schedule. The private JSON report retains the existing `unmatched`, `reasons`, and `details` fields, and additionally reports `individualUnmatched`, `defenseUnmatched`, `defenseNonzero`, and `individualReasons`. Position `DEF` is separated from individual-player identity diagnostics; the original total remains unchanged. A missing, empty, or invalid DEF score is not counted as nonzero and remains in the unmatched details for review. This is a diagnostic breakdown only: it does not validate DST scoring, reconcile identities, relax participation/scoring gates, or establish calibration eligibility. The separate cross-provider scoring audit continues to exclude defenses from its individual comparison and requires independent DST verification.
+
+### Private cross-provider participation audit
+
+`npm run calibration:cross-provider-scores` writes
+`data/private/yahoo-nflverse-score-audit.json`.
+
+The `participationCoverage` object retains its summary fields and
+adds `unresolvedRecords`, containing individual player-week
+classifications and accepted participation evidence.
+
+This is private diagnostic output, not proof of scoring parity or
+calibration eligibility. Unmatched nonzero records continue blocking
+scoring parity, and DST scoring requires independent verification.
