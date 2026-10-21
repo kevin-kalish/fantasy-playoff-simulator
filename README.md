@@ -261,3 +261,8 @@ classifications and accepted participation evidence.
 This is private diagnostic output, not proof of scoring parity or
 calibration eligibility. Unmatched nonzero records continue blocking
 scoring parity, and DST scoring requires independent verification.
+
+
+### Verified schedule-backed Yahoo bye classification
+
+The private cross-provider audit optionally reads `data/private/nfl-kickoffs.csv` and week-specific `data/private/kickoff-verification-week-<week>.json` evidence. It checks the independently compared nflverse reference, exact local file SHA-256, season/week, game counts, distinct teams and complete 32-team season universe before classifying unmatched zero-point players from absent teams as `scheduled-bye`. Missing, conflicting or altered evidence fails closed to `unverified`. Historical schedule verification does not use the 48-hour *live kickoff* freshness limit; live readiness checks are unchanged. Preserve the existing default Week 6 verification file. Bye classification is explanatory only: it does not establish statistical matches, scoring parity, participation coverage completeness or calibration eligibility. All private schedules and evidence remain under `data/private/` and must not be committed.
