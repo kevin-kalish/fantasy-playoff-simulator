@@ -95,7 +95,7 @@ export function renderDashboardV1(root, payload) {
     ${navigation}
     <section id="dashboard-matchup" aria-label="Weekly matchup">${matchupPanel}</section>
     <section id="dashboard-schedule" aria-label="Remaining schedule">${schedulePanel}</section>
-    <section id="dashboard-leverage" aria-label="Playoff leverage">${leveragePanel || '<p class="demo-disclaimer">${historicalScheduleMissing ? 'Conditional leverage unavailable in this historical report; no scenarios were reconstructed.' : 'No conditional leverage estimates available.'}</p>'}</section>
+    <section id="dashboard-leverage" aria-label="Playoff leverage">${leveragePanel || `<p class="demo-disclaimer">${historicalScheduleMissing ? 'Conditional leverage unavailable in this historical report; no scenarios were reconstructed.' : 'No conditional leverage estimates available.'}</p>`}</section>
     ${gm ? `<section id="dashboard-gm" aria-label="GM decision review">${gmPanel}</section>` : ''}
     <section id="dashboard-race" aria-label="League playoff race"><div class="race-panel"><h3>League playoff race</h3><div class="table-wrap"><table><thead><tr><th>Team</th><th>Record</th><th>Seed</th><th>Avg wins</th><th>Playoffs</th><th>Champion</th></tr></thead><tbody>${rows}</tbody></table></div></div></section>
     <div id="dashboard-team-detail" class="detail-card" aria-live="polite"><h3>${escapeHtml(focus.name)}</h3><p>Click a team in the playoff race to inspect its outlook.</p></div>
