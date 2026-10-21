@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {buildLeagueIntelligenceReport} from '../src/model/league-intelligence-report.js';
 import {rankRemainingMatchupImpact} from '../src/model/weekly-matchup-intelligence.js';
+import {weeklyReportToDashboardV1} from '../src/ui/live-dashboard-export.js';
+import {renderDashboardV1} from '../src/ui/live-dashboard-v1.js';
 const p=(id,name,pos,projection,slot)=>({id,name,position:pos,projection,nflTeam:'BUF',lineupSlot:slot});
 const a=[p('A-QB','Alpha QB','QB',20,'QB'),p('A-RB','Alpha RB','RB',15,'RB')],b=[p('B-QB','Bravo QB','QB',18,'QB'),p('B-RB','Bravo RB','RB',14,'RB')];
 const input={metadata:{source:{provider:'fixture'},projectionCoverage:{total:4,projected:4,matchRate:1},directProjectionWeeks:[3],longRangeProjectionWeeks:[]},simulations:500,seed:77,modelVariant:'baseline',playoffSpots:2,playoffWeeks:[3],reseed:true,tiebreaker:'points',teams:[{id:'A',name:"The Fightin' Kali",wins:2,losses:0,points:220,roster:a,weeklyLineups:{1:a,2:a,3:a}},{id:'B',name:'Bravo',wins:1,losses:1,points:190,roster:b,weeklyLineups:{1:b,2:b,3:b}}],schedule:[{week:1,matchups:[['A','B']]},{week:2,matchups:[['B','A']]}]};
@@ -17,4 +19,24 @@ assert.ok(report.remainingSchedule.every(g=>g.playoffImpact.ifWin>=0&&g.playoffI
 const weakPostseason={...input,metadata:{...input.metadata,directProjectionWeeks:[],longRangeProjectionWeeks:[3]}};
 const weakReport=buildLeagueIntelligenceReport(weakPostseason,{teamId:'A',week:1,startSit:false,providerHealth});
 assert.equal(weakReport.outlook.championshipTrusted,false);assert.equal(weakReport.trust.postseason.trusted,false);assert.deepEqual(weakReport.trust.postseason.coveredWeeks,[3]);assert.deepEqual(weakReport.trust.postseason.directlyProjectedWeeks,[]);assert.deepEqual(weakReport.trust.postseason.missingWeeks,[3]);
+// Provider-free eight-week integration: normalized-shape fixture -> report -> export -> renderer.
+// This is synthetic pipeline coverage, not live provider accuracy or pregame evidence.
+const weeks=Array.from({length:8},(_,i)=>7+i);
+const scheduleInput={...input,simulations:60,playoffWeeks:[15,16,17],metadata:{...input.metadata,directProjectionWeeks:[7,8,9],longRangeProjectionWeeks:[10,11,12,13,14,15,16,17]},schedule:weeks.map((week,i)=>({week,matchups:i%2?[['B','A']]:[['A','B']]}))};
+const fullReport=buildLeagueIntelligenceReport(scheduleInput,{teamId:'A',week:7,startSit:false,matchupImpactSimulations:20,scenarioSimulations:20});
+assert.equal(fullReport.remainingSchedule.length,8);
+assert.deepEqual([...fullReport.remainingSchedule].map(game=>game.week).sort((a,b)=>a-b),weeks);
+assert.ok(fullReport.remainingSchedule.every(game=>Number.isFinite(game.playoffImpact?.swing)));
+const dashboard=weeklyReportToDashboardV1(fullReport);
+assert.equal(dashboard.scheduleDataStatus,'supplied');
+assert.equal(dashboard.remainingSchedule.length,8);
+assert.ok(dashboard.remainingSchedule.every(game=>Number.isFinite(game.playoffImpact?.swing)));
+const htmlRoot={innerHTML:'',querySelector(){return {set innerHTML(_) {}};}};
+renderDashboardV1(htmlRoot,dashboard);
+assert.match(htmlRoot.innerHTML,/Playoff leverage comparison/);
+assert.match(htmlRoot.innerHTML,/Week 14/);
+assert.match(htmlRoot.innerHTML,/PROVISIONAL/);
+assert.doesNotMatch(htmlRoot.innerHTML,/Schedule unavailable in this historical report/);
+assert.doesNotMatch(htmlRoot.innerHTML,/No conditional leverage estimates available/);
+assert.equal((htmlRoot.innerHTML.match(/class="schedule-row"/g)||[]).length>=8,true);
 console.log('league-intelligence-report-tests: all checks passed');
