@@ -41,4 +41,15 @@ assert.equal(rams.summary.teamNotScheduled,0);
 assert.ok(rams.records.every(r=>r.reviewStatus==='unverified'&&r.evidenceRequired));
 assert.ok(rams.records.every(r=>r.nflTeam==='LAR'));
 assert.ok(rams.records.every(r=>r.reviewPriority==='later'));
+// Priority order must remain contiguous even when later-priority rows share Week 5.
+const priorityOrder=buildParticipationReviewQueue([
+  row(5,'week5-qb',0,'unverified','QB'),
+  row(4,'week4-rb',0,'unverified','RB'),
+  row(5,'week5-wr',0,'unverified','WR'),
+  row(3,'week3-wr',0,'unverified','WR')
+],readiness,games);
+assert.deepEqual(priorityOrder.records.map(r=>r.yahooPlayerId),
+  ['week5-wr','week4-rb','week5-qb','week3-wr']);
+assert.deepEqual(priorityOrder.records.map(r=>r.reviewPriority),
+  ['first','second','later','later']);
 console.log('yahoo-participation-review-queue-tests: all checks passed');
