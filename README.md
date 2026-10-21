@@ -306,3 +306,7 @@ After `npm run calibration:cross-provider-scores`, run `npm run calibration:part
 The private queue uses the same established NFL team-code aliases as Yahoo unmatched diagnostics (including Yahoo `LAR` versus nflverse schedule `LA`). This corrects schedule classification only: a scheduled team is **not** proof that a player participated, and every unresolved player remains unverified until supported by independent evidence.
 
 The queue now includes `reviewPriority` (`first` for Week 5 WR/RB, `second` for Week 4 WR/RB, otherwise `later`), `evidenceChecklist`, and aggregate `summary.priorityCounts`. These are workflow aids, not new accepted evidence. The reviewer must independently confirm the player, season/week, documented participation status, source HTTPS URL, and review date before using the existing validated evidence process. Never commit the private queue or infer player activity from team schedule presence.
+
+### Private Week 5 Yahoo zero-score reconciliation
+
+Run `npm run calibration:review-zeros` after `calibration:cross-provider-scores`. It reads existing private Yahoo actuals and audit JSON and prints only aggregate counts: explicit zero, missing, matched-zero, unresolved-zero, unclassified-zero and overlap. It exits nonzero on missing scores or incomplete classification; it does not write files or change evidence, identity, scores, calibration, or historical forecasts. `node tests/yahoo-zero-reconciliation-tests.mjs` uses synthetic rows. An audit match is not independent proof of participation or live scoring accuracy.
