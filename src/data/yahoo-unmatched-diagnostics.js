@@ -167,12 +167,30 @@ if (
     });
   }
 
+  const individualDetails = details.filter(r => String(r.position).toUpperCase() !== 'DEF');
+  const defenseDetails = details.filter(r => String(r.position).toUpperCase() === 'DEF');
+  const individualReasons = {};
+  for (const r of individualDetails) {
+    individualReasons[r.reason] = (individualReasons[r.reason] ?? 0) + 1;
+  }
+  const defenseNonzero = defenseDetails.filter(r => {
+    const value = r.yahooActual;
+    return value !== null && value !== undefined && value !== '' &&
+      Number.isFinite(Number(value)) && Number(value) !== 0;
+  }).length;
+
   return {
     schemaVersion: 1,
     mode: 'offline-unmatched-identity-diagnostics',
     yahooRows: yahooRows.length,
     nflverseRows: nflRows.length,
     unmatched: details.length,
+    individualUnmatched: individualDetails.length,
+    defenseUnmatched: defenseDetails.length,
+    defenseNonzero,
+    individualReasons: Object.fromEntries(
+      Object.entries(individualReasons).sort((a, b) => b[1] - a[1])
+    ),
     reasons: Object.fromEntries(
       Object.entries(reasons).sort((a, b) => b[1] - a[1])
     ),

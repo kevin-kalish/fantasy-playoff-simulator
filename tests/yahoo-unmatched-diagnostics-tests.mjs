@@ -73,4 +73,25 @@ const unverifiedBye = diagnoseUnmatchedYahooPlayers(
 
 assert.equal(unverifiedBye.reasons['no-nflverse-week'], 1);
 
+
+// Defense observations remain visible but are not counted as individual failures.
+const mixed = diagnoseUnmatchedYahooPlayers(
+  [n],
+  [
+    y,
+    { ...y, playerId: 'd1', name: 'New England', position: 'DEF', actual: 7 },
+    { ...y, playerId: 'd2', name: 'New York', position: 'def', actual: 0 },
+    { ...y, playerId: 'd3', name: 'Buffalo', position: 'DEF', actual: null },
+    { ...y, playerId: 'u1', name: 'Unmatched Runner', position: 'RB', actual: 5 }
+  ]
+);
+assert.equal(mixed.unmatched, 4);
+assert.equal(mixed.individualUnmatched, 1);
+assert.equal(mixed.defenseUnmatched, 3);
+assert.equal(mixed.defenseNonzero, 1);
+assert.deepEqual(mixed.individualReasons, { 'no-same-team-position-candidate': 1 });
+assert.equal(mixed.reasons['no-same-team-position-candidate'], 4);
+assert.equal(mixed.details.length, 4);
+assert.equal(diagnoseUnmatchedYahooPlayers([n], [y]).defenseUnmatched, 0);
+
 console.log('yahoo-unmatched-diagnostics-tests: all checks passed');
