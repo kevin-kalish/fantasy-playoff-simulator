@@ -14,6 +14,7 @@ const norm = s =>
 const allowedStatuses = new Set([
   'commissioner-exempt',
   'injured-reserve',
+  'officially-inactive',
   'participated-no-fantasy-stats'
 ]);
 
