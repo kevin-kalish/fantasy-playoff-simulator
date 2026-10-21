@@ -51,6 +51,14 @@ export function buildParticipationReviewQueue(unresolved, readiness, games) {
       'player-and-week-confirmed', 'document-supported-status'];
     priorityCounts[bucket]++;
   }
+  // Present the documented review priorities in actual review order.
+  const rank = {first:0, second:1, later:2};
+  records.sort((a,b) =>
+    rank[a.reviewPriority]-rank[b.reviewPriority] ||
+    b.week-a.week ||
+    String(a.position).localeCompare(String(b.position)) ||
+    String(a.yahooPlayerId).localeCompare(String(b.yahooPlayerId))
+  );
   const summary = {
     total:records.length,
     priorityCounts,
