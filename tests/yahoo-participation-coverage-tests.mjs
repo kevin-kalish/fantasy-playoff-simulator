@@ -194,6 +194,19 @@ const nonzeroInactive=summarizeYahooParticipationCoverage([],nonzeroInactiveYaho
 assert.equal(nonzeroInactive.summary.participationEvidenceVerified,0);
 assert.equal(nonzeroInactive.summary.scoringParityPass,false);
 
+// Missing/blank Yahoo actuals must not be interpreted as explicit zero.
+for (const missingActual of [null, undefined, '', '   ']) {
+  const malformedYahoo=[{...evidenceYahoo[0],actual:missingActual}];
+  const malformedAudit=auditYahooScoresWithOverrides([],malformedYahoo);
+  const malformed=summarizeYahooParticipationCoverage([],malformedYahoo,malformedAudit,{
+    participationEvidence:[{...evidence[0],status:'officially-inactive'}],
+    verifiedByeWeeks:[{season:2026,week:1,verified:true,byeTeams:['GB']}]
+  });
+  assert.equal(malformed.summary.unresolvedNonzero,1);
+  assert.equal(malformed.summary.participationEvidenceVerified,0);
+  assert.equal(malformed.unresolved[0].participation,'unverified');
+  assert.equal(malformed.summary.scoringParityPass,false);
+}
 // No evidence: both records remain unverified.
 const withoutEvidence = summarizeEvidence([]);
 
