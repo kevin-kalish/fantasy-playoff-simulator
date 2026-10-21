@@ -298,3 +298,7 @@ The live-dashboard exporter now labels a missing `report.remainingSchedule` as `
 ### Week-level Yahoo reconciliation diagnostics
 
 `npm run calibration:cross-provider-scores` now prints `UNRESOLVED BY WEEK` and writes `participationCoverage.unresolvedByWeek` to the existing private `data/private/yahoo-nflverse-score-audit.json`. Each row includes source readiness, unmatched nonzero/zero counts, and unverified participation counts. Provisional weeks remain included in all overall failure totals; this breakdown is **diagnostic only**, not a waiver, verified participation record, scoring parity approval, or calibration gate. The command may exit 2 while unresolved records remain.
+
+### Private Yahoo zero-point participation triage
+
+After `npm run calibration:cross-provider-scores`, run `npm run calibration:participation-queue` to create `data/private/yahoo-participation-review-queue.json`. The queue selects only unverified zero-point Yahoo individual records from 2026 weeks 1–5 and labels whether the player's team appears in the local kickoff schedule, alongside the week-level actuals readiness. This schedule classification **does not** prove individual participation or establish a verified bye; no scoring, identity override, evidence, or immutable archive is changed. Keep this private JSON out of public commits. `node tests/yahoo-participation-review-queue-tests.mjs` checks filtering, ordering, and conservative classifications.
