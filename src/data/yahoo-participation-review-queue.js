@@ -1,4 +1,6 @@
 // Diagnostic review queue only: never converts absence to participation evidence.
+// Align Rams and legacy team codes with the existing Yahoo unmatched diagnostic.
+const team = s => ({JAC:'JAX',WSH:'WAS',OAK:'LV',SD:'LAC',STL:'LA',LAR:'LA'}[String(s ?? '').toUpperCase()] ?? String(s ?? '').toUpperCase());
 export function buildParticipationReviewQueue(unresolved, readiness, games) {
   if (!Array.isArray(unresolved) || !Array.isArray(readiness) || !Array.isArray(games)) {
     throw new Error('Expected unresolved records, readiness and schedule arrays');
@@ -9,8 +11,8 @@ export function buildParticipationReviewQueue(unresolved, readiness, games) {
   for (const game of games) {
     const k = Number(game.season) + '|' + Number(game.week);
     if (!scheduledTeams.has(k)) scheduledTeams.set(k, new Set());
-    scheduledTeams.get(k).add(game.home_team);
-    scheduledTeams.get(k).add(game.away_team);
+    scheduledTeams.get(k).add(team(game.home_team));
+    scheduledTeams.get(k).add(team(game.away_team));
   }
   const records = unresolved.filter(r =>
     Number(r.season) === 2026 &&
@@ -21,7 +23,7 @@ export function buildParticipationReviewQueue(unresolved, readiness, games) {
   ).map(r => {
     const k = Number(r.season) + '|' + Number(r.week);
     const actualsStatus = readinessByWeek.get(k) ?? 'missing-readiness';
-    const teamScheduled = scheduledTeams.get(k)?.has(r.nflTeam) ?? false;
+    const teamScheduled = scheduledTeams.get(k)?.has(team(r.nflTeam)) ?? false;
     return {
       season:r.season, week:r.week, yahooPlayerId:r.yahooPlayerId,
       name:r.name, position:r.position, nflTeam:r.nflTeam,
