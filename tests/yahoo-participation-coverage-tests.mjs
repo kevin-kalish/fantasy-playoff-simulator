@@ -170,6 +170,30 @@ assert.equal(
   'participated-no-fantasy-stats'
 );
 
+// Official inactive status is distinct from IR and did-not-score participation.
+const inactiveEvidence = summarizeEvidence([
+  {...evidence[0],status:'officially-inactive'}
+]);
+assert.equal(inactiveEvidence.unresolved[0].participation,'officially-inactive');
+assert.equal(inactiveEvidence.summary.participationEvidenceVerified,1);
+assert.equal(inactiveEvidence.summary.participationCoverageComplete,false);
+assert.equal(inactiveEvidence.summary.scoringParityPass,false);
+const unverifiedInactive = summarizeEvidence([
+  {...evidence[0],status:'officially-inactive',verified:false}
+]);
+assert.equal(unverifiedInactive.summary.participationEvidenceVerified,0);
+const insecureInactive = summarizeEvidence([
+  {...evidence[0],status:'officially-inactive',sourceUrl:'http://example.com/inactive'}
+]);
+assert.equal(insecureInactive.summary.participationEvidenceVerified,0);
+const nonzeroInactiveYahoo=[{...evidenceYahoo[0],actual:4}];
+const nonzeroInactiveAudit=auditYahooScoresWithOverrides([],nonzeroInactiveYahoo);
+const nonzeroInactive=summarizeYahooParticipationCoverage([],nonzeroInactiveYahoo,nonzeroInactiveAudit,{
+  participationEvidence:[{...evidence[0],status:'officially-inactive'}]
+});
+assert.equal(nonzeroInactive.summary.participationEvidenceVerified,0);
+assert.equal(nonzeroInactive.summary.scoringParityPass,false);
+
 // No evidence: both records remain unverified.
 const withoutEvidence = summarizeEvidence([]);
 
