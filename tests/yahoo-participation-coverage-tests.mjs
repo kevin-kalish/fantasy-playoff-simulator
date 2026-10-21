@@ -310,6 +310,14 @@ assert.match(
   script,
   /unresolvedRecords:\s*coverage\.unresolved/
 );
+assert.match(script, /unresolvedByWeek/);
+assert.match(script, /UNRESOLVED BY WEEK:/);
+assert.match(script, /actualsStatus: source.status/);
+assert.match(script, /unresolvedNonzero: nonzero/);
+assert.match(script, /unresolvedZero: rows.length - nonzero/);
+// Week-level diagnostic output must not modify the fail-closed audit result.
+assert.match(script, /if \(!report.pass\) \{/);
+assert.match(script, /process.exitCode = 2/);
 
 const exportedCoverage = {
   ...evidenced.summary,
