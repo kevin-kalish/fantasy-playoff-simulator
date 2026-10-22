@@ -7,6 +7,8 @@ npm run calibration:review-weekly-rosters -- data/private/roster_weekly_2026.csv
 node tests/weekly-roster-participation-review-tests.mjs
 ```
 
+The report also includes `summary.byWeek`, `summary.byPosition`, `summary.byStatus`, `summary.reviewBucketCounts`, and `reviewBuckets` keyed by season/week/Yahoo ID. `RES` and `INA` are **snapshot triage categories only**; `ACT` with zero points, missing roster rows and team conflicts require further investigation. No roster status alone becomes verified IR, an official inactive designation, or proof of game participation. The downloaded CSV has no immutable publication timestamp; keep its original bytes and record download time and SHA-256 separately when evaluating provenance.
+
 The private report `data/private/weekly-roster-participation-review.json` joins queue records using exact Yahoo ID, season and week; it distinguishes unique same-team roster snapshots, missing records, duplicate matches and team conflicts. Status codes are **candidates only**, not official game-day inactive verification or dated IR intervals. It does not write participation evidence, change scores, qualify calibration, or access OAuth tokens. Check source freshness and season coverage before interpreting results; unresolved or ambiguous cases remain blocked. Do not commit private CSV or reports.
 
 ### Truncated JerryGM season baseline diagnostics
