@@ -423,3 +423,14 @@ node tests/compare-private-historical-reports-tests.mjs
 ```
 
 The comparison accepts only readiness-passing, trusted schema 10 or 11 reports with valid dated focus-team playoff probabilities and consistent focus-team identity. It prints original report timestamps and probabilities, but **does not** claim these are immutable pregame history captures, does not write `data/private/playoff-probability-history.json`, and does not establish projection provenance or current accuracy. If validation fails, review the report privately; never rewrite trust flags, timestamps, or historical probabilities. This is diagnostic groundwork for recovering the historical view, not a replacement for the original Monte Carlo dashboard or schedule-impact simulations.
+
+
+To append the validated Week 4/5 comparison to a **new copy** of an existing offline dashboard HTML (the source HTML must already be present under `data/private/`):
+
+```powershell
+node tests/add-private-dashboard-comparison-tests.mjs
+node scripts/add-private-dashboard-comparison.mjs
+Start-Process .\data\private\live-dashboard-with-comparison.html
+```
+
+The new output is `data/private/live-dashboard-with-comparison.html`. The script refuses to overwrite existing output or modify the source, and does not rerun Yahoo, Monte Carlo or projection providers. The panel is a separately labeled table; the original dashboard's immutable-history chart remains unchanged. It does **not** restore missing schedule-impact rankings. If the output already exists, use a new private output filename as the second argument rather than deleting any saved historical dashboard.
