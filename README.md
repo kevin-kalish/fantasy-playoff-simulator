@@ -1,3 +1,14 @@
+### Read-only weekly roster participation triage (2026)
+
+After `npm run calibration:participation-queue`, obtain the 2026 nflverse weekly-roster CSV from the official `weekly_rosters` release, save it **privately** as `data/private/roster_weekly_2026.csv`, and run:
+
+```powershell
+npm run calibration:review-weekly-rosters -- data/private/roster_weekly_2026.csv
+node tests/weekly-roster-participation-review-tests.mjs
+```
+
+The private report `data/private/weekly-roster-participation-review.json` joins queue records using exact Yahoo ID, season and week; it distinguishes unique same-team roster snapshots, missing records, duplicate matches and team conflicts. Status codes are **candidates only**, not official game-day inactive verification or dated IR intervals. It does not write participation evidence, change scores, qualify calibration, or access OAuth tokens. Check source freshness and season coverage before interpreting results; unresolved or ambiguous cases remain blocked. Do not commit private CSV or reports.
+
 ### Truncated JerryGM season baseline diagnostics
 
 The cached JerryGM season response may include `truncated: true`, `count`, `total`, `generatedAt`, and `dataThroughWeek`. The weekly run now reports `SEASON SOURCE QUALITY` and `SEASON SOURCE POSITIONS` separately from **roster match coverage**. A 100-of-1,868 provider response is a source limit, not proof of 1,768 failed identity matches. Genuine season baselines are retained where matched; other roster players continue using the existing lower-confidence, recency-weighted weekly horizon. No synthetic projections are counted as provider baselines. The cache remains private, and these diagnostics make no additional API calls or change the simulation model.
