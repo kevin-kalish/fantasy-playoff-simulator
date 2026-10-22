@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {appendHistoricalComparison} from '../scripts/add-private-dashboard-comparison.mjs';
+const original='<!doctype html><html><body><main>Original 50,000 simulations</main></body></html>';
+const rows=[{week:4,generatedAt:'2026-10-06T14:18:50Z',playoffProbability:.534},{week:5,generatedAt:'2026-10-07T18:05:44Z',playoffProbability:.529}];
+const result=appendHistoricalComparison(original,rows);
+assert.match(result,/Original 50,000 simulations/);
+assert.match(result,/53\.4%/);
+assert.match(result,/52\.9%/);
+assert.match(result,/not the pregame history archive/);
+assert.equal((result.match(/id="historical-report-comparison"/g)||[]).length,1);
+assert.equal(original.includes('historical-report-comparison'),false);
+assert.throws(()=>appendHistoricalComparison(result,rows),/already present/);
+assert.throws(()=>appendHistoricalComparison('invalid',rows),/closing body/);
+assert.throws(()=>appendHistoricalComparison(original,[]),/No validated/);
+const escaped=appendHistoricalComparison(original,[{week:4,generatedAt:'<script>alert(1)</script>',playoffProbability:.5}]);
+assert.doesNotMatch(escaped,/<script>alert/);
+assert.match(escaped,/&lt;script&gt;/);
+console.log('add-private-dashboard-comparison-tests: all checks passed');
