@@ -66,6 +66,29 @@ Matchup-impact calculations now support a separate conditional simulation budget
 
 If a trusted Yahoo weekly run fails readiness because a submitted lineup has empty starter slots, the weekly command now attempts a **private diagnostic what-if comparison**. The normal report stays blocked. A separate `data/private/lineup-scenario-week-<week>.json` contains paired Monte Carlo forecasts using (1) the actual Yahoo starters, including empty slots, and (2) an optimized eligible lineup **only for teams with incomplete submitted lineups**. Other teams retain their submitted current-week starters. The hypothetical is not a roster transaction, a Yahoo lineup update, or a trusted replacement forecast. The comparison is withheld if the optimized scenario fails readiness or unrelated data-quality errors exist. Set `LINEUP_SCENARIO_COMPARE=false` to disable the optional diagnostic. It uses already loaded projections and makes no extra provider requests. Same-seed simulations are reproducible but not guaranteed to be common-random-number paired at the player level.
 
+### October 27 ESPN go/no-go and shared league contract (private beta)
+
+**Decision rule:** Yahoo is the live private-beta baseline for November 6. ESPN remains a **contract-compatible candidate**, not a verified live integration. Do not infer ESPN connectivity or scoring parity from the `source.provider: "espn"` normalization fixture. The shared contract lives in `src/data/league-snapshot.js` (`LEAGUE_SNAPSHOT_VERSION=1`), with provider-label tests in `tests/league-snapshot-tests.mjs`. No live ESPN adapter or authenticated ESPN end-to-end capture was verified in this review.
+
+Before approving ESPN for beta, capture a real, authorized ESPN league privately and establish: stable provider/league/team/player identities; standings and schedule reconciliation; league-specific playoff spots, weeks, tiebreakers and reseeding; roster slots and lineup eligibility; scoring settings and completed-game parity; source timestamps/provenance; and passing simulation/readiness/trust gates. The normalizer's defaults (including playoff spots, playoff weeks, and missing player projections) are **not evidence** of actual ESPN settings. Missing or ambiguous settings must block provider approval upstream, not silently use defaults. Never publish league snapshots, cookies, OAuth tokens, or credentials.
+
+**October 27 decision:** GO only with independently verified real ESPN data and the same shared-contract acceptance gates as Yahoo; otherwise NO-GO for live ESPN in the November 6 private beta, while retaining provider-independent fixtures and architecture. Avoid new ESPN features that displace Yahoo data-integrity, calibration, or private-dashboard acceptance work.
+
+**Week 6 Yahoo/NFL actuals checkpoint (October 22, 2026):** The private nflverse import captured 23 Week 6 player records for DEN and SEA, covering 2 of 28 scheduled teams; all 14 kickoffs are present. The importer in `src/data/completed-nfl-actuals.js` intentionally waits until kickoff plus five days. The last Week 6 kickoff is 2026-10-20T00:15:00Z; it becomes eligible at 2026-10-25T00:15:00Z (October 24, 8:15 PM Eastern). At the October 22 checkpoint, scoring priority reported 99 unmatched nonzero Yahoo scores (all Week 6), 120 unmatched zero scores, zero observed score mismatches, and failed scoring parity/participation gates. Zero mismatches among compared records **does not** establish parity. The historical import's 318 rejected rows are an aggregate, not independently classified Week 6 rejects.
+
+After the buffer, preserve private backups **outside the repository**, then run the existing `calibration:fetch-actuals`, `calibration:actuals-quality`, `calibration:cross-provider-scores`, and `calibration:scoring-priority` commands in order, checking source freshness and actual team coverage before interpreting reconciliation. The fetch command overwrites `data/private/historical-actuals.json`; do not run it before the cutoff or without a backup. Do not bypass finalization, fabricate participation evidence, alter scoring to clear a gate, or overwrite immutable pregame forecasts. The 120 unresolved zero-point records require independent participation evidence, not assumed inactivity.
+
+Focused offline regression commands (these do **not** prove live ESPN or NFL actuals accuracy):
+
+```powershell
+node tests/league-snapshot-tests.mjs
+node tests/completed-nfl-actuals-tests.mjs
+node tests/completed-actuals-quality-tests.mjs
+node tests/yahoo-nflverse-score-audit-tests.mjs
+node tests/yahoo-participation-coverage-tests.mjs
+node tests/scoring-readiness-priority-tests.mjs
+```
+
 # Fantasy Playoff Simulator
 
 Monte Carlo fantasy football analytics application for estimating playoff, seed, matchup, and championship probabilities. Current live development targets a 10-team Yahoo Fantasy Football league with 8 playoff spots.
