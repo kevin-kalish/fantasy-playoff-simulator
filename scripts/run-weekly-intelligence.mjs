@@ -138,6 +138,7 @@ if(confidence){const derived=prepared.diagnostics.longRangeProjectionWeeks??[];i
 console.error(`SIMULATION INPUT: ${fingerprint}; seed ${prepared.input.seed}; variant ${prepared.input.modelVariant}.`);
 console.error(`READY CHECK: ${readiness.ready?'PASS':'FAIL'}; projections ${(100*readiness.projectionCoverage.matchRate).toFixed(1)}% usable; incomplete lineups ${readiness.incompleteLineups.length}.`);
 if(!readiness.ready){
+ for(const row of readiness.incompleteLineupDetails??[])for(const slot of row.slots)console.error(`INCOMPLETE LINEUP: ${row.teamName??row.teamId} W${row.week} ${slot.slot}: ${slot.reason} (eligible ${slot.eligibleRosterCount}; bye ${slot.byeCount}; unavailable ${slot.unavailableCount}; missing projections ${slot.missingProjectionCount}).`);
  if(spec.sourceAudit?.passed===true&&readiness.incompleteLineups.length&&process.env.LINEUP_SCENARIO_COMPARE!=='false'){
   try{
    const hypothetical=prepareLeagueSimulation(snapshot,loaded.rows,{calibrationReport,simulations,seed:Number(spec.seed??process.env.SEED??20260923),modelVariant:spec.modelVariant??process.env.MODEL_VARIANT??'correlated',minimumProjectionMatchRate,weeks,season,seasonProjectionRows,longRangeSeasonWeight,lineupPolicy:'optimized-hypothetical'});
