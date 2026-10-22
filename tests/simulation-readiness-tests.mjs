@@ -1,3 +1,5 @@
+import {yahooPlayer} from '../src/data/yahoo-normalize.js';
+import {normalizeLeagueSnapshot} from '../src/data/league-snapshot.js';
 import assert from 'node:assert/strict';
 import {assessSimulationReadiness} from '../src/model/simulation-readiness.js';
 const base={diagnostics:{projectionCoverage:{total:100,matched:94,bye:2,missing:4,usable:96,matchRate:.96,weeks:[11,12]},incompleteLineups:[],lineupSlots:['QB','RB']},input:{teams:[{id:'A'},{id:'B'}],schedule:[{week:11}],playoffWeeks:[15,16,17],modelVariant:'correlated',simulations:50000,seed:1,calibration:{bias:{}},nflGames:[{}]}};
@@ -12,4 +14,11 @@ assert.equal(r.incompleteLineupDetails[0].slots[0].reason,'all-eligible-on-bye')
 const missing=structuredClone(kicker);missing.league.teams[0].roster[0].byeWeek=13;missing.league.teams[0].roster[0].projectionStatus='missing';missing.league.teams[0].roster[0].projection=null;
 r=assessSimulationReadiness(missing);
 assert.equal(r.incompleteLineupDetails[0].slots[0].reason,'all-eligible-missing-projection');
+const yahoo=yahooPlayer([[{player_key:'470.p.32417'},{name:{full:'Chase McLaughlin'}},{display_position:'K'},{bye_weeks:{week:'10'}}]]);
+assert.equal(yahoo.byeWeek,10);
+const normalized=normalizeLeagueSnapshot({teams:[{id:'A',roster:[yahoo]},{id:'B',roster:[{id:'other',name:'Other',position:'K'}]}],schedule:[{week:10,matchups:[['A','B']]}]});
+assert.equal(normalized.teams[0].roster[0].byeWeek,10);
+const unknown=structuredClone(missing);delete unknown.league.teams[0].roster[0].byeWeek;
+r=assessSimulationReadiness(unknown);
+assert.equal(r.incompleteLineupDetails[0].slots[0].unknownByeCount,1);
 console.log('simulation-readiness-tests: all checks passed');
