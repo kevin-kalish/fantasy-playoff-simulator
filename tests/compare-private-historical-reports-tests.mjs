@@ -14,6 +14,6 @@ assert.deepEqual(comparison.map(x=>x.week),[4,5]);
 assert.equal(comparison.excluded[0].week,3);
 assert.throws(()=>compareHistoricalReports([legacy]),/No comparable/);
 const invalidLegacy=structuredClone(legacy);
-invalidLegacy.document.trust={trusted:false};
+invalidLegacy.document.report.trust={trusted:false};
 assert.throws(()=>compareHistoricalReports([invalidLegacy,make(4,.4)]),/trusted/);
 console.log('compare-private-historical-reports-tests: all checks passed');
