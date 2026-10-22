@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {auditActiveZeroSnapCases} from '../src/data/active-zero-snap-audit.js';
+const records=[{season:2026,week:4,name:'Rashee Rice',yahooPlayerId:'470.p.1',nflTeam:'KC',position:'WR',reviewBucket:'activeZero',rosterStatus:'ACT'},{season:2026,week:2,name:'Mike Gesicki',yahooPlayerId:'470.p.2',nflTeam:'CIN',position:'TE',reviewBucket:'activeZero',rosterStatus:'ACT'}];
+const snaps=records.map((r,i)=>({...r,classification:'positive-snaps-name-match',totalSnaps:i?21:6}));
+const result=auditActiveZeroSnapCases({schemaVersion:1,records},{schemaVersion:1,records:snaps});
+assert.equal(result.cases.length,2);
+assert.ok(result.cases.every(x=>!x.verified&&!x.scoringVerified&&!x.identityVerified&&!x.evidenceEligible));
+assert.throws(()=>auditActiveZeroSnapCases({schemaVersion:1,records},{schemaVersion:1,records:[snaps[0]]}),/Missing/);
+assert.throws(()=>auditActiveZeroSnapCases({schemaVersion:1,records},{schemaVersion:1,records:[...snaps,snaps[0]]}),/Duplicate/);
+assert.throws(()=>auditActiveZeroSnapCases({schemaVersion:1,records},{schemaVersion:1,records:[{...snaps[0],reviewBucket:'reserveSnapshot'},snaps[1]]),/Conflicting/);
+console.log('active-zero-snap-audit-tests: all checks passed');
