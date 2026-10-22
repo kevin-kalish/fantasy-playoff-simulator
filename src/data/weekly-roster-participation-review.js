@@ -35,8 +35,23 @@ export function reviewWeeklyRosterParticipation(queue, rosterRows) {
       verified:false, reviewRequired:true
     };
   });
-  const counts = {};
-  for (const record of records) counts[record.classification] = (counts[record.classification] ?? 0)+1;
-  return {schemaVersion:1, mode:'read-only-weekly-roster-triage', summary:{total:records.length,counts},records,
+  const counts = {}, byWeek = {}, byPosition = {}, byStatus = {};
+  const reviewBuckets = {reserveSnapshot:[],inactiveSnapshot:[],activeZero:[],identityOrCoverageException:[],otherStatus:[]};
+  for (const record of records) {
+    counts[record.classification] = (counts[record.classification] ?? 0)+1;
+    const wk = String(record.week), pos = String(record.position);
+    byWeek[wk] ??= {}; byPosition[pos] ??= {};
+    const status = record.rosterStatus || '(missing)';
+    byWeek[wk][status] = (byWeek[wk][status] ?? 0)+1;
+    byPosition[pos][status] = (byPosition[pos][status] ?? 0)+1;
+    byStatus[status] = (byStatus[status] ?? 0)+1;
+    const bucket = record.classification !== 'roster-status-candidate' ? 'identityOrCoverageException'
+      : status === 'RES' ? 'reserveSnapshot'
+      : status === 'INA' ? 'inactiveSnapshot'
+      : status === 'ACT' ? 'activeZero' : 'otherStatus';
+    reviewBuckets[bucket].push([record.season,record.week,record.yahooPlayerId].join('|'));
+    record.reviewBucket = bucket;
+  }
+  return {schemaVersion:1, mode:'read-only-weekly-roster-triage', summary:{total:records.length,counts,byWeek,byPosition,byStatus,reviewBucketCounts:Object.fromEntries(Object.entries(reviewBuckets).map(([k,v])=>[k,v.length]))},reviewBuckets,records,
     note:'Snapshot status is not dated transaction evidence or game-day inactive proof. No automatic verification, scoring change, or calibration eligibility.'};
 }
