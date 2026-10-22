@@ -13,7 +13,7 @@ try{
  assert.match(html,/&lt;script&gt;/);
  assert.doesNotMatch(html,/<script>alert/);
  assert.match(html,/Test &amp; Player/);
- assert.match(html,/675\\.04/);
+ assert.match(html,/675\.04/);
  assert.match(html,/data-team-target/);
  assert.match(html,/Week 8/);
  assert.match(html,/Remaining schedule/);
