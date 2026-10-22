@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import {prioritizeScoringReadiness} from '../src/data/scoring-readiness-priority.js';
 try {
  const source='data/private/yahoo-participation-coverage.json';
- if(!fs.existsSync(source))throw Error('Missing '+source+'; provide path to an existing private coverage report as first argument');
  const input=process.argv[2]??source;
+ if(!fs.existsSync(input))throw Error('Missing '+input+'; pass a private coverage report path');
  if(!/^data\/private\/[a-zA-Z0-9_.-]+\.json$/.test(input))throw Error('Coverage input must be directly under data/private/');
  const report=JSON.parse(fs.readFileSync(input,'utf8'));
  const result=prioritizeScoringReadiness(report);
