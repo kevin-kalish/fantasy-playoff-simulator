@@ -13,7 +13,9 @@ const rows=[
 const result=reviewWeeklyRosterParticipation(q,rows);
 assert.deepEqual(result.records.map(r=>r.classification),['roster-status-candidate','ambiguous-weekly-roster','missing-weekly-roster']);
 assert.equal(result.records[0].rosterStatus,'RES');
-assert.deepEqual(result.summary.byStatus, {RES:1,INA:1,'(missing)':1});
+assert.deepEqual(result.summary.byStatus, {RES:1,'(missing)':2});
+assert.equal(result.summary.byWeek['5']['(missing)'],2);
+assert.equal(result.records[1].rosterStatus,null);
 assert.equal(result.summary.reviewBucketCounts.reserveSnapshot,1);
 assert.equal(result.summary.reviewBucketCounts.identityOrCoverageException,2);
 assert.equal(result.records[0].reviewBucket,'reserveSnapshot');
