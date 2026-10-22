@@ -14,11 +14,12 @@ export function diagnoseIncompleteLineups(prepared){
   const slots=empty.map(p=>{
    const slot=norm(p.lineupSlot??p.position);
    const candidates=roster.filter(p=>(ELIGIBLE[slot]??[slot]).includes(norm(p.position)));
-   const bye=candidates.filter(p=>Number(p.byeWeek)===week);
+   const bye=candidates.filter(p=>p.byeWeek!=null&&Number(p.byeWeek)===week);
+   const unknownBye=candidates.filter(p=>p.byeWeek==null);
    const unavailable=candidates.filter(p=>UNAVAILABLE.has(String(p.status??'').toUpperCase()));
    const missing=candidates.filter(p=>p.projectionStatus==='missing'||p.projection==null||!Number.isFinite(Number(p.projection)));
-   const reason=!candidates.length?'no-rostered-eligible-player':candidates.every(p=>Number(p.byeWeek)===week)?'all-eligible-on-bye':candidates.every(p=>UNAVAILABLE.has(String(p.status??'').toUpperCase()))?'all-eligible-unavailable':candidates.every(p=>p.projectionStatus==='missing'||p.projection==null||!Number.isFinite(Number(p.projection)))?'all-eligible-missing-projection':'insufficient-usable-eligible-players';
-   return {slot,reason,eligibleRosterCount:candidates.length,byeCount:bye.length,unavailableCount:unavailable.length,missingProjectionCount:missing.length};
+   const reason=!candidates.length?'no-rostered-eligible-player':candidates.every(p=>p.byeWeek!=null&&Number(p.byeWeek)===week)?'all-eligible-on-bye':candidates.every(p=>UNAVAILABLE.has(String(p.status??'').toUpperCase()))?'all-eligible-unavailable':candidates.every(p=>p.projectionStatus==='missing'||p.projection==null||!Number.isFinite(Number(p.projection)))?'all-eligible-missing-projection':'insufficient-usable-eligible-players';
+   return {slot,reason,eligibleRosterCount:candidates.length,byeCount:bye.length,unavailableCount:unavailable.length,missingProjectionCount:missing.length,unknownByeCount:unknownBye.length,byeEvidence:unknownBye.length?'incomplete':'roster-field'};
   });
   return {...row,slots,diagnosticStatus:empty.length===Number(row.emptySlots)?'complete':'partial'};
  });
