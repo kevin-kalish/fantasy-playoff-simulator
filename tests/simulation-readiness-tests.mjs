@@ -5,4 +5,11 @@ let r=assessSimulationReadiness(base);assert.equal(r.ready,true);assert.deepEqua
 r=assessSimulationReadiness({...base,diagnostics:{...base.diagnostics,projectionCoverage:{...base.diagnostics.projectionCoverage,matchRate:.89}}});assert.equal(r.ready,false);assert.match(r.errors[0],/Projection coverage/);
 r=assessSimulationReadiness({...base,diagnostics:{...base.diagnostics,incompleteLineups:[{teamId:'A',week:11}]}});assert.equal(r.ready,false);assert.match(r.errors[0],/incomplete/);
 r=assessSimulationReadiness({...base,input:{...base.input,calibration:null,nflGames:[]}});assert.equal(r.ready,true);assert.equal(r.warnings.length,2);
+const kicker={...base,league:{teams:[{id:'A',name:'Team A',roster:[{name:'Kicker',position:'K',byeWeek:10,projection:7}],weeklyLineups:{10:[{status:'EMPTY',position:'K',lineupSlot:'K'}]}}]},diagnostics:{...base.diagnostics,incompleteLineups:[{teamId:'A',teamName:'Team A',week:10,emptySlots:1}]}};
+r=assessSimulationReadiness(kicker);
+assert.equal(r.ready,false);
+assert.equal(r.incompleteLineupDetails[0].slots[0].reason,'all-eligible-on-bye');
+const missing=structuredClone(kicker);missing.league.teams[0].roster[0].byeWeek=13;missing.league.teams[0].roster[0].projectionStatus='missing';missing.league.teams[0].roster[0].projection=null;
+r=assessSimulationReadiness(missing);
+assert.equal(r.incompleteLineupDetails[0].slots[0].reason,'all-eligible-missing-projection');
 console.log('simulation-readiness-tests: all checks passed');
