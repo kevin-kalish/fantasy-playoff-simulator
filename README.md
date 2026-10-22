@@ -1,3 +1,14 @@
+### Focused active-zero identity/scoring audit
+
+After the weekly roster and snap-count reports are generated, run:
+
+```powershell
+npm run calibration:audit-active-zero
+node tests/active-zero-snap-audit-tests.mjs
+```
+
+This produces `data/private/active-zero-snap-audit.json` and displays Yahoo player IDs, week, team, and provisional snaps for Rashee Rice (week 4) and Mike Gesicki (week 2). It blocks missing, duplicated or conflicting target identities and lists required independent player-ID, game-date, and scoring checks. The source reports cannot establish those facts; the resulting cases remain `identityVerified:false`, `scoringVerified:false`, and `evidenceEligible:false`. Do not publish private reports or auto-accept participation evidence.
+
 ### Read-only snap-count cross-check (2026)
 
 The nflverse weekly roster `INA` and `RES` codes are roster statuses, **not official dated game-day inactive or IR evidence**. The nflverse play-level participation dataset for 2026 is not available in-season; PFR snap counts are a separate diagnostic signal. Download the `snap_counts_2026.csv` asset from the nflverse `snap_counts` release to `data/private/snap_counts_2026.csv` and run:
