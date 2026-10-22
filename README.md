@@ -411,3 +411,15 @@ Run `npm run calibration:review-candidates` locally to compare the three previou
 Run `node scripts/build-yahoo-only-dashboard.mjs data/private/fightin-kali-current.json`, then `Start-Process .\\data\\private\\yahoo-only-dashboard.html` in PowerShell. This generates a local static HTML view of the saved Yahoo snapshot's standings, records, roster entries and schedule-week count. The source week is displayed explicitly (a Week 7 snapshot is not Week 8). No Yahoo API calls, projection requests, Week 6 actuals, simulation or calibration run. Playoff/championship odds and recommendations are explicitly unavailable. The output must remain in `data/private/`; never publish or commit it. Run `node tests/yahoo-only-dashboard-tests.mjs` for provider-free checks. The existing trusted simulation dashboard and its readiness gate are unchanged.
 
 Yahoo-only snapshot view now supports keyboard-accessible clickable standings to open team rosters, two-decimal points formatting, and expandable remaining-week matchups sourced from the snapshot. Schedule entries are not predictions. Refresh the local HTML by rerunning the builder; it does not auto-refresh Yahoo.
+
+
+### Historical dashboard recovery: read-only comparison
+
+To inspect surviving local historical Yahoo reports without changing forecasts or inventing a missing probability-history archive:
+
+```powershell
+node scripts/compare-private-historical-reports.mjs
+node tests/compare-private-historical-reports-tests.mjs
+```
+
+The comparison accepts only readiness-passing, trusted schema 10 or 11 reports with valid dated focus-team playoff probabilities and consistent focus-team identity. It prints original report timestamps and probabilities, but **does not** claim these are immutable pregame history captures, does not write `data/private/playoff-probability-history.json`, and does not establish projection provenance or current accuracy. If validation fails, review the report privately; never rewrite trust flags, timestamps, or historical probabilities. This is diagnostic groundwork for recovering the historical view, not a replacement for the original Monte Carlo dashboard or schedule-impact simulations.
