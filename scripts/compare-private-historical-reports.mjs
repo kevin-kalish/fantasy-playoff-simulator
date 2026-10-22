@@ -6,11 +6,17 @@ import {fileURLToPath} from 'node:url';
 export function compareHistoricalReports(documents) {
   if (!Array.isArray(documents) || documents.length === 0) throw new Error('No historical reports supplied');
   const rows = [];
+  const excluded = [];
   let teamId = null;
   const weeks = new Set();
   for (const {week, document} of documents) {
     const report = document?.report;
     if (!Number.isInteger(week) || week < 1 || week > 18 || weeks.has(week)) throw new Error('Invalid or duplicate report week');
+    if (report?.schemaVersion === 5 && document?.readiness?.ready === true && report?.trust?.trusted === true && !Array.isArray(report.league?.outlook)) {
+      excluded.push({week,reason:'Legacy schema 5 has no league outlook; probability cannot be verified against focus team'});
+      weeks.add(week);
+      continue;
+    }
     if (document?.readiness?.ready !== true || report?.trust?.trusted !== true) throw new Error('Report is not readiness-passing and trusted');
     if (![10, 11].includes(report.schemaVersion)) throw new Error('Unsupported report schema');
     if (!Number.isFinite(Date.parse(report.generatedAt))) throw new Error('Invalid report timestamp');
@@ -24,10 +30,12 @@ export function compareHistoricalReports(documents) {
     weeks.add(week);
     rows.push({week,generatedAt:report.generatedAt,playoffProbability:probability,schemaVersion:report.schemaVersion});
   }
+  if (!rows.length) throw new Error('No comparable schema 10/11 reports');
   rows.sort((a,b) => a.week-b.week);
   for (let i=1;i<rows.length;i++) {
     if (Date.parse(rows[i].generatedAt) < Date.parse(rows[i-1].generatedAt)) throw new Error('Report dates conflict with week ordering');
   }
+  Object.defineProperty(rows,'excluded',{value:excluded,enumerable:false});
   return rows;
 }
 
@@ -38,6 +46,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const documents=names.map(name=>({week:Number(name.match(/week-(\d+)/)[1]),document:JSON.parse(fs.readFileSync(path.join(privateRoot,name),'utf8'))}));
   const rows=compareHistoricalReports(documents);
   console.log('HISTORICAL REPORT COMPARISON — not a captured weekly history archive; forecasts shown as originally saved.');
+  for (const item of rows.excluded) console.log('EXCLUDED week '+item.week+': '+item.reason);
   for (const row of rows) console.log('Week '+row.week+' | '+row.generatedAt+' | '+(row.playoffProbability*100).toFixed(1)+'% | schema '+row.schemaVersion);
   console.log('No immutable history archive was created or modified.');
 }
