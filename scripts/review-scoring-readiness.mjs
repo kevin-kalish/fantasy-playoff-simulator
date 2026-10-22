@@ -1,21 +1,7 @@
 import fs from 'node:fs';
 import {prioritizeScoringReadiness} from '../src/data/scoring-readiness-priority.js';
+import {coverageFromAudit} from '../src/data/scoring-priority-audit-adapter.js';
 
-export function coverageFromAudit(audit) {
- if (!audit || typeof audit !== 'object' || !audit.participationCoverage ||
-     !Array.isArray(audit.participationCoverage.unresolvedRecords) ||
-     !Array.isArray(audit.participationCoverage.unresolvedByWeek) ||
-     !audit.actualsReadiness || !Array.isArray(audit.actualsReadiness.weeks) ||
-     !audit.summary || !Number.isInteger(audit.summary.totalMatched)) {
-   throw Error('Invalid cross-provider audit; cannot derive scoring priority');
- }
- const {unresolvedRecords, unresolvedByWeek, ...summary} = audit.participationCoverage;
- if (unresolvedByWeek.reduce((n, w) => n + w.unresolved, 0) !== unresolvedRecords.length ||
-     unresolvedByWeek.reduce((n, w) => n + w.unresolvedNonzero, 0) !== summary.unresolvedNonzero) {
-   throw Error('Cross-provider audit week totals conflict');
- }
- return {schemaVersion: 1, summary, unresolved: unresolvedRecords};
-}
 
 try {
  const source='data/private/yahoo-nflverse-score-audit.json';
