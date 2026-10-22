@@ -7,5 +7,5 @@ assert.equal(result.cases.length,2);
 assert.ok(result.cases.every(x=>!x.verified&&!x.scoringVerified&&!x.identityVerified&&!x.evidenceEligible));
 assert.throws(()=>auditActiveZeroSnapCases({schemaVersion:1,records},{schemaVersion:1,records:[snaps[0]]}),/Missing/);
 assert.throws(()=>auditActiveZeroSnapCases({schemaVersion:1,records},{schemaVersion:1,records:[...snaps,snaps[0]]}),/Duplicate/);
-assert.throws(()=>auditActiveZeroSnapCases({schemaVersion:1,records},{schemaVersion:1,records:[{...snaps[0],reviewBucket:'reserveSnapshot'},snaps[1]]),/Conflicting/);
+assert.throws(()=>auditActiveZeroSnapCases({schemaVersion:1,records},{schemaVersion:1,records:[{...snaps[0],reviewBucket:'reserveSnapshot'},snaps[1]]}),/Conflicting/);
 console.log('active-zero-snap-audit-tests: all checks passed');
