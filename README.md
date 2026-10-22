@@ -1,3 +1,14 @@
+### Read-only snap-count cross-check (2026)
+
+The nflverse weekly roster `INA` and `RES` codes are roster statuses, **not official dated game-day inactive or IR evidence**. The nflverse play-level participation dataset for 2026 is not available in-season; PFR snap counts are a separate diagnostic signal. Download the `snap_counts_2026.csv` asset from the nflverse `snap_counts` release to `data/private/snap_counts_2026.csv` and run:
+
+```powershell
+npm run calibration:cross-check-snaps -- data/private/snap_counts_2026.csv
+node tests/snap-count-participation-cross-check-tests.mjs
+```
+
+The private `data/private/snap-count-participation-cross-check.json` reports positive, zero, missing, ambiguous, or invalid snap matches and hashes the input. Matching uses normalized player name, team, position, season and week **provisionally**, not stable player identity; duplicate matches fail closed. Positive snaps suggest on-field participation but are not accepted evidence until identity is independently confirmed. Zero or missing snaps **never** prove inactivity. No evidence, Yahoo scores, historical forecasts or calibration gates are modified. Do not commit private source or reports.
+
 ### Read-only weekly roster participation triage (2026)
 
 After `npm run calibration:participation-queue`, obtain the 2026 nflverse weekly-roster CSV from the official `weekly_rosters` release, save it **privately** as `data/private/roster_weekly_2026.csv`, and run:
