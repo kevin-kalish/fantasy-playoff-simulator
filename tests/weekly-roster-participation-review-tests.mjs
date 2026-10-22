@@ -13,6 +13,13 @@ const rows=[
 const result=reviewWeeklyRosterParticipation(q,rows);
 assert.deepEqual(result.records.map(r=>r.classification),['roster-status-candidate','ambiguous-weekly-roster','missing-weekly-roster']);
 assert.equal(result.records[0].rosterStatus,'RES');
+assert.deepEqual(result.summary.byStatus, {RES:1,INA:1,'(missing)':1});
+assert.equal(result.summary.reviewBucketCounts.reserveSnapshot,1);
+assert.equal(result.summary.reviewBucketCounts.identityOrCoverageException,2);
+assert.equal(result.records[0].reviewBucket,'reserveSnapshot');
+assert.equal(result.records[1].reviewBucket,'identityOrCoverageException');
+assert.equal(result.summary.byWeek['5'].RES,1);
+assert.equal(result.summary.byPosition.RB.RES,1);
 assert.ok(result.records.every(r=>r.verified===false && r.reviewRequired===true));
 assert.equal(reviewWeeklyRosterParticipation({schemaVersion:1,records:[q.records[1]]},[rows[1]]).records[0].classification,'team-identity-conflict');
 assert.throws(()=>reviewWeeklyRosterParticipation({...q,records:[{...q.records[0],yahooActual:5}]},rows),/ineligible/);
