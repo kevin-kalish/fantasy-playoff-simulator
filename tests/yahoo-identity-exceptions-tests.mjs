@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {auditIdentityExceptions} from '../src/data/yahoo-identity-exceptions.js';
+const y=[{season:2026,week:1,playerId:'y1',position:'WR',nflTeam:'HOU',actual:3.8},{season:2026,week:1,playerId:'def',position:'DEF',actual:8}];
+const n=[{season:2026,week:1,playerId:'n1',position:'WR',nflTeam:'ARI',actual:3.8}];
+const override={season:2026,week:1,yahooPlayerId:'y1',nflversePlayerId:'n1',reason:'reviewed-trade'};
+const result=auditIdentityExceptions(n,y,{overrides:[override]});
+assert.equal(result.excludedDefenses,1);
+assert.equal(result.reviewedMatches.length,1);
+assert.equal(result.reviewedMatches[0].scoreDifference,0);
+assert.equal(auditIdentityExceptions(n,y,{overrides:[override,override]}).rejected[0].reason,'duplicate-override');
+assert.equal(auditIdentityExceptions(n,y,{overrides:[{...override,nflversePlayerId:'missing'}]}).reviewedMatches.length,0);
+console.log('yahoo-identity-exceptions-tests: all checks passed');

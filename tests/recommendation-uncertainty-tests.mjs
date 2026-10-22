@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {assessRecommendationSignal,assessReplicatedRecommendationSignal} from '../src/model/recommendation-uncertainty.js';
+for(const [n,d,expected] of [[10000,.08,'POSITIVE_SIGNAL'],[10000,-.08,'NEGATIVE_SIGNAL'],[1000,.01,'INCONCLUSIVE'],[0,.5,'UNAVAILABLE']]) assert.equal(assessRecommendationSignal({simulations:n,championshipDelta:d}).status,expected);
+assert.equal(assessReplicatedRecommendationSignal([{simulations:10000,championshipDelta:.08},{simulations:10000,championshipDelta:.09}]).status,'CONSISTENT_POSITIVE');
+assert.equal(assessReplicatedRecommendationSignal([{simulations:10000,championshipDelta:.08},{simulations:10000,championshipDelta:.001}]).status,'MIXED_OR_INCONCLUSIVE');
+assert.equal(assessReplicatedRecommendationSignal([{simulations:10000,championshipDelta:.08}]).status,'INSUFFICIENT_REPLICATIONS');
+const consistentlySmall=assessReplicatedRecommendationSignal([{simulations:20000,championshipDelta:.002},{simulations:20000,championshipDelta:.00265},{simulations:20000,championshipDelta:.00205}]);
+assert.equal(consistentlySmall.status,'MIXED_OR_INCONCLUSIVE');
+assert.equal(consistentlySmall.direction,'ALL_POSITIVE');
+assert.equal(consistentlySmall.positiveRuns,3);
+assert.equal(consistentlySmall.statisticalStrength,'INCONCLUSIVE');
+assert.equal(consistentlySmall.projectionConfidence,'NOT_ASSESSED');
+assert.equal(assessReplicatedRecommendationSignal([{simulations:10000,championshipDelta:-.08},{simulations:10000,championshipDelta:-.09}]).direction,'ALL_NEGATIVE');
+assert.equal(assessReplicatedRecommendationSignal([{simulations:10000,championshipDelta:.08},{simulations:10000,championshipDelta:-.08}]).direction,'MIXED');
+console.log('recommendation-uncertainty-tests: all checks passed');

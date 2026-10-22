@@ -1,3 +1,4 @@
+import {diagnoseIncompleteLineups} from './incomplete-lineup-diagnostic.js';
 export function assessSimulationReadiness(prepared,{minimumProjectionMatchRate=.9}={}){
  const coverage=prepared?.diagnostics?.projectionCoverage||{total:0,matched:0,bye:0,missing:0,usable:0,matchRate:0,weeks:[]};
  const incomplete=prepared?.diagnostics?.incompleteLineups||[];
@@ -8,6 +9,8 @@ export function assessSimulationReadiness(prepared,{minimumProjectionMatchRate=.
  const currentUnavailable=audit.filter(x=>Number(x.week)===currentWeek&&!x.uncertain);
  const uncertain=audit.filter(x=>x.uncertain);
  const heuristic=audit.filter(x=>x.playProbability!=null);
+ const conflicts=audit.filter(x=>x.source==='provider-prior-status-conflict');
+ if(conflicts.length)warnings.push(`${conflicts.length} future player-week projection(s) conflict with current Yahoo unavailable status; future provider projections are retained but return-to-play must be verified.`);
  if(heuristic.length)warnings.push(`${heuristic.length} player-week projection(s) use uncalibrated heuristic play probabilities; validate against injury news before lineup decisions.`);
  if(currentUnavailable.length)warnings.push(`${currentUnavailable.length} current-week unavailable roster player(s) excluded from lineup optimization.`);
  if(uncertain.length)warnings.push(`${uncertain.length} player-week availability observation(s) require confirmation (questionable/doubtful or unresolved future status).`);
@@ -20,5 +23,5 @@ export function assessSimulationReadiness(prepared,{minimumProjectionMatchRate=.
  if(incomplete.length)errors.push(`${incomplete.length} optimized team-week lineup(s) are incomplete.`);
  if(!input.calibration)warnings.push('No empirical calibration parameters are attached; simulator fallbacks will be used.');
  if(!input.nflGames?.length)warnings.push('No NFL game context is attached; game-level correlation may be limited.');
- return {ready:errors.length===0,errors,warnings,projectionCoverage:coverage,incompleteLineups:incomplete,lineupSlots:prepared?.diagnostics?.lineupSlots||[],teamCount:input.teams?.length||0,scheduleWeeks:(input.schedule||[]).map(x=>x.week),playoffWeeks:input.playoffWeeks||[],modelVariant:input.modelVariant,simulations:input.simulations,seed:input.seed};
+ return {ready:errors.length===0,errors,warnings,projectionCoverage:coverage,incompleteLineups:incomplete,incompleteLineupDetails:diagnoseIncompleteLineups(prepared),lineupSlots:prepared?.diagnostics?.lineupSlots||[],teamCount:input.teams?.length||0,scheduleWeeks:(input.schedule||[]).map(x=>x.week),playoffWeeks:input.playoffWeeks||[],modelVariant:input.modelVariant,simulations:input.simulations,seed:input.seed};
 }

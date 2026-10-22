@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {assessLongRangeJump} from '../src/model/long-range-jump-diagnostic.js';
+const player=(id,position,projection,source)=>({id,name:id,position,projection,projectionSource:source,status:'ACTIVE'});
+const league={teams:[{id:'t',name:'Test',roster:[player('a','QB',10),player('b','QB',20)],weeklyRosters:{6:[player('a','QB',10),player('b','QB',20)],9:[player('a','QB',12,'season-horizon-blend'),player('b','QB',25,'recency-weighted-horizon')]},weeklyLineups:{6:[player('a','QB',10)],9:[player('b','QB',25)]}}]};
+const [r]=assessLongRangeJump(league,{directWeeks:[6],derivedWeeks:[9],slots:['QB']});
+assert.equal(r.directSubmittedMean,10);
+assert.equal(r.directOptimizedMean,20);
+assert.equal(r.derivedMean,25);
+assert.equal(r.optimizationGap,10);
+assert.equal(r.postOptimizationGap,5);
+assert.equal(r.topContributors[0].name,'b');
+console.log('long-range-jump-diagnostic-tests: all checks passed');

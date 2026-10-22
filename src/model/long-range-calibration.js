@@ -65,3 +65,35 @@ export function evaluateLongRangeWalkForward(rows=[],{baselineThroughWeek=3,seas
  const selectedRmse=weighted('test'),defaultRmse=weighted('defaults');
  return{folds,summary:{folds:valid.length,n:totalN,selectedRmse,defaultRmse,rmseImprovement:finite(selectedRmse)&&finite(defaultRmse)?defaultRmse-selectedRmse:null,rmseImprovementPct:finite(defaultRmse)&&defaultRmse?((defaultRmse-selectedRmse)/defaultRmse):null,selectedWeights:[...new Set(valid.map(f=>f.selected.seasonWeight))],selectedDecays:[...new Set(valid.map(f=>f.selected.recencyDecay))]}};
 }
+
+
+// Strict expanding-window evaluation: candidate parameters for season S are
+// selected using ONLY seasons before S. No future-season training is permitted.
+// Results are descriptive and never change live simulation parameters.
+export function evaluateChronologicalLongRangeWalkForward(rows=[],{baselineThroughWeek=3,seasonWeights=DEFAULT_WEIGHTS,recencyDecays=DEFAULT_DECAYS,minHistory=1,minTrainSeasons=2,minTestSamples=30,minImprovementPct=.01}={}){
+ const seasons=[...new Set(rows.map(r=>Number(r.season)).filter(Number.isFinite))].sort((a,b)=>a-b);
+ const folds=[];
+ for(const holdoutSeason of seasons){
+  const trainSeasons=seasons.filter(s=>s<holdoutSeason);
+  if(trainSeasons.length<minTrainSeasons)continue;
+  const training=rows.filter(r=>Number(r.season)<holdoutSeason);
+  const testing=rows.filter(r=>Number(r.season)===holdoutSeason);
+  const trainingBaselines=deriveSeasonBaselines(training,{throughWeek:baselineThroughWeek});
+  const choice=selectLongRangeCalibration(training,{seasonBaselines:trainingBaselines,seasonWeights,recencyDecays,minHistory,minTargetWeek:baselineThroughWeek+1});
+  if(!choice.best?.n)continue;
+  const testingBaselines=deriveSeasonBaselines(testing,{throughWeek:baselineThroughWeek});
+  const options={seasonBaselines:testingBaselines,minHistory,minTargetWeek:baselineThroughWeek+1};
+  const selected=evaluateLongRangeBlend(testing,{...options,seasonWeights:[choice.best.seasonWeight],recencyDecays:[choice.best.recencyDecay]})[0];
+  const defaults=evaluateLongRangeBlend(testing,{...options,seasonWeights:[.65],recencyDecays:[.8]})[0];
+  if(!selected?.n||selected.n!==defaults?.n)continue;
+  folds.push({holdoutSeason,trainedOnSeasons:trainSeasons,trainingN:choice.best.n,selectedParameters:{seasonWeight:choice.best.seasonWeight,recencyDecay:choice.best.recencyDecay},selected,defaults});
+ }
+ // Pool squared errors rather than averaging RMSE across folds.
+ const n=folds.reduce((sum,f)=>sum+f.selected.n,0);
+ const pooled=field=>n?Math.sqrt(folds.reduce((sum,f)=>sum+f[field].rmse**2*f[field].n,0)/n):null;
+ const candidateRmse=pooled('selected'),defaultRmse=pooled('defaults');
+ const improvementPct=defaultRmse>0?(defaultRmse-candidateRmse)/defaultRmse:null;
+ const evidenceSufficient=folds.length>=1&&n>=minTestSamples;
+ const improved=evidenceSufficient&&improvementPct!==null&&improvementPct>=minImprovementPct;
+ return {schemaVersion:1,mode:'strict-chronological-expanding-window',folds,summary:{folds:folds.length,n,candidateRmse,defaultRmse,improvementPct,evidenceSufficient,improved,reviewEligible:improved,parameterUpdatesAllowed:false,thresholds:{minTrainSeasons,minTestSamples,minImprovementPct}}};
+}

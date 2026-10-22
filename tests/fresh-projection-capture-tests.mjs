@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {captureFreshProjectionArchive} from '../src/data/fresh-projection-capture.js';
+const spec={season:2026,week:6,sourceAudit:{leagueKey:'470.l.244897'}};
+const player={season:2026,week:6,playerId:'p1',name:'Test Player',position:'QB',nflTeam:'NE',projection:12};
+const futureKickoff=new Date(Date.now()+86400000).toISOString();
+let saved=0;
+const save=(_dir,archive)=>{saved++;assert.equal(archive.rows[0].kickoffAt,futureKickoff);return 'test.json';};
+const readSchedule=()=>`season,week,home_team,away_team,kickoffAt\n2026,6,NE,NYJ,${futureKickoff}\n`;
+const observedAt=new Date(Date.now()-1000).toISOString();
+const live=async options=>{assert.equal(options.preferCache,false);return {provider:'jerrygm',rows:[player],trust:{weekResults:[{week:6,provider:'jerrygm',observedAt}]}};};
+const result=await captureFreshProjectionArchive({spec,load:live,save,readSchedule});
+assert.equal(result.freshProviderRows,1);
+assert.equal(result.eligibility.pregameKickoffVerifiedRows,1);
+const cache=async()=>({provider:'cache',rows:[player],trust:{weekResults:[{week:6,provider:'cache',observedAt:null}]}});
+await assert.rejects(captureFreshProjectionArchive({spec,load:cache,save,readSchedule}),/No fresh provider observations/);
+assert.equal(saved,1);
+console.log('fresh-projection-capture-tests: all checks passed');

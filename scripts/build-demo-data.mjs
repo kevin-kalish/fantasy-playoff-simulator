@@ -1,3 +1,4 @@
+import {weeklyReportToDashboardV1} from '../src/ui/live-dashboard-export.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -29,14 +30,17 @@ if(!fs.existsSync(source)){
  process.exit(2);
 }
 const payload=JSON.parse(fs.readFileSync(source,'utf8'));
-if(!payload?.report?.team||!payload?.report?.outlook) {
- console.error('DEMO BUILD: source does not contain a usable weekly intelligence report.');
+if(payload.readiness?.ready===false) {
+ console.error('DEMO BUILD: source failed readiness gate.');
  process.exit(2);
 }
-if(Number(payload.report.schemaVersion)<11){
- console.error(`DEMO BUILD: report schema ${payload.report.schemaVersion??'unknown'} is outdated; dashboard requires schema 11. Regenerate the weekly report before building.`);
+let safe;
+try {
+ safe=weeklyReportToDashboardV1(payload.report??payload);
+} catch(error) {
+ console.error('DEMO BUILD: dashboard export rejected: '+error.message);
  process.exit(2);
 }
 fs.mkdirSync(path.dirname(target),{recursive:true});
-fs.writeFileSync(target,JSON.stringify(payload,null,2)+'\n');
-console.log(`DEMO BUILD: week ${week}; ${source} -> ${target}`);
+fs.writeFileSync(target,JSON.stringify(safe,null,2)+'\n');
+console.log(`DEMO BUILD: sanitized week ${week}; ${source} -> ${target}`);

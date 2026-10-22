@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import {EventEmitter} from 'node:events';
+import {createRefreshController} from '../scripts/private-dashboard-refresh.mjs';
+let runs=0,child;
+const controller=createRefreshController({start:()=>{
+ runs++;child=new EventEmitter();child.stdout=new EventEmitter();child.stdout.resume=()=>{};child.stderr=new EventEmitter();return child;
+}});
+assert.equal(controller.status().phase,'idle');
+assert.equal(controller.refresh(),true);
+assert.equal(controller.status().phase,'running');
+assert.equal(controller.refresh(),false);
+assert.equal(runs,1);
+child.emit('close',0);
+assert.equal(controller.status().phase,'succeeded');
+assert.ok(controller.status().finishedAt);
+assert.equal(controller.refresh(),true);
+child.emit('close',1);
+assert.equal(controller.status().phase,'failed');
+assert.match(controller.status().error,/failed/);
+let timestamp='2026-10-16T21:00:00.000Z',ready=true,teamId='team-1',reportChild;
+const checked=createRefreshController({readReport:()=>({readiness:{ready},report:{generatedAt:timestamp,team:{id:teamId}}}),start:()=>{
+ reportChild=new EventEmitter();reportChild.stdout=new EventEmitter();reportChild.stdout.resume=()=>{};reportChild.stderr=new EventEmitter();return reportChild;
+}});
+checked.refresh();reportChild.emit('close',0);
+assert.equal(checked.status().phase,'failed');
+assert.match(checked.status().error,/newer/);
+checked.refresh();timestamp='2026-10-16T21:01:00.000Z';reportChild.emit('close',0);
+assert.equal(checked.status().phase,'succeeded');
+checked.refresh();timestamp='2026-10-16T21:02:00.000Z';ready=false;reportChild.emit('close',0);
+assert.equal(checked.status().phase,'failed');
+assert.match(checked.status().error,/readiness/);
+ready=true;checked.refresh();timestamp='2026-10-16T21:03:00.000Z';teamId='different-team';reportChild.emit('close',0);
+assert.equal(checked.status().phase,'failed');
+assert.match(checked.status().error,/different team/);
+console.log('private-dashboard-refresh-tests: all checks passed');

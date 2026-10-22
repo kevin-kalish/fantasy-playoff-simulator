@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import {formatWeeklyIntelligence} from '../src/model/weekly-intelligence-format.js';
-const report={team:{name:"The Fightin' Kali",currentSeed:3,record:{wins:2,losses:1,ties:0}},outlook:{playoffProbability:.81,championshipProbability:.17},matchup:{week:4,opponentName:'Opponent',simulated:{winProbability:.58}},leverage:{posture:'balanced',urgency:'medium'},trust:{trusted:true,projections:{provider:'fixture',degraded:false,coverage:{matchRate:.96}}},recommendations:{items:[{rank:1,type:'start-sit',summary:'Start Player A'}]},roster:{starters:[{projection:12.4},{projection:9.6}]}};
+const report={team:{name:"The Fightin' Kali",currentSeed:3,record:{wins:2,losses:1,ties:0}},outlook:{playoffProbability:.81,championshipProbability:.17},matchup:{week:4,opponentName:'Opponent',simulated:{winProbability:.58}},leverage:{posture:'balanced',urgency:'medium'},trust:{trusted:true,projections:{provider:'fixture',degraded:false,coverage:{matchRate:.96}}},recommendations:{items:[{rank:1,type:'start-sit',summary:'Start Player A',decisionReadiness:'REVIEW_REQUIRED',championshipSignal:{status:'INCONCLUSIVE'}}]},roster:{starters:[{projection:12.4},{projection:9.6}]}};
 const text=formatWeeklyIntelligence(report);
 assert.match(text,/The Fightin' Kali — Week 4/);
 assert.match(text,/Playoffs 81.0%/);
 assert.match(text,/win 58.0%/);
 assert.match(text,/projection coverage 96.0%/);
 assert.match(text,/Start Player A/);
+assert.match(text,/readiness REVIEW_REQUIRED/);
+assert.match(text,/championship signal INCONCLUSIVE/);
 assert.match(text,/22.0 projected points/);
 const noAction={...report,recommendations:{items:[],scanAvailability:{startSit:{status:'available'},waivers:{status:'unavailable',reason:'Yahoo authorization absent.'},trades:{status:'not-configured'}},diagnostics:{evaluatedActionCount:6,beneficialActionCount:0,rejectedActionCount:6,noActionExplanation:'All 6 evaluated start-sit scenarios had non-positive modeled strategic impact. Scan coverage was constrained; this is not evidence that no beneficial move exists.',coverage:{startSitEvaluated:6,startSitTotal:12,waiverEvaluated:0,waiverCandidates:0,tradeCount:0,constrained:true},nearMisses:[],bestRejectedByType:{waiver:{type:'waiver',label:'Add Waiver A / Drop Bench B',explanation:'+1.0 projected pts, -1.00% playoff, +0.00% championship, -0.010 wins; modeled strategic impact is not positive'},trade:{type:'trade',label:'Trade Player A for Player B',explanation:'+2.0 projected pts, -0.50% playoff, +0.00% championship, -0.005 wins; modeled strategic impact is not positive'}}}}};
 const noActionText=formatWeeklyIntelligence(noAction);

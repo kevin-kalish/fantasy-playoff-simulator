@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {ffprosProjectionURL,parseFfprosProjectionHTML} from '../src/data/ffpros-public.js';
+const url=ffprosProjectionURL({position:'rb',season:2026,week:8});
+assert.ok(url.includes('/rb.php?'));
+const rows=Array.from({length:10},(_,i)=>'<tr><td><a href="/player-'+i+'">Player '+i+'</a></td><td>'+(i+1)+'.5</td></tr>').join('');
+const html='<table id="data"><thead><tr><th>Player</th><th>FPTS</th></tr></thead><tbody>'+rows+'</tbody></table>';
+const parsed=parseFfprosProjectionHTML(html,{season:2026,week:8,position:'rb'});
+assert.equal(parsed.length,10);
+assert.equal(parsed[0].name,'Player 0');
+console.log('ffpros-public-coverage-tests: all checks passed');

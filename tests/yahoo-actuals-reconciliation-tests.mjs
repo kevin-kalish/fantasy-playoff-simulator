@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {compareYahooActualScores} from '../src/data/yahoo-actuals-reconciliation.js';
+const actuals=[{season:2026,week:1,playerId:'same-id',position:'QB',actual:24.5}];
+const zero=compareYahooActualScores(actuals,[]);
+assert.equal(zero.pass,false);assert.equal(zero.summary.compared,0);
+const matched=compareYahooActualScores(actuals,[{season:2026,week:1,playerId:'same-id',actual:24.5}]);
+assert.equal(matched.pass,true);assert.equal(matched.summary.compared,1);
+const mismatch=compareYahooActualScores(actuals,[{season:2026,week:1,playerId:'same-id',actual:20}]);
+assert.equal(mismatch.pass,false);assert.equal(mismatch.summary.mismatches,1);
+const duplicates=compareYahooActualScores(actuals,[{season:2026,week:1,playerId:'same-id',actual:24.5},{season:2026,week:1,playerId:'same-id',actual:24.5}]);
+assert.equal(duplicates.pass,false);assert.equal(duplicates.summary.compared,0);
+console.log('yahoo-actuals-reconciliation-tests: all checks passed');

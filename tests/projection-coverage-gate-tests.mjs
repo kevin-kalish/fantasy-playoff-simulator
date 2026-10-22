@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {assessProjectionCoverage} from '../src/data/projection-coverage-gate.js';
+const expectedPlayers=[{playerId:'y1',name:'John Smith',position:'QB',nflTeam:'BUF'},{playerId:'y2',name:'Jane Doe',position:'RB',nflTeam:'PHI'}];
+const rows=[{season:2026,week:8,playerId:'fp1',name:'John Smith',position:'QB',nflTeam:'BUF',projection:20},{season:2026,week:8,playerId:'fp2',name:'Jane Doe',position:'RB',nflTeam:'PHI',projection:12}];
+const opts={season:2026,week:8,expectedPlayers,minimumByPosition:{QB:1,RB:1}};
+const ok=assessProjectionCoverage(rows,opts);
+assert.equal(ok.ready,true);assert.equal(ok.coverage,1);assert.equal(ok.matchedPlayers,2);
+const missing=assessProjectionCoverage(rows.slice(0,1),opts);
+assert.equal(missing.ready,false);assert.equal(missing.missing.length,1);assert.equal(missing.shortages.RB,1);
+const stale=assessProjectionCoverage(rows.map(r=>({...r,week:7})),opts);
+assert.equal(stale.ready,false);assert.equal(stale.relevantRows,0);
+const duplicate=assessProjectionCoverage([...rows,rows[0]],opts);
+assert.equal(duplicate.ready,false);assert.equal(duplicate.duplicateCount,1);
+const empty=assessProjectionCoverage(rows,{season:2026,week:8});
+assert.equal(empty.ready,false);assert.ok(empty.blockers.includes('no-expected-roster'));
+const dst=assessProjectionCoverage([{season:2026,week:8,name:'Buffalo Bills',position:'DEF',projection:8}],{season:2026,week:8,expectedPlayers:[{name:'Buffalo Bills',position:'DST'}]});
+assert.equal(dst.ready,true);
+console.log('projection-coverage-gate-tests: all checks passed');

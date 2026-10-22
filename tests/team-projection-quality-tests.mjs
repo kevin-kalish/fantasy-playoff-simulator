@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {assessTeamProjectionQuality} from '../src/model/team-projection-quality.js';
+const league={teams:[{id:'a',name:'Alpha',roster:[{id:'1'},{id:'2'}],weeklyRosters:{9:[{id:'1',position:'QB',seasonBaseline:19,projectionSource:'season-horizon-blend',projectionConfidence:.9},{id:'2',position:'WR',seasonBaseline:null,projectionSource:'recency-weighted-horizon',projectionConfidence:.7}],10:[{id:'1',position:'QB',seasonBaseline:19,projectionSource:'season-horizon-blend',projectionConfidence:.8},{id:'2',position:'WR',seasonBaseline:null,projectionSource:'recency-weighted-horizon',projectionConfidence:.6}]},lineupDiagnostics:{9:{projectedPoints:99}}}]};
+const [a]=assessTeamProjectionQuality(league,{derivedWeeks:[9,10]});
+assert.equal(a.baseline.eligible,2);
+assert.equal(a.baseline.matched,1);
+assert.equal(a.baseline.coverage,.5);
+assert.equal(a.derived.samples,4);
+assert.equal(a.derived.withSeason,2);
+assert.equal(a.derived.horizonOnly,2);
+assert.ok(Math.abs(a.derived.meanConfidence-.75)<1e-10);
+assert.equal(a.projectedPointsByWeek[9],99);
+assert.equal(assessTeamProjectionQuality(league,{derivedWeeks:[]})[0].baseline.coverage,null);
+console.log('team-projection-quality-tests: all checks passed');

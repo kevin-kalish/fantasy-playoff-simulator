@@ -1,8 +1,165 @@
+### Incomplete optimized lineup diagnostics (read-only)
+
+When `npm run intelligence:weekly -- <snapshot> <spec>` fails readiness for incomplete future lineups, stderr now includes `INCOMPLETE LINEUP` entries identifying team, week, empty slot, and provisional cause: no eligible rostered player, all eligible on bye, all unavailable, all missing projections, or insufficient usable eligible players. JSON readiness also includes `incompleteLineupDetails`. Yahoo player normalization now retains an explicitly supplied `bye_weeks.week` as `byeWeek` through the shared league snapshot. The diagnostic reports `unknownByeCount` when that field is absent; absence is not proof of no bye. Previously saved private snapshots must be refreshed from Yahoo to acquire the field; no historical files are backfilled. These classifications use current roster and projection fields; they are not verified future transactions or availability. Readiness remains blocked; no projections, lineup choices, scoring, or historical archives are changed.
+
+Validate locally with `node tests/simulation-readiness-tests.mjs` and `npm test`. Keep private league snapshots and reports out of commits.
+
+### Private scoring-readiness blocker priority
+
+To triage scoring failures separately from zero-point participation coverage, run:
+
+```powershell
+npm run calibration:scoring-priority
+node tests/scoring-readiness-priority-tests.mjs
+```
+
+By default, the command reads the current `data/private/yahoo-nflverse-score-audit.json` written by `npm run calibration:cross-provider-scores` and validates its embedded participation coverage and per-week totals. It does not fetch or regenerate the audit. Rerun the cross-provider audit after refreshing NFL actuals. An explicitly supplied standalone private coverage report path remains supported, but may be stale. It writes `data/private/scoring-readiness-priority.json`. Missing or inconsistent reports fail closed. Unmatched nonzero or missing scores, score mismatches and invalid overrides are P0; unmatched confirmed zero scores remain P2 participation coverage, **not** score mismatches. The diagnostic does not accept evidence, relax any existing trust/calibration gates, or alter historical forecasts. Ambiguous-match count is not available in this coverage summary; inspect the underlying score audit separately. Do not commit private files.
+
+### Focused active-zero identity/scoring audit
+
+After the weekly roster and snap-count reports are generated, run:
+
+```powershell
+npm run calibration:audit-active-zero
+node tests/active-zero-snap-audit-tests.mjs
+```
+
+This produces `data/private/active-zero-snap-audit.json` and displays Yahoo player IDs, week, team, and provisional snaps for Rashee Rice (week 4) and Mike Gesicki (week 2). It blocks missing, duplicated or conflicting target identities and lists required independent player-ID, game-date, and scoring checks. The source reports cannot establish those facts; the resulting cases remain `identityVerified:false`, `scoringVerified:false`, and `evidenceEligible:false`. Do not publish private reports or auto-accept participation evidence.
+
+### Read-only snap-count cross-check (2026)
+
+The nflverse weekly roster `INA` and `RES` codes are roster statuses, **not official dated game-day inactive or IR evidence**. The nflverse play-level participation dataset for 2026 is not available in-season; PFR snap counts are a separate diagnostic signal. Download the `snap_counts_2026.csv` asset from the nflverse `snap_counts` release to `data/private/snap_counts_2026.csv` and run:
+
+```powershell
+npm run calibration:cross-check-snaps -- data/private/snap_counts_2026.csv
+node tests/snap-count-participation-cross-check-tests.mjs
+```
+
+The private `data/private/snap-count-participation-cross-check.json` reports positive, zero, missing, ambiguous, or invalid snap matches and hashes the input. Matching uses normalized player name, team, position, season and week **provisionally**, not stable player identity; duplicate matches fail closed. Positive snaps suggest on-field participation but are not accepted evidence until identity is independently confirmed. Zero or missing snaps **never** prove inactivity. No evidence, Yahoo scores, historical forecasts or calibration gates are modified. Do not commit private source or reports.
+
+### Read-only weekly roster participation triage (2026)
+
+After `npm run calibration:participation-queue`, obtain the 2026 nflverse weekly-roster CSV from the official `weekly_rosters` release, save it **privately** as `data/private/roster_weekly_2026.csv`, and run:
+
+```powershell
+npm run calibration:review-weekly-rosters -- data/private/roster_weekly_2026.csv
+node tests/weekly-roster-participation-review-tests.mjs
+```
+
+The report records a SHA-256 of the **actual input bytes**, its source URL, report-generation timestamp, and explicit `downloadedAt: unverified` / `sourceStatusSemantics: unverified` / `evidenceEligible: false` fields. The local download time cannot be inferred from file metadata or report generation; preserve it separately if known. The source URL is provenance metadata, not independent authentication of the file. Recheck SHA-256 against the expected private snapshot before interpreting the review. The existing review does not update historical forecasts or accepted evidence.
+
+The report also includes `summary.byWeek`, `summary.byPosition`, `summary.byStatus`, `summary.reviewBucketCounts`, and `reviewBuckets` keyed by season/week/Yahoo ID. `RES` and `INA` are **snapshot triage categories only**; `ACT` with zero points, missing roster rows and team conflicts require further investigation. No roster status alone becomes verified IR, an official inactive designation, or proof of game participation. The downloaded CSV has no immutable publication timestamp; keep its original bytes and record download time and SHA-256 separately when evaluating provenance.
+
+The private report `data/private/weekly-roster-participation-review.json` joins queue records using exact Yahoo ID, season and week; it distinguishes unique same-team roster snapshots, missing records, duplicate matches and team conflicts. Status codes are **candidates only**, not official game-day inactive verification or dated IR intervals. It does not write participation evidence, change scores, qualify calibration, or access OAuth tokens. Check source freshness and season coverage before interpreting results; unresolved or ambiguous cases remain blocked. Do not commit private CSV or reports.
+
+### Truncated JerryGM season baseline diagnostics
+
+The cached JerryGM season response may include `truncated: true`, `count`, `total`, `generatedAt`, and `dataThroughWeek`. The weekly run now reports `SEASON SOURCE QUALITY` and `SEASON SOURCE POSITIONS` separately from **roster match coverage**. A 100-of-1,868 provider response is a source limit, not proof of 1,768 failed identity matches. Genuine season baselines are retained where matched; other roster players continue using the existing lower-confidence, recency-weighted weekly horizon. No synthetic projections are counted as provider baselines. The cache remains private, and these diagnostics make no additional API calls or change the simulation model.
+
+### Completed Yahoo results and matchup leverage precision
+
+On a successful audited Yahoo refresh, the weekly workflow requests the previous week's Yahoo scoreboard. It adds a **verified** W/L/T to the matching private playoff-history observation, without changing the original probability or timestamp. Ambiguous or missing winner information leaves the result blank; conflicting results are flagged rather than overwritten. No retrospective forecast backfill occurs. This extra Yahoo scoreboard read does not use projection-provider quota. The history remains private under `data/private/`.
+
+Matchup-impact calculations now support a separate conditional simulation budget, default **1,000** per win/loss scenario, while GM recommendation screening remains at its separately configured budget (typically 250). Set `MATCHUP_IMPACT_SIMULATIONS=500` in PowerShell to reduce runtime, or set `MATCHUP_IMPACT_SIMULATIONS=2000` for higher precision. The schedule impact routine caps its own samples at 2,000. Rankings remain provisional when forecasts are derived or when uncertainty intervals overlap.
+
+### Submitted Yahoo lineup versus optimized hypothetical
+
+If a trusted Yahoo weekly run fails readiness because a submitted lineup has empty starter slots, the weekly command now attempts a **private diagnostic what-if comparison**. The normal report stays blocked. A separate `data/private/lineup-scenario-week-<week>.json` contains paired Monte Carlo forecasts using (1) the actual Yahoo starters, including empty slots, and (2) an optimized eligible lineup **only for teams with incomplete submitted lineups**. Other teams retain their submitted current-week starters. The hypothetical is not a roster transaction, a Yahoo lineup update, or a trusted replacement forecast. The comparison is withheld if the optimized scenario fails readiness or unrelated data-quality errors exist. Set `LINEUP_SCENARIO_COMPARE=false` to disable the optional diagnostic. It uses already loaded projections and makes no extra provider requests. Same-seed simulations are reproducible but not guaranteed to be common-random-number paired at the player level.
+
+### October 27 ESPN go/no-go and shared league contract (private beta)
+
+**Decision rule:** Yahoo is the live private-beta baseline for November 6. ESPN remains a **contract-compatible candidate**, not a verified live integration. Do not infer ESPN connectivity or scoring parity from the `source.provider: "espn"` normalization fixture. The shared contract lives in `src/data/league-snapshot.js` (`LEAGUE_SNAPSHOT_VERSION=1`), with provider-label tests in `tests/league-snapshot-tests.mjs`. No live ESPN adapter or authenticated ESPN end-to-end capture was verified in this review.
+
+Before approving ESPN for beta, capture a real, authorized ESPN league privately and establish: stable provider/league/team/player identities; standings and schedule reconciliation; league-specific playoff spots, weeks, tiebreakers and reseeding; roster slots and lineup eligibility; scoring settings and completed-game parity; source timestamps/provenance; and passing simulation/readiness/trust gates. The normalizer's defaults (including playoff spots, playoff weeks, and missing player projections) are **not evidence** of actual ESPN settings. Missing or ambiguous settings must block provider approval upstream, not silently use defaults. Never publish league snapshots, cookies, OAuth tokens, or credentials.
+
+**October 27 decision:** GO only with independently verified real ESPN data and the same shared-contract acceptance gates as Yahoo; otherwise NO-GO for live ESPN in the November 6 private beta, while retaining provider-independent fixtures and architecture. Avoid new ESPN features that displace Yahoo data-integrity, calibration, or private-dashboard acceptance work.
+
+**Week 6 Yahoo/NFL actuals checkpoint (October 22, 2026):** The private nflverse import captured 23 Week 6 player records for DEN and SEA, covering 2 of 28 scheduled teams; all 14 kickoffs are present. The importer in `src/data/completed-nfl-actuals.js` intentionally waits until kickoff plus five days. The last Week 6 kickoff is 2026-10-20T00:15:00Z; it becomes eligible at 2026-10-25T00:15:00Z (October 24, 8:15 PM Eastern). At the October 22 checkpoint, scoring priority reported 99 unmatched nonzero Yahoo scores (all Week 6), 120 unmatched zero scores, zero observed score mismatches, and failed scoring parity/participation gates. Zero mismatches among compared records **does not** establish parity. The historical import's 318 rejected rows are an aggregate, not independently classified Week 6 rejects.
+
+After the buffer, preserve private backups **outside the repository**, then run the existing `calibration:fetch-actuals`, `calibration:actuals-quality`, `calibration:cross-provider-scores`, and `calibration:scoring-priority` commands in order, checking source freshness and actual team coverage before interpreting reconciliation. The fetch command overwrites `data/private/historical-actuals.json`; do not run it before the cutoff or without a backup. Do not bypass finalization, fabricate participation evidence, alter scoring to clear a gate, or overwrite immutable pregame forecasts. The 120 unresolved zero-point records require independent participation evidence, not assumed inactivity.
+
+Focused offline regression commands (these do **not** prove live ESPN or NFL actuals accuracy):
+
+```powershell
+node tests/league-snapshot-tests.mjs
+node tests/completed-nfl-actuals-tests.mjs
+node tests/completed-actuals-quality-tests.mjs
+node tests/yahoo-nflverse-score-audit-tests.mjs
+node tests/yahoo-participation-coverage-tests.mjs
+node tests/scoring-readiness-priority-tests.mjs
+```
+
 # Fantasy Playoff Simulator
 
 Monte Carlo fantasy football analytics application for estimating playoff, seed, matchup, and championship probabilities. Current live development targets a 10-team Yahoo Fantasy Football league with 8 playoff spots.
 
 Live development site: https://kevin-kalish.github.io/fantasy-playoff-simulator/
+
+## View the dashboard locally (October 2026)
+
+The current read-only live-report dashboard is available as a **private, offline HTML preview**. It is **not** the same as the public GitHub Pages synthetic demo. No browser server or API keys are needed for the synthetic preview.
+
+### Try it immediately with synthetic data
+
+From the repository root in PowerShell:
+
+```powershell
+git pull --ff-only origin dashboard-contract-v1
+npm run dashboard:demo
+Start-Process .\\data\\private\\synthetic-dashboard-preview.html
+```
+
+The **Playoff probability history** tab shows example Week 0–6 changes, including a loss from 80% to 60% followed by a win to 75%. These values are illustrative, not actual historical estimates. The chart labels completed games W/L/T and reveals week, playoff probability, result, and week-over-week percentage-point change when a marker is hovered or focused with the keyboard. The command generates a synthetic 10-team league preview at `data/private/synthetic-dashboard-preview.html`. The fixture includes a playoff race, current matchup, remaining schedule, playoff/championship leverage rankings, GM rejection diagnostics, and provisional postseason estimates. It is **demonstration data, not current Yahoo standings or live recommendations**. Use the section links to navigate, select a team in the playoff race, and switch the remaining schedule between chronological and impact order.
+
+### Refresh Yahoo and the private dashboard together
+
+Run the normal live workflow from the repository root (requires working Yahoo OAuth, a passing live reconciliation audit, and usable projection data):
+
+```powershell
+npm run fightin-kali:weekly
+Start-Process .\\data\\private\\live-dashboard-preview.html
+```
+
+After an audited, readiness-passing weekly simulation writes its private report, the workflow now **automatically rebuilds** `data/private/live-dashboard-preview.html` from that report. It incorporates any compatible archived playoff-probability history. This preview is local/offline, never deployed to GitHub Pages, and does not expose Yahoo OAuth tokens or projection-provider API keys. The preview is withheld if the report is untrusted, the output path is outside `data/private/`, or archived history has a mismatched team/league/season. Set `DASHBOARD_AUTO_PREVIEW=false` to opt out; set `PLAYOFF_HISTORY_CAPTURE=false` separately to opt out of weekly snapshot recording.
+
+If Yahoo credentials or the source audit fail, the live workflow stops rather than using a stale league snapshot. If the projection provider is unavailable or readiness fails, the dashboard is **not** refreshed. The synthetic demo remains available independently via `npm run dashboard:demo`. A successful local test suite alone does not confirm Yahoo connectivity or current projection access.
+
+### Record real week-to-week playoff probability
+
+After each fantasy week is **complete**, save the trusted weekly report's playoff probability to a local archive. Specify the completed week and its result explicitly:
+
+```powershell
+npm run dashboard:record-week -- data/private/YOUR-WEEKLY-REPORT.json 1 L
+npm run dashboard:record-week -- data/private/NEXT-WEEKLY-REPORT.json 2 W
+```
+
+A Week 0 preseason snapshot is optional; record it with `0` and no result. These commands require `readiness.ready=true`, a trusted report, and input under `data/private/`. They do not fetch data. Each completed week can be recorded **once**; the command refuses silent overwrites. The archive is `data/private/playoff-probability-history.json`, which is private and must never be committed. When `dashboard:preview` runs for the same team, it automatically includes these archived snapshots in the history tab. The latest weekly report by itself **cannot reconstruct earlier weeks**. Historical points are recorded forecasts, not retrospective recomputations or observed playoff outcomes. Preserve the original report's generated timestamp and only label a point as a completed week when it truly is post-game.
+
+### Automatic post-week capture (audited Yahoo runs)
+
+A normal `npm run fightin-kali:weekly` run now records the focus team's playoff probability **after the previous week** when Yahoo's current week is at least 2, the Yahoo source audit passes for that week, the simulation report is trusted and readiness-passing, and a private report output path is configured. For example, a trusted run during Yahoo Week 7 records the probability as the **Week 6** snapshot. The result is initially left blank (not guessed). The capture is offline after the report is built, makes no additional provider requests, and never rewrites an existing week. Set `PLAYOFF_HISTORY_CAPTURE=false` to disable this behavior.
+
+Automatic capture stores season and Yahoo league identity in `data/private/playoff-probability-history.json`; if an older manually created archive lacks those fields, capture refuses to append rather than silently mix histories. Keep the legacy file as a backup and resolve its provenance before creating a new season-scoped archive. **Do not retroactively label a current forecast as a prior week's forecast.** Existing records and their timestamps are preserved. The private preview loads the same archive. The history chart is a record of model forecasts, not a reconstruction of historical odds.
+
+### Preview a real, locally generated weekly report
+
+Only after an existing **trusted, readiness-passing** private weekly report is available:
+
+```powershell
+npm run dashboard:preview -- data/private/YOUR-WEEKLY-REPORT.json
+Start-Process .\\data\\private\\live-dashboard-preview.html
+```
+
+Replace `YOUR-WEEKLY-REPORT.json` with the actual private report filename. The preview command expects an input JSON document with `readiness.ready === true` and a trusted schema-v11 report, either directly or under `report`; it fails closed otherwise. It does **not** fetch new Yahoo or projection-provider data. The HTML output is restricted to `data/private/` and must **never** be committed, uploaded to GitHub Pages, or shared publicly. The preview is read-only: GM candidates and rejected near misses are not actionable recommendations.
+
+### Validate
+
+```powershell
+npm run test:dashboard
+npm test
+```
+
+The tests also cover automatic history capture, immutable weekly snapshots, league/season identity, and readiness/trust refusal. The tests cover the export allowlist, escaping/private HTML generation, a synthetic 10-team end-to-end report, provisional championship estimates, missing projection data, and renderer behavior. Deterministic delegated-event tests now cover tab switching, team selection, chronological/impact schedule ordering, keyboard activation, and history hover/focus details. Manual browser acceptance remains necessary for layout, pointer hit targets, and accessibility behavior in real browsers. Projection-provider freshness and historical calibration are separate readiness requirements; passing UI tests does not prove forecast accuracy.
 
 ## Current status
 
@@ -44,7 +201,7 @@ The simulation core is provider-independent. External services feed normalized i
 ### Data providers
 
 - **Yahoo Fantasy Sports** — live source of truth for league settings, standings, teams, rosters, fantasy schedule, lineups, and waiver availability. OAuth refresh-token authentication and league discovery are operational. Live responses are normalized and checked by the Yahoo audit/reconciliation layer before use.
-- **JerryGM Projections API** — current primary live projection source. The Free API tier returns only the top 100 players for an untargeted all-active request, but supports up to 25 specifically named players per request. The adapter therefore batches targeted roster requests in groups of 25. JerryGM also exposes season projections when `week` is omitted; evaluating that season-level output remains a projection-quality task.
+- **JerryGM Projections API** — current primary live projection source. The Free API tier returns only the top 100 players for an untargeted all-active request, but supports up to 25 specifically named players per request. The adapter therefore batches targeted roster requests in groups of 25. Weekly refresh now passes league roster and waiver names into JerryGM and prioritizes this live targeted retrieval over an existing cached top-100 projection file; the cache remains a fallback when live retrieval is unavailable. JerryGM also exposes season projections when `week` is omitted; evaluating that season-level output remains a projection-quality task.
 - **FantasyPros** — projection adapter exists; access is not currently the primary live path. Historical weekly projection pages remain a research candidate, not an approved stored calibration dataset.
 - **nflverse** — primary historical actual-stat source and NFL data foundation. Target-league fantasy points are calculated locally from underlying stats.
 - **Ranking archives** — identity/ranking context only; rankings are never substituted for point projections.
@@ -83,7 +240,7 @@ npm run audit:yahoo
 npm run fightin-kali:weekly
 ```
 
-The Yahoo audit is the explicit reconciliation gate. The weekly command then refreshes live Yahoo standings, remaining schedule, rosters, and lineups; persists the refreshed working snapshot; obtains the live waiver pool and configured projection source; builds direct and derived weekly lineups; applies readiness/trust gates; runs Monte Carlo and scenario analyses; and writes the weekly intelligence report under `data/private/`.
+The Yahoo audit is the explicit reconciliation gate. The weekly command does not require an existing local snapshot: with valid OAuth credentials it discovers the current fantasy week from Yahoo league metadata and bootstraps the private snapshot from Yahoo. Set `WEEK` or pass a week argument only to deliberately override the API week. If Yahoo authentication, API refresh, or reconciliation fails, the weekly command stops rather than silently simulating stale data. The weekly command then refreshes live Yahoo standings, remaining schedule, rosters, and lineups; persists the refreshed working snapshot; obtains the live waiver pool and configured projection source; builds direct and derived weekly lineups; applies readiness/trust gates; runs Monte Carlo and scenario analyses; and writes the weekly intelligence report under `data/private/`.
 
 The recommendation pipeline uses a two-stage simulation strategy: broad candidate scenarios are screened cheaply, while promising actions are rerun at higher simulation counts before being surfaced as recommendations. Trade discovery currently values players from league-wide replacement levels and VORP, incorporates the live waiver pool when setting replacement baselines, and scores marginal positional need against league positional medians. The current Week 5 live benchmark evaluates 24 prefiltered trade scenarios inside an approximately 19-second end-to-end weekly run. No trade is published without clearing the final recommendation/confirmation gates.
 
@@ -128,7 +285,21 @@ Trade-model hardening for this phase is complete. Net roster need is calculated 
 
 ## Front-end readiness
 
-The existing browser UI is still primarily a synthetic/demo dashboard. The simulation and weekly-intelligence backend are now sufficiently mature to begin reconnecting the front end after the current trade-model refinement is closed. Before treating the UI as a live production view, the remaining integration work is to expose the refreshed Yahoo/weekly report through a stable browser-facing data contract, render trust/projection-horizon and provisional-postseason states, surface recommendation/near-miss diagnostics without implying rejected scenarios are recommendations, and verify team/week drill-down against live league state.
+The public GitHub Pages browser UI remains a synthetic/demo dashboard. Separately, a private read-only live-report dashboard now supports a stable schema-v1 export, local offline HTML preview, 10-team synthetic acceptance coverage, section navigation, schedule ordering, team detail, matchup and leverage analysis, and GM diagnostics subject to the publication gate. The private localhost server now exposes the refreshed Yahoo/weekly report through a browser-facing contract and supports browser-initiated refresh with safe failure recovery. Remaining UI acceptance is a manual trust-label and live team/week drill-down audit; this is not an internet-hosted production service.
+
+## October 16, 2026 handoff — Milestone A to Milestone B
+
+**Milestone A: provisionally accepted for single-user, localhost-only Yahoo private beta.** The user confirmed browser refresh, dashboard opening, and all four provider-free browser failure/retry checks. Following the security logging fix (commit `c759c85`), the local Windows run of `npm test` completed successfully through `production-readiness-review-tests` (110 suites), including private-dashboard server and refresh tests. `git ls-files data/private` and `git ls-files .env` returned no tracked files. The public GitHub Pages experience remains synthetic only.
+
+**Explicitly not yet signed off:** manual restart/session-token rotation, browser Network inspection for third-party requests, complete visual audit of provisional forecast/trust labels, and final operational release rehearsal. These are documented in [Milestone A acceptance](docs/PRIVATE_BETA_MILESTONE_A.md); do not treat provisional acceptance as unrestricted production security approval.
+
+**How to resume locally:** checkout/pull `dashboard-contract-v1`, run `npm test`, then `npm run dashboard:private`. Open only the generated localhost session URL; never share the token or publish `data/private/`. The separate provider-free failure harness is `node scripts/accept-private-dashboard-failure.mjs`. A real browser refresh may contact Yahoo and the projection provider; the failure harness does not.
+
+**Milestone B (next work session, October 17 or 19): Projection quality and calibration.** Start by auditing current direct JerryGM versus derived long-range coverage, observation-time/freshness provenance, historical pregame data eligibility, and championship forecast limitations. Define measurable calibration/validation baselines and acceptance criteria before changing model coefficients. Then prioritize long-range mean forecasts, horizon-dependent uncertainty, and playoff-probability calibration. Preserve trust/publication gates, read-only Yahoo behavior, and synthetic-only public demo. Do not assume missing historical projection archives can be reconstructed without leakage.
+
+## Milestone B — active (October 19, 2026)
+
+Projection quality and calibration work has begun with a **baseline/evidence audit**, not a parameter change. See [Milestone B plan and acceptance criteria](docs/MILESTONE_B_PROJECTION_CALIBRATION.md). Next deliverable: a read-only local diagnostic for eligible pregame archives, forecast accuracy, source freshness, and long-range coverage. Existing private-beta security and publication gates remain in force.
 
 ## Development roadmap
 
@@ -143,3 +314,100 @@ The existing browser UI is still primarily a synthetic/demo dashboard. The simul
 ## Important status note
 
 The application is a development prototype. The live league pipeline now uses Yahoo API data for current league state and Yahoo waiver availability plus live JerryGM projections. Long-range and postseason forecasts still contain derived model inputs. Playoff probabilities should be treated as developmental forecasts, and championship probabilities remain explicitly provisional until dedicated playoff-week projections are available and the broader model is historically calibrated.
+
+
+### Optional GM seed-stability diagnostic
+
+`buildWeeklyGMRecommendations(input, spec, {replicateTopRecommendationSeeds: 1})` checks the top eligible action with one additional independent random seed (maximum two additional seeds). Each repeat simulates a fresh baseline and **only the selected start/sit, waiver, or trade scenario**, rather than rescanning the whole GM candidate set. The option is disabled by default. The returned top recommendation includes `seedStability` with `status`, `replications`, `requestedReplications`, and `missingReplications`; `diagnostics.timing.seedReplicationSeconds` measures extra wall-clock time. A missing replication does not count as evidence of agreement. These results are independent-seed sensitivity checks, **not** calibrated confidence intervals or a substitute for projection quality and trade feasibility review. The private intelligence panel may display the result; it is not exported to the public live dashboard.
+
+The synthetic GM performance comparison can be run with `npm run benchmark:gm -- 1000 3` (1000 simulations, three repeated timing comparisons). GitHub Actions checks both 100- and 1000-simulation variants. Timings are diagnostics rather than pass/fail speedup targets; the comparison does require equal selected-action championship deltas and complete integrated seed replication. Automatic verification remains opt-in while runtime and nonzero-impact fixtures are evaluated.
+
+### Yahoo unmatched diagnostics: individual versus DEF (October 2026)
+
+Run `npm run calibration:unmatched` with private Yahoo and nflverse actuals and a verified kickoff schedule. The private JSON report retains the existing `unmatched`, `reasons`, and `details` fields, and additionally reports `individualUnmatched`, `defenseUnmatched`, `defenseNonzero`, and `individualReasons`. Position `DEF` is separated from individual-player identity diagnostics; the original total remains unchanged. A missing, empty, or invalid DEF score is not counted as nonzero and remains in the unmatched details for review. This is a diagnostic breakdown only: it does not validate DST scoring, reconcile identities, relax participation/scoring gates, or establish calibration eligibility. The separate cross-provider scoring audit continues to exclude defenses from its individual comparison and requires independent DST verification.
+
+### Private cross-provider participation audit
+
+`npm run calibration:cross-provider-scores` writes
+`data/private/yahoo-nflverse-score-audit.json`.
+
+The `participationCoverage` object retains its summary fields and
+adds `unresolvedRecords`, containing individual player-week
+classifications and accepted participation evidence.
+
+This is private diagnostic output, not proof of scoring parity or
+calibration eligibility. Unmatched nonzero records continue blocking
+scoring parity, and DST scoring requires independent verification.
+
+
+### Verified schedule-backed Yahoo bye classification
+
+The private cross-provider audit optionally reads `data/private/nfl-kickoffs.csv` and week-specific `data/private/kickoff-verification-week-<week>.json` evidence. It checks the independently compared nflverse reference, exact local file SHA-256, season/week, game counts, distinct teams and complete 32-team season universe before classifying unmatched zero-point players from absent teams as `scheduled-bye`. Missing, conflicting or altered evidence fails closed to `unverified`. Historical schedule verification does not use the 48-hour *live kickoff* freshness limit; live readiness checks are unchanged. Preserve the existing default Week 6 verification file. Bye classification is explanatory only: it does not establish statistical matches, scoring parity, participation coverage completeness or calibration eligibility. All private schedules and evidence remain under `data/private/` and must not be committed.
+
+
+### Provisional completed-actuals reporting
+
+The private cross-provider scoring audit now includes `actualsReadiness.weeks` with schedule-based statuses: `provisional-five-day-buffer` while any scheduled kickoff is less than five days old, `provisional-source-incomplete` when the buffer has elapsed but scheduled teams are missing from nflverse actuals, `unverified-schedule` if schedule coverage cannot be established, and `team-coverage-ready` only after all scheduled teams are represented. These are diagnostic labels, not independent verification of player completeness. The existing scoring-parity and participation gates remain unchanged, and unresolved nonzero Yahoo rows are never removed. The audit does not refresh or overwrite private actuals or historical forecasts. `calibration:fetch-actuals` rewrites its private output; back up and review before invoking it.
+
+
+### Complete-dashboard acceptance gate
+
+`npm run review:readiness -- data/private/<report>.json` now fails complete-dashboard acceptance when the intelligence report has no valid `remainingSchedule` entries, and warns when any scheduled game lacks finite conditional playoff leverage (`playoffImpact.swing`). This is intentionally stricter than simulation readiness: an older trusted report may be useful for probabilities but is not a complete schedule/leverage demo. It does not synthesize schedule or impact data, change historical archives, or weaken existing trust checks. A warning alone does not constitute live browser acceptance.
+
+
+### Provider-neutral league contract checkpoint (October 2026)
+
+Run `node tests/league-snapshot-tests.mjs` to exercise the shared V1 normalization boundary for both `yahoo` and `espn` provider labels, including team identity, lineup slots, playoff fields, and rejection of missing, unknown-team, self-opponent, or duplicate-participation schedules. These tests use constructed data, **not an ESPN adapter or live ESPN evidence**. The normalization layer still defaults missing playoff settings and projections; any future ESPN adapter must verify provider scoring, schedule coverage, roster identity, lineup assignments, and settings independently before passing readiness. The October 27 ESPN decision remains conditional on source-backed adapter and scoring parity evidence. Yahoo remains the private-beta priority.
+
+
+### Historical dashboard schedule compatibility
+
+The live-dashboard exporter now labels a missing `report.remainingSchedule` as `scheduleDataStatus: unavailable-in-report`. The renderer explicitly says historical schedule and conditional leverage were unavailable instead of implying there are no future games. Reports containing `remainingSchedule` retain their existing schedule and leverage rendering. This is display-only compatibility; it does **not** reconstruct historical forecasts, infer leverage from top-level strategy fields, or relax the complete-dashboard readiness gate. A fresh source-backed report with conditional matchup estimates is still required for full private-beta acceptance.
+
+### Provider-free schedule and leverage integration regression
+
+`node tests/league-intelligence-report-tests.mjs` includes a synthetic eight-week (weeks 7–14) report-to-dashboard integration scenario. It checks that the report builder emits one conditional matchup impact per remaining week, that the dashboard exporter preserves all eight, and that the renderer displays the schedule and leverage panels with provisional championship labeling. The fixture is **not** evidence of Yahoo/ESPN scoring parity, live projection quality, or a historical pregame forecast. It performs no provider requests and does not write to `data/private/`.
+
+### Yahoo scoring evidence: yardage bonus confirmation
+
+`npm run calibration:review-scoring` no longer claims `bonusConfirmed: true` without independent evidence. The evidence review reports `yardage-bonus-not-confirmed` until an explicit verified source and corresponding review workflow are implemented. This is a conservative diagnostic correction only: it does not alter league scoring, player actuals, identity matching, the capture gate, or historical forecasts. Scoring parity and participation remain separate unresolved acceptance requirements.
+
+### Week-level Yahoo reconciliation diagnostics
+
+`npm run calibration:cross-provider-scores` now prints `UNRESOLVED BY WEEK` and writes `participationCoverage.unresolvedByWeek` to the existing private `data/private/yahoo-nflverse-score-audit.json`. Each row includes source readiness, unmatched nonzero/zero counts, and unverified participation counts. Provisional weeks remain included in all overall failure totals; this breakdown is **diagnostic only**, not a waiver, verified participation record, scoring parity approval, or calibration gate. The command may exit 2 while unresolved records remain.
+
+### Private Yahoo zero-point participation triage
+
+After `npm run calibration:cross-provider-scores`, run `npm run calibration:participation-queue` to create `data/private/yahoo-participation-review-queue.json`. The queue selects only unverified zero-point Yahoo individual records from 2026 weeks 1–5 and labels whether the player's team appears in the local kickoff schedule, alongside the week-level actuals readiness. This schedule classification **does not** prove individual participation or establish a verified bye; no scoring, identity override, evidence, or immutable archive is changed. Keep this private JSON out of public commits. `node tests/yahoo-participation-review-queue-tests.mjs` checks filtering, ordering, and conservative classifications.
+
+The private queue uses the same established NFL team-code aliases as Yahoo unmatched diagnostics (including Yahoo `LAR` versus nflverse schedule `LA`). This corrects schedule classification only: a scheduled team is **not** proof that a player participated, and every unresolved player remains unverified until supported by independent evidence.
+
+The queue now includes `reviewPriority` (`first` for Week 5 WR/RB, `second` for Week 4 WR/RB, otherwise `later`), `evidenceChecklist`, and aggregate `summary.priorityCounts`. These are workflow aids, not new accepted evidence. The reviewer must independently confirm the player, season/week, documented participation status, source HTTPS URL, and review date before using the existing validated evidence process. Never commit the private queue or infer player activity from team schedule presence.
+
+### Private Week 5 Yahoo zero-score reconciliation
+
+Run `npm run calibration:review-zeros` after `calibration:cross-provider-scores`. It reads existing private Yahoo actuals and audit JSON and prints only aggregate counts: explicit zero, missing, matched-zero, unresolved-zero, unclassified-zero and overlap. It exits nonzero on missing scores or incomplete classification; it does not write files or change evidence, identity, scores, calibration, or historical forecasts. `node tests/yahoo-zero-reconciliation-tests.mjs` uses synthetic rows. An audit match is not independent proof of participation or live scoring accuracy.
+
+The private participation queue is sorted by review priority first (`first`, `second`, `later`), then descending week and stable position/player ID. Regenerate it with `npm run calibration:participation-queue` after pulling. This changes review presentation only, not participation evidence or scoring gates.
+
+### Local-only first-priority evidence review
+
+After generating the private queue, run `npm run calibration:review-participation` to display the Week 5 WR/RB first-priority cases locally with blank source URL, review date, and documented status fields. This command is read-only, does not contact outside sources, does not write evidence or accept any status, and prints private player details to the local terminal only. Do not paste the output into public issues or commits. Confirm participation independently with an HTTPS source and exact player/week before entering any evidence through the existing validated private process. Run `node tests/yahoo-participation-review-batch-tests.mjs` for eligibility checks.
+
+### Documented inactive participation evidence
+
+The private `data/private/yahoo-participation-evidence.json` validator also recognizes `officially-inactive` for an independently confirmed game-day inactive player-week. It is distinct from `injured-reserve` and `participated-no-fantasy-stats`; do not infer it from a blank game log, zero Yahoo score, or absence from nflverse. Existing evidence requirements remain: exact season/week/Yahoo player ID, `verified:true`, valid `reviewedAt` date and independent HTTPS `sourceUrl`. This status explains an unmatched zero only; it never converts the row into a scoring match or makes calibration eligible. Leave unsupported cases unverified. Test with `node tests/yahoo-participation-coverage-tests.mjs`.
+
+### Missing Yahoo actuals fail closed
+
+Participation coverage does not interpret null, absent, or whitespace-only Yahoo actual scores as zero. These malformed inputs count as unresolved nonzero/invalid for parity diagnostics and cannot accept participation evidence or verified-bye classification. This defensive downstream check supplements the weekly Yahoo extractor; it does not retroactively change private actuals, historical forecasts, or the shared Yahoo/ESPN normalization contract. `node tests/yahoo-participation-coverage-tests.mjs` covers these cases.
+
+### Read-only Week 5 participation candidate identity check
+
+Run `npm run calibration:review-candidates` locally to compare the three previously identified Week 5 Yahoo player IDs (Saquon Barkley, DeVonta Smith and Jordan Addison) with the private actuals file and existing participation evidence. The command prints private identifiers locally and **does not** verify game-day inactivity, fetch official sources, write evidence, or set `verified:true`. A positive `eligibleForManualReview` means only that player identity and explicit zero were found without a conflicting existing evidence entry. Official season/week-specific inactive source URLs must still be reviewed manually. Keep output private. `node tests/yahoo-participation-candidate-review-tests.mjs` checks duplicate and missing/incorrect data handling.
+
+### Yahoo-only private snapshot dashboard (no simulation required)
+
+Run `node scripts/build-yahoo-only-dashboard.mjs data/private/fightin-kali-current.json`, then `Start-Process .\\data\\private\\yahoo-only-dashboard.html` in PowerShell. This generates a local static HTML view of the saved Yahoo snapshot's standings, records, roster entries and schedule-week count. The source week is displayed explicitly (a Week 7 snapshot is not Week 8). No Yahoo API calls, projection requests, Week 6 actuals, simulation or calibration run. Playoff/championship odds and recommendations are explicitly unavailable. The output must remain in `data/private/`; never publish or commit it. Run `node tests/yahoo-only-dashboard-tests.mjs` for provider-free checks. The existing trusted simulation dashboard and its readiness gate are unchanged.
+
+Yahoo-only snapshot view now supports keyboard-accessible clickable standings to open team rosters, two-decimal points formatting, and expandable remaining-week matchups sourced from the snapshot. Schedule entries are not predictions. Refresh the local HTML by rerunning the builder; it does not auto-refresh Yahoo.

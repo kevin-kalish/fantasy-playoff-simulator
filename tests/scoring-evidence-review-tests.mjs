@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {reviewScoringEvidence} from '../src/data/scoring-evidence-review.js';
+const missing=reviewScoringEvidence();
+assert.equal(missing.verified,false);
+assert.equal(missing.captureGateEligible,false);
+assert.ok(missing.issues.includes('missing-yahoo-settings'));
+assert.ok(missing.issues.includes('missing-independent-actuals-audit'));
+const partial=reviewScoringEvidence({bonusConfirmed:true,crossProvider:{pass:true,summary:{totalMatched:10,excludedDefenses:2},participationCoverage:{scoringParityPass:true,participationCoverageComplete:true}}});
+assert.ok(partial.issues.includes('defense-scoring-excluded'));
+assert.ok(partial.issues.includes('model-scoring-path-not-independently-verified'));
+assert.equal(partial.verified,false);
+console.log('scoring-evidence-review-tests: all checks passed');

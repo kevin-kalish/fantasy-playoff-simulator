@@ -1,0 +1,47 @@
+name: FantasyPros free API check
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check official API access (one request; no response body logged)
+        env:
+          FANTASYPROS_API_KEY: ${{ secrets.FANTASYPROS_API_KEY }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const key = process.env.FANTASYPROS_API_KEY;
+          if (!key) {
+            console.log('FANTASYPROS CHECK: secret missing or unavailable in this workflow context');
+            process.exitCode = 2;
+          } else {
+            const url = 'https://api.fantasypros.com/public/v2/json/nfl/2026/projections?position=QB&week=8';
+            try {
+              const response = await fetch(url, {
+                headers: { 'x-api-key': key, accept: 'application/json' },
+                signal: AbortSignal.timeout(15000)
+              });
+              console.log('FANTASYPROS CHECK: HTTP status', response.status);
+              if (response.ok) {
+                const payload = await response.json();
+                const players = Array.isArray(payload?.players) ? payload.players : Array.isArray(payload?.player) ? payload.player : [];
+                const reported = Number(payload?.count);
+                console.log('FANTASYPROS CHECK: returned player count', players.length);
+                console.log('FANTASYPROS CHECK: reported player count', Number.isFinite(reported) ? reported : 'not supplied');
+                console.log('FANTASYPROS CHECK: possibly truncated', Number.isFinite(reported) ? reported > players.length : 'unknown');
+              } else {
+                console.log('FANTASYPROS CHECK: non-success; no response body printed');
+                process.exitCode = 1;
+              }
+            } catch (error) {
+              console.log('FANTASYPROS CHECK: request failed; error type', error?.name || 'unknown');
+              process.exitCode = 1;
+            }
+          }
+          NODE

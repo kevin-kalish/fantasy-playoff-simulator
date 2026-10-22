@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {parseYahooCurrentWeek,fetchYahooCurrentWeek} from '../src/data/yahoo-current-week.js';
+const response={fantasy_content:{league:[[{league_key:'461.l.1'},{current_week:'6'},{start_week:'1'}],{}]}};
+assert.equal(parseYahooCurrentWeek(response),6);
+assert.equal(parseYahooCurrentWeek({fantasy_content:{league:[{league_key:'461.l.1'},{current_week:'12'}]}}),12);
+for(const value of [undefined,'',0,'foo',19])assert.throws(()=>parseYahooCurrentWeek({fantasy_content:{league:[{current_week:value}]}}),/valid current_week/);
+let requested='';
+assert.equal(await fetchYahooCurrentWeek(async path=>{requested=path;return response},'461.l.1'),6);
+assert.equal(requested,'league/461.l.1');
+await assert.rejects(()=>fetchYahooCurrentWeek(async()=>response,''),/league key required/);
+console.log('yahoo-current-week-tests: all checks passed');

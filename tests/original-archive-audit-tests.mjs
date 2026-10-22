@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {auditOriginalArchives} from '../src/data/original-archive-audit.js';
+const observed='2026-10-10T11:00:00Z',captured='2026-10-10T12:00:00Z',kickoff='2026-10-11T18:00:00Z';
+const archive={path:'data/private/projection-archives/verified.json',immutable:true,capturedAt:captured,data:{schemaVersion:3,source:'jerrygm',rows:[{season:2026,week:6,playerId:'p1',scoring:'HALF',projection:12,source:'jerrygm',projectedAt:observed,kickoffAt:kickoff,forecastProvenance:{kind:'fresh-provider-response',provider:'jerrygm',observedAt:observed}},{season:2026,week:6,playerId:'p2',scoring:'HALF',projection:10,source:'jerrygm',projectedAt:observed,forecastProvenance:{kind:'fresh-provider-response',provider:'jerrygm',observedAt:observed}}]}};
+const actuals=[{season:2026,week:6,playerId:'p1',scoring:'HALF',actual:15,actualRecordedAt:'2026-10-17T12:00:00Z'}];
+const report=auditOriginalArchives([archive],actuals);
+assert.equal(report.totalRows,2);
+assert.equal(report.byArchive[0].exactIdentityActualMatches,1);
+assert.equal(report.byArchive[0].strictImportCandidates,1);
+assert.equal(report.byArchive[0].failures['missing-kickoff-time'],1);
+assert.equal(report.parameterUpdatesAllowed,false);
+const legacy=auditOriginalArchives([{...archive,immutable:false,data:{...archive.data,schemaVersion:2}}],actuals);
+assert.equal(legacy.strictImportCandidates,0);
+console.log('original-archive-audit-tests: all checks passed');

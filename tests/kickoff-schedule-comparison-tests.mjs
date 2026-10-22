@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {compareKickoffSchedules} from '../src/data/kickoff-schedule-comparison.js';
+const local='season,week,home_team,away_team,kickoffAt\n2026,6,NE,NYJ,2026-10-18T17:00:00Z\n';
+const reference=[{season:2026,week:6,home_team:'NE',away_team:'NYJ',kickoffAt:'2026-10-18T17:00:00Z'}];
+assert.equal(compareKickoffSchedules(local,reference,{season:2026,week:6}).match,true);
+const changed=[{...reference[0],kickoffAt:'2026-10-18T18:00:00Z'}];
+const mismatch=compareKickoffSchedules(local,changed,{season:2026,week:6});
+assert.equal(mismatch.match,false);
+assert.equal(mismatch.mismatched.length,1);
+assert.equal(compareKickoffSchedules(local,[],{season:2026,week:6}).match,false);
+console.log('kickoff-schedule-comparison-tests: all checks passed');

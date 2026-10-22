@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {validateIndependentSeeds} from '../src/model/independent-seed-validation.js';
+const player=(id)=>({id,name:id,position:'QB',projection:18});
+const teams=Array.from({length:4},(_,i)=>({id:'T'+i,name:'Team '+i,wins:1,losses:1,points:100+i,roster:[player('P'+i)],weeklyLineups:{3:[player('P'+i)],4:[player('P'+i)]}}));
+const input={teams,schedule:[{week:3,matchups:[['T0','T1'],['T2','T3']]}],playoffWeeks:[4],playoffSpots:2,seed:37,simulations:500,modelVariant:'baseline'};
+const opts={runs:3,simulations:500,focusTeamId:'T0'};
+const first=validateIndependentSeeds(input,opts);
+const second=validateIndependentSeeds(input,opts);
+assert.deepEqual(first,second,'fixed seeds must reproduce exactly');
+assert.deepEqual(first.seeds,[37,100040,200043]);
+assert.equal(first.teams.length,1);
+assert.equal(first.teams[0].runs.length,3);
+assert.ok(first.teams[0].playoff.min>=0&&first.teams[0].playoff.max<=1);
+assert.equal(input.seed,37,'source input must not mutate');
+assert.throws(()=>validateIndependentSeeds(input,{runs:1}),/runs/);
+assert.throws(()=>validateIndependentSeeds(input,{runs:2,simulations:99}),/simulations/);
+assert.throws(()=>validateIndependentSeeds(input,{runs:2,focusTeamId:'missing'}),/Unknown/);
+console.log('independent-seed-validation-tests: all checks passed');

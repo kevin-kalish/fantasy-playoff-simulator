@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {reviewParticipationCandidates as review} from '../src/data/yahoo-participation-candidate-review.js';
+const c={season:2026,week:5,yahooPlayerId:'y1',name:'Fixture',position:'WR',nflTeam:'NE'};
+const r={season:2026,week:5,playerId:'y1',name:'Fixture',position:'WR',nflTeam:'NE',actual:0};
+const one=review([c],[r],[])[0];
+assert.equal(one.eligibleForManualReview,true);
+assert.equal(one.sourceSupplied,false);
+assert.equal(one.reviewRequired,true);
+assert.equal(review([c],[{...r,actual:null}],[])[0].eligibleForManualReview,false);
+assert.equal(review([c],[{...r,name:'Other'}],[])[0].eligibleForManualReview,false);
+assert.equal(review([c],[r],[c])[0].eligibleForManualReview,false);
+assert.throws(()=>review([c,c],[r],[]),/Duplicate candidate/);
+assert.throws(()=>review([c],[r,r],[]),/Duplicate Yahoo/);
+assert.throws(()=>review(null,[r],[]),/Expected/);
+console.log('yahoo-participation-candidate-review-tests: all checks passed');

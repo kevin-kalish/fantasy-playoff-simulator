@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {reconcileYahooNflverseScores} from '../src/data/yahoo-nflverse-score-audit.js';
+const nfl=[{season:2026,week:1,playerId:'nfl-1',name:'Test Player',position:'WR',nflTeam:'JAX',actual:12.5}];
+const yahoo=[{season:2026,week:1,playerId:'yahoo-1',name:'Test Player',position:'WR',nflTeam:'JAC',actual:12.5}];
+const pass=reconcileYahooNflverseScores(nfl,yahoo);
+assert.equal(pass.summary.compared,1);assert.equal(pass.pass,true);
+const mismatch=reconcileYahooNflverseScores(nfl,[{...yahoo[0],actual:10}]);
+assert.equal(mismatch.summary.mismatches,1);assert.equal(mismatch.pass,false);
+const ambiguous=reconcileYahooNflverseScores([...nfl,{...nfl[0],playerId:'nfl-2'}],yahoo);
+assert.equal(ambiguous.summary.ambiguous,1);assert.equal(ambiguous.summary.compared,0);
+const missing=reconcileYahooNflverseScores(nfl,[{...yahoo[0],name:'Other Player'}]);
+assert.equal(missing.summary.unmatched,1);
+const suffix=reconcileYahooNflverseScores([{...nfl[0],name:'James Cook'}],[{...yahoo[0],name:'James Cook III'}]);
+assert.equal(suffix.summary.compared,1);
+const suffixAmbiguous=reconcileYahooNflverseScores([{...nfl[0],name:'James Cook'},{...nfl[0],name:'James Cook Jr.',playerId:'nfl-2'}],[{...yahoo[0],name:'James Cook III'}]);
+assert.equal(suffixAmbiguous.summary.ambiguous,1);
+assert.equal(suffixAmbiguous.summary.compared,0);
+console.log('yahoo-nflverse-score-audit-tests: all checks passed');

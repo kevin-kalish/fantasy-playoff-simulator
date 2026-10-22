@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {applyLineupManagementStress} from '../src/model/lineup-management-stress.js';
+const p=(id,projection)=>({id,name:id,position:'QB',projection,status:'ACTIVE',lineupSlot:'QB'});
+const input={seed:7,schedule:[{week:6},{week:7}],playoffWeeks:[15],teams:[{id:'t',weeklyLineups:{6:[p('a',20)],7:[p('a',20)],15:[p('a',20)]}}]};
+const league={teams:[{id:'t',weeklyRosters:{7:[p('a',20),p('b',18)],15:[p('a',20),p('b',18)]}}]};
+const full=applyLineupManagementStress(input,league,{missRate:1,seed:7});
+assert.equal(full.diagnostics.swaps,2);
+assert.equal(full.diagnostics.totalProjectedPointsLost,4);
+assert.equal(full.input.teams[0].weeklyLineups[6][0].id,'a');
+assert.equal(full.input.teams[0].weeklyLineups[7][0].id,'b');
+assert.equal(input.teams[0].weeklyLineups[7][0].id,'a');
+assert.equal(applyLineupManagementStress(input,league,{missRate:0}).diagnostics.swaps,0);
+assert.deepEqual(applyLineupManagementStress(input,league,{missRate:.5,seed:7}),applyLineupManagementStress(input,league,{missRate:.5,seed:7}));
+assert.throws(()=>applyLineupManagementStress(input,league,{missRate:2}),/missRate/);
+console.log('lineup-management-stress-tests: all checks passed');
