@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {compareHistoricalReports} from '../scripts/compare-private-historical-reports.mjs';
+const make=(week,probability,schemaVersion=10)=>({week,document:{readiness:{ready:true},report:{schemaVersion,generatedAt:'2026-10-'+String(week+4).padStart(2,'0')+'T12:00:00Z',trust:{trusted:true},team:{id:'a'},league:{outlook:[{id:'a',playoffProbability:probability}]}}}});
+assert.deepEqual(compareHistoricalReports([make(5,.5),make(4,.4)]).map(x=>x.week),[4,5]);
+assert.throws(()=>compareHistoricalReports([make(4,.4),make(4,.5)]),/duplicate/);
+assert.throws(()=>compareHistoricalReports([make(4,1.2)]),/probability/);
+assert.throws(()=>compareHistoricalReports([{...make(4,.4),document:{...make(4,.4).document,readiness:{ready:false}}}]),/trusted/);
+assert.throws(()=>compareHistoricalReports([make(4,.4,9)]),/schema/);
+assert.throws(()=>compareHistoricalReports([make(4,.4),{...make(5,.5),document:{...make(5,.5).document,report:{...make(5,.5).document.report,team:{id:'b'}}}}]),/different focus teams/);
+console.log('compare-private-historical-reports-tests: all checks passed');
