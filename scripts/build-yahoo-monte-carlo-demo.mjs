@@ -1,0 +1,33 @@
+// Explicitly unverified Monte Carlo demo with REAL Yahoo structure and ASSUMED projections.
+// Never feed this output into readiness, calibration, forecast archives, or production exports.
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {normalizeLeagueSnapshot,validateLeagueSnapshot} from '../src/data/league-snapshot.js';
+import {simulateLeague} from '../src/simulator.js';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const privateRoot=path.join(root,'data/private');
+const input=path.resolve(process.argv[2]??path.join(privateRoot,'fightin-kali-current.json'));
+const output=path.resolve(process.argv[3]??path.join(privateRoot,'yahoo-monte-carlo-demo.html'));
+const within=p=>p.startsWith(privateRoot+path.sep);
+if(!within(input)||!within(output))throw Error('Input and output must be in data/private');
+const raw=JSON.parse(fs.readFileSync(input,'utf8'));
+if(raw.source?.provider!=='yahoo')throw Error('Yahoo snapshot required');
+const validation=validateLeagueSnapshot(raw);
+if(!validation.valid)throw Error('Invalid league snapshot: '+validation.errors.join('; '));
+const league=normalizeLeagueSnapshot(raw);
+const base={QB:18,RB:12,WR:11,TE:8,K:8,DEF:8};
+const projected=league.teams.map(t=>({...t,lineup:(t.lineup.length?t.lineup:t.roster??[]).map(p=>({...p,projection:base[p.position]??6})),weeklyLineups:Object.fromEntries(Object.entries(t.weeklyLineups??{}).map(([w,players])=>[w,players.map(p=>({...p,projection:base[p.position]??6}))]))}));
+const simulations=1000,seed=20261022;
+const results=simulateLeague({teams:projected,schedule:league.schedule,playoffSpots:league.playoffSpots,playoffWeeks:league.playoffWeeks,reseed:league.reseed,tiebreaker:league.tiebreaker,simulations,seed,modelVariant:'correlated'});
+const focus=projected.find(t=>/fightin.? kali/i.test(t.name))??projected[0];
+const names=new Map(projected.map(t=>[String(t.id),t.name]));
+const remainingSchedule=league.schedule.flatMap(w=>(w.matchups??[]).filter(pair=>pair.includes(focus.id)).map(pair=>{const opponentId=String(pair.find(id=>String(id)!==String(focus.id)));return {week:w.week,opponentId,opponentName:names.get(opponentId)??opponentId};}));
+const payload={schemaVersion:1,mode:'live',generatedAt:new Date().toISOString(),league:{teamCount:projected.length,playoffTeamCount:league.playoffSpots,userTeamId:String(focus.id)},model:{simulations,seed,championshipStatus:'provisional',directWeeks:[],derivedWeeks:[]},teams:results.map(r=>{const t=projected.find(t=>String(t.id)===String(r.id));return {id:String(r.id),name:r.name,record:{wins:t.wins,losses:t.losses,ties:t.ties},currentSeed:t.rank??null,averageWins:r.averageWins,playoffProbability:r.playoffProbability,championshipProbability:r.championshipProbability,seedDistribution:r.seedDistribution??[]};}),roster:{teamId:String(focus.id),starters:focus.lineup.map(p=>({name:p.name,position:p.position,slot:p.lineupSlot??p.position,projection:null}))},remainingSchedule,scheduleDataStatus:'supplied',matchup:null,playoffHistory:[],gmDiagnostics:null,warnings:['UNVERIFIED DEMO: assumed position-based projections; not a current Yahoo forecast.']};
+const renderer=fs.readFileSync(path.join(root,'src/ui/live-dashboard-v1.js'),'utf8').replace(/^export\\s+function\\s+renderDashboardV1/m,'function renderDashboardV1');
+if(!renderer.includes('function renderDashboardV1'))throw Error('Dashboard renderer missing');
+const json=JSON.stringify(payload).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
+const css='body{font-family:system-ui,sans-serif;max-width:1200px;margin:2rem auto;padding:0 1rem;background:#f5f7fa;color:#192436}.warning{padding:1rem;background:#fff0cd;border:2px solid #b45309;border-radius:8px}.dash-head,.metric-grid,.schedule-row,.player-row{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}.metric-grid>div,.race-panel,.matchup-panel,.detail-card{background:white;border:1px solid #dce2eb;border-radius:10px;padding:1rem;margin:.8rem 0}.metric-grid>div{flex:1;min-width:160px}.metric-grid span,.metric-grid strong{display:block}.metric-grid strong{font-size:1.4rem}.schedule-row,.player-row{padding:.6rem 0;border-bottom:1px solid #eee}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}td,th{padding:.65rem;text-align:left;border-bottom:1px solid #ddd}tr[data-team-id]{cursor:pointer}tr.selected{background:#e9f2ff}.demo-disclaimer,.sim-note,.eyebrow{color:#526174;font-size:.85rem}.bar{background:#e2e7ed;flex:1;height:.6rem;border-radius:5px;overflow:hidden}.bar i{display:block;background:#3268a8;height:100%}.schedule-view-controls{display:flex;gap:.5rem;flex-wrap:wrap;margin:.75rem 0}.schedule-view-controls button{border:1px solid #8da1b9;background:white;padding:.5rem .85rem;border-radius:7px;cursor:pointer}.schedule-view-controls button[aria-pressed=true]{background:#244e85;color:white}.seed-row{display:flex;align-items:center;gap:1rem;margin:.4rem 0}';
+const html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \\'none\\'; script-src \\'unsafe-inline\\'; style-src \\'unsafe-inline\\'; connect-src \\'none\\'; img-src \\'none\\'"><title>Yahoo Monte Carlo — UNVERIFIED DEMO</title><style>'+css+'</style></head><body><p class="warning"><strong>UNVERIFIED MONTE CARLO DEMO — NOT A FORECAST.</strong> Real Yahoo teams, records, and schedule from snapshot week '+Number(league.currentWeek??0)+'. All player projections are assumed position averages; odds and championship outcomes are illustrative only. No calibration, source verification, or recommendations. PRIVATE / LOCAL ONLY.</p><main id="dashboard"></main><script>'+renderer+'\\nconst payload='+json+';renderDashboardV1(document.getElementById("dashboard"),payload);</script></body></html>';
+fs.writeFileSync(output,html,{mode:0o600});
+console.log('YAHOO MONTE CARLO DEMO: '+output+'; '+simulations+' illustrative simulations; snapshot week '+league.currentWeek);
