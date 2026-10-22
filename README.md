@@ -1,3 +1,9 @@
+### Incomplete optimized lineup diagnostics (read-only)
+
+When `npm run intelligence:weekly -- <snapshot> <spec>` fails readiness for incomplete future lineups, stderr now includes `INCOMPLETE LINEUP` entries identifying team, week, empty slot, and provisional cause: no eligible rostered player, all eligible on bye, all unavailable, all missing projections, or insufficient usable eligible players. JSON readiness also includes `incompleteLineupDetails`. These classifications use current roster and projection fields; they are not verified future transactions or availability. Readiness remains blocked; no projections, lineup choices, scoring, or historical archives are changed.
+
+Validate locally with `node tests/simulation-readiness-tests.mjs` and `npm test`. Keep private league snapshots and reports out of commits.
+
 ### Private scoring-readiness blocker priority
 
 To triage scoring failures separately from zero-point participation coverage, run:
