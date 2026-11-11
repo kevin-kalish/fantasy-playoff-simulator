@@ -20,8 +20,13 @@ export function assessSimulationReadiness(prepared,{minimumProjectionMatchRate=.
  if(!input.schedule?.length)errors.push('No remaining regular-season schedule is available.');
  if(!coverage.total)errors.push('No roster-week projection observations were evaluated.');
  else if(coverage.matchRate<minimumProjectionMatchRate)errors.push(`Projection coverage ${(coverage.matchRate*100).toFixed(1)}% is below required ${(minimumProjectionMatchRate*100).toFixed(1)}%.`);
+ const incompleteDetails=diagnoseIncompleteLineups(prepared);
+ const futureRosterGaps=incompleteDetails.filter(row=>Number.isInteger(currentWeek)&&Number(row.week)>currentWeek&&row.slots.length>0&&row.slots.every(slot=>['all-eligible-on-bye','all-eligible-unavailable','insufficient-usable-eligible-players'].includes(slot.reason)&&slot.missingProjectionCount===0));
+ const futureGapKeys=new Set(futureRosterGaps.map(row=>String(row.teamId)+'|'+row.week));
+ const blockingLineupGaps=incompleteDetails.filter(row=>!futureGapKeys.has(String(row.teamId)+'|'+row.week));
+ if(futureRosterGaps.length)warnings.push(`${futureRosterGaps.length} future team-week lineup(s) require roster management; no replacement players or points have been assumed. Simulation remains blocked until a validated treatment is available.`);
  if(incomplete.length)errors.push(`${incomplete.length} optimized team-week lineup(s) are incomplete.`);
  if(!input.calibration)warnings.push('No empirical calibration parameters are attached; simulator fallbacks will be used.');
  if(!input.nflGames?.length)warnings.push('No NFL game context is attached; game-level correlation may be limited.');
- return {ready:errors.length===0,errors,warnings,projectionCoverage:coverage,incompleteLineups:incomplete,incompleteLineupDetails:diagnoseIncompleteLineups(prepared),lineupSlots:prepared?.diagnostics?.lineupSlots||[],teamCount:input.teams?.length||0,scheduleWeeks:(input.schedule||[]).map(x=>x.week),playoffWeeks:input.playoffWeeks||[],modelVariant:input.modelVariant,simulations:input.simulations,seed:input.seed};
+ return {ready:errors.length===0,errors,warnings,projectionCoverage:coverage,incompleteLineups:incomplete,incompleteLineupDetails:incompleteDetails,futureRosterGaps,blockingLineupGaps,lineupSlots:prepared?.diagnostics?.lineupSlots||[],teamCount:input.teams?.length||0,scheduleWeeks:(input.schedule||[]).map(x=>x.week),playoffWeeks:input.playoffWeeks||[],modelVariant:input.modelVariant,simulations:input.simulations,seed:input.seed};
 }
