@@ -13,6 +13,7 @@ import {diagnoseStartSit} from '../src/model/start-sit-diagnostic.js';
 import {validateIndependentSeeds} from '../src/model/independent-seed-validation.js';
 import {prepareLeagueSimulation} from '../src/model/league-preparation.js';
 import {assessSimulationReadiness} from '../src/model/simulation-readiness.js';
+import {inventoryFutureRosterCandidates} from '../src/model/future-roster-candidate-inventory.js';
 import {compareLineupScenarios} from '../src/model/lineup-scenario-comparison.js';
 import {buildLeagueIntelligenceReport} from '../src/model/league-intelligence-report.js';
 import {formatWeeklyIntelligence} from '../src/model/weekly-intelligence-format.js';
@@ -139,6 +140,10 @@ console.error(`SIMULATION INPUT: ${fingerprint}; seed ${prepared.input.seed}; va
 console.error(`READY CHECK: ${readiness.ready?'PASS':'FAIL'}; projections ${(100*readiness.projectionCoverage.matchRate).toFixed(1)}% usable; incomplete lineups ${readiness.incompleteLineups.length}.`);
 if(!readiness.ready){
  console.error(`LINEUP BLOCKERS: ${readiness.blockingLineupGaps?.length??0} current-week or unresolved team-weeks; ${readiness.futureRosterGaps?.length??0} future roster-management team-weeks. No replacement projections assumed; trusted simulation remains blocked.`);
+ const waiverPool=spec.waivers?.replacementCandidates??spec.waivers?.candidates??[];
+ const inventory=inventoryFutureRosterCandidates(readiness.futureRosterGaps,waiverPool);
+ console.error(`FUTURE ROSTER CANDIDATES: ${inventory.length} future team-weeks; ${waiverPool.length} Yahoo candidate records from focus-team waiver scan; position matches only, no verified weekly projection evidence, no transactions assumed.`);
+ for(const row of inventory)for(const slot of row.slots)console.error(`FUTURE ROSTER GAP: ${row.teamName} W${row.week} ${slot.slot}: ${slot.positionMatches} candidate position matches; weekly projection evidence not checked; provisional only.`);
  for(const row of readiness.blockingLineupGaps??[])console.error(`UNRESOLVED LINEUP: ${row.teamName??row.teamId} W${row.week}; ${row.slots.map(slot=>`${slot.slot}=${slot.reason}`).join(', ')||'details unavailable'}.`);
  for(const row of readiness.incompleteLineupDetails??[])for(const slot of row.slots)console.error(`INCOMPLETE LINEUP: ${row.teamName??row.teamId} W${row.week} ${slot.slot}: ${slot.reason} (eligible ${slot.eligibleRosterCount}; bye ${slot.byeCount}; unavailable ${slot.unavailableCount}; missing projections ${slot.missingProjectionCount}).`);
  if(spec.sourceAudit?.passed===true&&readiness.incompleteLineups.length&&process.env.LINEUP_SCENARIO_COMPARE!=='false'){
