@@ -23,6 +23,9 @@ export function normalizeWaiverCandidate(player, source='unknown') {
     positions: [...new Set(positions.map(text).filter(Boolean))],
     nflTeam: text(player.nflTeam ?? player.team ?? player.editorial_team_abbr),
     percentOwned: number(player.percentOwned ?? player.percent_owned),
+    // Preserve only explicit source fields; do not infer a bye or future health.
+    ...(Number.isInteger(Number(player.byeWeek ?? player.bye_week)) && (player.byeWeek ?? player.bye_week) != null && String(player.byeWeek ?? player.bye_week).trim() !== '' && Number(player.byeWeek ?? player.bye_week) >= 1 && Number(player.byeWeek ?? player.bye_week) <= 18 ? {byeWeek:Number(player.byeWeek ?? player.bye_week)} : {}),
+    ...(player.status != null && String(player.status).trim() !== '' ? {status:text(player.status).toUpperCase()} : {}),
     source: text(player.source) || source,
     raw: player
   };
