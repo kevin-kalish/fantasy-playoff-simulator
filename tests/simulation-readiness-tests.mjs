@@ -11,6 +11,18 @@ const kicker={...base,league:{teams:[{id:'A',name:'Team A',roster:[{name:'Kicker
 r=assessSimulationReadiness(kicker);
 assert.equal(r.ready,false);
 assert.equal(r.incompleteLineupDetails[0].slots[0].reason,'all-eligible-on-bye');
+const futureKicker=structuredClone(kicker);
+futureKicker.diagnostics.currentWeek=9;
+r=assessSimulationReadiness(futureKicker);
+assert.equal(r.ready,false,'future roster gaps must not bypass readiness');
+assert.equal(r.futureRosterGaps.length,1);
+assert.equal(r.blockingLineupGaps.length,0);
+assert.match(r.warnings.join(' '),/roster management/);
+const currentKicker=structuredClone(kicker);
+currentKicker.diagnostics.currentWeek=10;
+r=assessSimulationReadiness(currentKicker);
+assert.equal(r.futureRosterGaps.length,0);
+assert.equal(r.blockingLineupGaps.length,1);
 const missing=structuredClone(kicker);missing.league.teams[0].roster[0].byeWeek=13;missing.league.teams[0].roster[0].projectionStatus='missing';missing.league.teams[0].roster[0].projection=null;
 r=assessSimulationReadiness(missing);
 assert.equal(r.incompleteLineupDetails[0].slots[0].reason,'all-eligible-missing-projection');
