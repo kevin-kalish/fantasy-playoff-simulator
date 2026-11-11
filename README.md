@@ -415,3 +415,7 @@ Yahoo-only snapshot view now supports keyboard-accessible clickable standings to
 ### Future lineup readiness diagnostics
 
 The weekly readiness check remains fail-closed when any modeled team-week has an incomplete starting lineup. The readiness result now distinguishes `futureRosterGaps` (future bye/unavailable/insufficient roster depth with no missing projections) from `blockingLineupGaps` (current-week, missing-projection, or otherwise unresolved gaps). This classification is diagnostic only: it does **not** invent replacement players, assume waiver moves, change projected points, authorize a trusted Monte Carlo run, or create/backfill historical forecasts. Verify with `node tests/simulation-readiness-tests.mjs` before using it in a live run.
+
+### Submitted Yahoo lineup vacancy diagnostics
+
+For current-week `live-submitted` lineups, incomplete-lineup diagnostics now compare the submitted starters with required starting slots (including duplicate positions and FLEX), rather than expecting optimizer-generated `EMPTY` placeholders. The output identifies missing slot types and candidate roster availability; it does not change the Yahoo lineup, infer transactions, fill vacancies, or relax readiness. Explicit submitted slot labels are honored before unlabeled players are matched by eligible position. A partial diagnostic is reported if the inferred missing slot count differs from the readiness count. Run `node tests/simulation-readiness-tests.mjs` and `node tests/weekly-intelligence-command-tests.mjs` after pulling the change.
