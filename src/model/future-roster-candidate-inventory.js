@@ -17,7 +17,7 @@ export function inventoryFutureRosterCandidates(futureRosterGaps,candidates=[],p
    const unavailableNow=statusKnown.filter(p=>UNAVAILABLE.has(String(p.status).toUpperCase()));
    // Exact ID equality is only a diagnostic; provider IDs may be in different namespaces.
    // Never treat an ID coincidence as independently verified projection provenance.
-   const sameIdRows=matches.filter(p=>rows.some(r=>String(r.playerId??'')!==''&&String(r.playerId)===String(p.id??'')&&Number(r.week)===Number(row.week)&&Number.isFinite(Number(r.projection))));
+   const sameIdRows=matches.filter(p=>rows.some(r=>String(r.playerId??'')!==''&&String(r.playerId)===String(p.id??'')&&Number(r.week)===Number(row.week)&&r.projection!=null&&r.projection!==''&&Number.isFinite(Number(r.projection))));
    // Current Yahoo status is not a verified future-week availability forecast.
    return {slot:slot.slot,reason:slot.reason,positionMatches:matches.length,
     knownByeWeek:byeKnown.length,onBye:onBye.length,offBye:byeKnown.length-onBye.length,unknownByeWeek:matches.length-byeKnown.length,
