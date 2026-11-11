@@ -20,9 +20,11 @@ const audited=inventoryFutureRosterCandidates([{teamName:'A',week:14,slots:[{slo
 assert.equal(audited.positionMatches,4);
 assert.equal(audited.knownByeWeek,3);
 assert.equal(audited.onBye,1);
+assert.equal(audited.offBye,2);
 assert.equal(audited.unknownByeWeek,1);
 assert.equal(audited.currentStatusKnown,3);
 assert.equal(audited.currentStatusUnavailable,1);
+assert.equal(audited.currentStatusUnknown,1);
 assert.equal(audited.futureAvailabilityVerified,0);
 assert.equal(audited.verifiedWeekProjectionMatches,0);
 console.log('future-roster-candidate-inventory-tests: all checks passed');
