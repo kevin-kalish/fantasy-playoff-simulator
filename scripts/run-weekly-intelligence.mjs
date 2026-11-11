@@ -139,6 +139,7 @@ console.error(`SIMULATION INPUT: ${fingerprint}; seed ${prepared.input.seed}; va
 console.error(`READY CHECK: ${readiness.ready?'PASS':'FAIL'}; projections ${(100*readiness.projectionCoverage.matchRate).toFixed(1)}% usable; incomplete lineups ${readiness.incompleteLineups.length}.`);
 if(!readiness.ready){
  console.error(`LINEUP BLOCKERS: ${readiness.blockingLineupGaps?.length??0} current-week or unresolved team-weeks; ${readiness.futureRosterGaps?.length??0} future roster-management team-weeks. No replacement projections assumed; trusted simulation remains blocked.`);
+ for(const row of readiness.blockingLineupGaps??[])console.error(`UNRESOLVED LINEUP: ${row.teamName??row.teamId} W${row.week}; ${row.slots.map(slot=>`${slot.slot}=${slot.reason}`).join(', ')||'details unavailable'}.`);
  for(const row of readiness.incompleteLineupDetails??[])for(const slot of row.slots)console.error(`INCOMPLETE LINEUP: ${row.teamName??row.teamId} W${row.week} ${slot.slot}: ${slot.reason} (eligible ${slot.eligibleRosterCount}; bye ${slot.byeCount}; unavailable ${slot.unavailableCount}; missing projections ${slot.missingProjectionCount}).`);
  if(spec.sourceAudit?.passed===true&&readiness.incompleteLineups.length&&process.env.LINEUP_SCENARIO_COMPARE!=='false'){
   try{
