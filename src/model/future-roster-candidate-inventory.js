@@ -16,8 +16,8 @@ export function inventoryFutureRosterCandidates(futureRosterGaps,candidates=[]){
    const unavailableNow=statusKnown.filter(p=>UNAVAILABLE.has(String(p.status).toUpperCase()));
    // Current Yahoo status is not a verified future-week availability forecast.
    return {slot:slot.slot,reason:slot.reason,positionMatches:matches.length,
-    knownByeWeek:byeKnown.length,onBye:onBye.length,unknownByeWeek:matches.length-byeKnown.length,
-    currentStatusKnown:statusKnown.length,currentStatusUnavailable:unavailableNow.length,
+    knownByeWeek:byeKnown.length,onBye:onBye.length,offBye:byeKnown.length-onBye.length,unknownByeWeek:matches.length-byeKnown.length,
+    currentStatusKnown:statusKnown.length,currentStatusUnavailable:unavailableNow.length,currentStatusUnknown:matches.length-statusKnown.length,
     futureAvailabilityVerified:0,verifiedWeekProjectionMatches:0,
     projectionEvidence:'not-checked',replacementAssumed:false};
   })
