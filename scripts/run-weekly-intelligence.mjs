@@ -139,6 +139,18 @@ if(confidence){const derived=prepared.diagnostics.longRangeProjectionWeeks??[];i
 console.error(`SIMULATION INPUT: ${fingerprint}; seed ${prepared.input.seed}; variant ${prepared.input.modelVariant}.`);
 console.error(`READY CHECK: ${readiness.ready?'PASS':'FAIL'}; projections ${(100*readiness.projectionCoverage.matchRate).toFixed(1)}% usable; incomplete lineups ${readiness.incompleteLineups.length}.`);
 if(!readiness.ready){
+ if(process.env.PROVISIONAL_ODDS==='true'){
+  const otherErrors=readiness.errors.filter(error=>!error.includes('optimized team-week lineup(s) are incomplete'));
+  if(spec.sourceAudit?.passed!==true||loaded.trust?.degraded||otherErrors.length){
+   console.error('PROVISIONAL ODDS: BLOCKED; Yahoo source audit, projection trust, or unrelated readiness checks failed.');
+  }else{
+   const n=Math.min(20000,Math.max(1000,Number(process.env.PROVISIONAL_SIMULATIONS??5000)||5000));
+   const results=simulateLeague({...prepared.input,simulations:n});
+   console.error(`PROVISIONAL ODDS: NO-REPLACEMENT SCENARIO ONLY; ${n} simulations; ${readiness.incompleteLineups.length} incomplete team-weeks; empty positions contribute no replacement points. NOT trusted, NOT archival, NOT calibrated live accuracy.`);
+   for(const team of results.sort((a,b)=>b.playoffProbability-a.playoffProbability))console.error(`PROVISIONAL TEAM: ${team.name}: playoffs ${(100*team.playoffProbability).toFixed(1)}%; title ${(100*team.championshipProbability).toFixed(1)}%; average wins ${team.averageWins.toFixed(2)}.`);
+   console.error('PROVISIONAL ODDS: No report, dashboard, history, or recommendations written.');
+  }
+ }
  console.error(`LINEUP BLOCKERS: ${readiness.blockingLineupGaps?.length??0} current-week or unresolved team-weeks; ${readiness.futureRosterGaps?.length??0} future roster-management team-weeks. No replacement projections assumed; trusted simulation remains blocked.`);
  const waiverPool=spec.waivers?.replacementCandidates??spec.waivers?.candidates??[];
  const inventory=inventoryFutureRosterCandidates(readiness.futureRosterGaps,waiverPool);
