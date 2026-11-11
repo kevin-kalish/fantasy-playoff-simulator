@@ -11,4 +11,18 @@ assert.equal(result[0].slots[0].projectionEvidence,'not-checked');
 assert.equal(result[0].slots[0].replacementAssumed,false);
 assert.equal(inventoryFutureRosterCandidates(gaps,[])[0].slots[0].positionMatches,0);
 assert.equal(inventoryFutureRosterCandidates([],candidates).length,0);
+const audited=inventoryFutureRosterCandidates([{teamName:'A',week:14,slots:[{slot:'K',reason:'bye'}]}],[
+ {id:'a',position:'K',byeWeek:14,status:'ACTIVE'},
+ {id:'b',position:'K',byeWeek:13,status:'OUT'},
+ {id:'c',position:'K',status:''},
+ {id:'d',position:'K',byeWeek:0,status:'ACTIVE'}
+])[0].slots[0];
+assert.equal(audited.positionMatches,4);
+assert.equal(audited.knownByeWeek,3);
+assert.equal(audited.onBye,1);
+assert.equal(audited.unknownByeWeek,1);
+assert.equal(audited.currentStatusKnown,3);
+assert.equal(audited.currentStatusUnavailable,1);
+assert.equal(audited.futureAvailabilityVerified,0);
+assert.equal(audited.verifiedWeekProjectionMatches,0);
 console.log('future-roster-candidate-inventory-tests: all checks passed');
