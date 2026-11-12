@@ -142,6 +142,7 @@ const confidence=prepared.diagnostics.longRangeConfidence;
 if(confidence){const derived=prepared.diagnostics.longRangeProjectionWeeks??[];if(derived.length){const first=derived[0],last=derived.at(-1);console.error(`HORIZON CONFIDENCE: W${first} ${(100*confidence.byWeek[first]).toFixed(0)}% -> W${last} ${(100*confidence.byWeek[last]).toFixed(0)}% (${confidence.method}; diagnostic only).`);}}
 console.error(`SIMULATION INPUT: ${fingerprint}; seed ${prepared.input.seed}; variant ${prepared.input.modelVariant}.`);
 console.error(`READY CHECK: ${readiness.ready?'PASS':'FAIL'}; projections ${(100*readiness.projectionCoverage.matchRate).toFixed(1)}% usable; incomplete lineups ${readiness.incompleteLineups.length}.`);
+let provisionalOdds=null;
 if(!readiness.ready){
  if(process.env.PROVISIONAL_ODDS==='true'){
   const otherErrors=readiness.errors.filter(error=>!error.includes('optimized team-week lineup(s) are incomplete'));
@@ -150,6 +151,7 @@ if(!readiness.ready){
   }else{
    const n=Math.min(20000,Math.max(1000,Number(process.env.PROVISIONAL_SIMULATIONS??5000)||5000));
    const results=simulateLeague({...prepared.input,simulations:n});
+   provisionalOdds={scenario:'no-replacement',simulations:n,incompleteTeamWeeks:readiness.incompleteLineups.length,teams:results.map(t=>({id:String(t.id),playoffProbability:t.playoffProbability,championshipProbability:t.championshipProbability,averageWins:t.averageWins}))};
    console.error(`PROVISIONAL ODDS: NO-REPLACEMENT SCENARIO ONLY; ${n} simulations; ${readiness.incompleteLineups.length} incomplete team-weeks; empty positions contribute no replacement points. NOT trusted, NOT archival, NOT calibrated live accuracy.`);
    for(const team of results.sort((a,b)=>b.playoffProbability-a.playoffProbability))console.error(`PROVISIONAL TEAM: ${team.name}: playoffs ${(100*team.playoffProbability).toFixed(1)}%; title ${(100*team.championshipProbability).toFixed(1)}%; average wins ${team.averageWins.toFixed(2)}.`);
    console.error('PROVISIONAL ODDS: No report, dashboard, history, or recommendations written.');
@@ -206,10 +208,11 @@ if(!readiness.ready){
     try{
      const previewRoot=path.resolve('data/private');
      fs.mkdirSync(previewRoot,{recursive:true});
-     const html=buildPrivateProvisionalPreview({estimates,week,season,provider:'Diagnostic-only; '+String(loaded.provider??'unverified')});
+     const standings=(snapshot.teams??[]).map(t=>({id:String(t.id),name:String(t.name),wins:t.wins,losses:t.losses,ties:t.ties,points:t.points,rank:t.rank}));
+     const html=buildPrivateProvisionalPreview({estimates,standings,provisionalOdds,week,season,provider:'Diagnostic-only; '+String(loaded.provider??'unverified')});
      const previewPath=path.join(previewRoot,'future-provisional-preview.html');
      fs.writeFileSync(previewPath,html,{mode:0o600,flag:'w'});
-     console.error('FUTURE PROVISIONAL PREVIEW: private offline HTML at '+previewPath+'; no odds or recommendations.');
+     console.error('FUTURE PROVISIONAL PREVIEW: private offline HTML at '+previewPath+'; '+(provisionalOdds?'no-replacement provisional odds included':'odds unavailable')+'; no recommendations.');
     }catch(error){console.error('FUTURE PROVISIONAL PREVIEW: unavailable; '+error.message);}
    }
   }
