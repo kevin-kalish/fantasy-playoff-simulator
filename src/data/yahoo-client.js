@@ -1,12 +1,29 @@
 const API='https://fantasysports.yahooapis.com/fantasy/v2';
 
-export function createYahooClient({accessToken,fetchImpl=fetch}={}){
+export function createYahooClient({accessToken,fetchImpl=fetch,maxRetries=2,retryDelayMs=400,sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
+ if(!Number.isInteger(maxRetries)||maxRetries<0||maxRetries>3)throw new Error('Yahoo maxRetries must be 0–3.');
+ if(!Number.isInteger(retryDelayMs)||retryDelayMs<0||retryDelayMs>5000)throw new Error('Yahoo retryDelayMs must be 0–5000.');
+
  if(!accessToken) throw new Error('Yahoo access token is required.');
  return async function get(path){
   const separator=path.includes('?')?'&':'?';
-  const response=await fetchImpl(`${API}/${path}${separator}format=json`,{headers:{Authorization:`Bearer ${accessToken}`,Accept:'application/json'}});
-  if(!response.ok) throw new Error(`Yahoo Fantasy request failed (${response.status}): ${await response.text()}`);
-  return response.json();
+  for(let attempt=0;attempt<=maxRetries;attempt++){
+   let response;
+   try{
+    response=await fetchImpl(`${API}/${path}${separator}format=json`,{headers:{Authorization:`Bearer ${accessToken}`,Accept:'application/json'}});
+   }catch(error){
+    // Only retry network transport failures, never JSON parsing or authentication errors.
+    if(attempt===maxRetries)throw new Error('Yahoo Fantasy transport failed after '+(attempt+1)+' attempt(s): '+error.message);
+    await sleep(retryDelayMs*2**attempt);
+    continue;
+   }
+   if(response.ok)return response.json();
+   if(![502,503,504].includes(response.status)||attempt===maxRetries){
+    const body=String(await response.text()).slice(0,500);
+    throw new Error(`Yahoo Fantasy request failed (${response.status}) after ${attempt+1} attempt(s): ${body}`);
+   }
+   await sleep(retryDelayMs*2**attempt);
+  }
  };
 }
 
