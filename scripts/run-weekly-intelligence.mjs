@@ -16,6 +16,7 @@ import {assessSimulationReadiness} from '../src/model/simulation-readiness.js';
 import {inventoryFutureRosterCandidates} from '../src/model/future-roster-candidate-inventory.js';
 import {estimateFutureReplacementLevels} from '../src/model/future-replacement-level.js';
 import {auditWeeklyPositionCoverage} from '../src/data/weekly-position-coverage-audit.js';
+import {futureReplacementProjectionWeeks} from '../src/model/future-replacement-projection-horizon.js';
 import {compareLineupScenarios} from '../src/model/lineup-scenario-comparison.js';
 import {buildLeagueIntelligenceReport} from '../src/model/league-intelligence-report.js';
 import {formatWeeklyIntelligence} from '../src/model/weekly-intelligence-format.js';
@@ -155,12 +156,26 @@ if(!readiness.ready){
  }
  console.error(`LINEUP BLOCKERS: ${readiness.blockingLineupGaps?.length??0} current-week or unresolved team-weeks; ${readiness.futureRosterGaps?.length??0} future roster-management team-weeks. No replacement projections assumed; trusted simulation remains blocked.`);
  const waiverPool=spec.waivers?.replacementCandidates??spec.waivers?.candidates??[];
+ let replacementDiagnosticRows=loaded.rows;
+ if(process.env.FUTURE_REPLACEMENT_FETCH==='true'){
+  const extraWeeks=futureReplacementProjectionWeeks({currentWeek:week,loadedWeeks:loaded.weeks,gapWeeks:readiness.futureRosterGaps.map(g=>g.week),playoffWeeks:prepared.input.playoffWeeks,maxExtraWeeks:2});
+  if(!extraWeeks.length)console.error('FUTURE REPLACEMENT FETCH: SKIPPED; no eligible uncovered regular-season gap weeks.');
+  else if(!process.env.FANTASYPROS_API_KEY&&!process.env.JERRYGM_API_KEY)console.error('FUTURE REPLACEMENT FETCH: SKIPPED; no live projection API configured (cache/fixture not accepted).');
+  else{
+   try{
+    const extra=await loadWeeklyProjectionHorizon({season,weeks:extraWeeks,scoring:spec.scoring??'HALF',minimumRows:1,projectionNames:[...new Set([...projectionNames,...waiverPool.map(p=>String(p.name??'').trim()).filter(Boolean)])],cachePath:null,fixturePath:null,preferCache:false});
+    replacementDiagnosticRows=[...loaded.rows,...extra.rows];
+    console.error('FUTURE REPLACEMENT FETCH: diagnostic-only W'+extraWeeks.join(',W')+'; '+extra.rows.length+' rows; provider '+extra.provider+'; freshness and completeness unverified; no simulation or cache changes.');
+    for(const c of auditWeeklyPositionCoverage(extra.rows,{season,weeks:extraWeeks,weekResults:extra.trust.weekResults}))console.error('FUTURE PROJECTION COVERAGE: W'+c.week+' '+c.position+' '+c.rows+' rows / '+c.uniquePlayerIds+' distinct IDs; provider '+c.provider+'; observation '+(c.observedAt??'unverified')+'; source provenance unverified.');
+   }catch(error){console.error('FUTURE REPLACEMENT FETCH: unavailable; '+error.message+'; simulation unchanged.');}
+  }
+ }
  const inventory=inventoryFutureRosterCandidates(readiness.futureRosterGaps,waiverPool,loaded.rows);
  if(process.env.FUTURE_REPLACEMENT_DIAGNOSTIC==='true'){
   const coverage=auditWeeklyPositionCoverage(loaded.rows,{season,weeks:loaded.weeks,weekResults:loaded.trust.weekResults});
   for(const c of coverage)console.error('FUTURE PROJECTION COVERAGE: W'+c.week+' '+c.position+' '+c.rows+' rows / '+c.uniquePlayerIds+' distinct IDs; provider '+c.provider+'; original observation '+(c.observedAt??'unverified')+'; provider provenance unverified.');
 
-  const estimates=estimateFutureReplacementLevels(readiness.futureRosterGaps,waiverPool,loaded.rows,{season,currentWeek:week});
+  const estimates=estimateFutureReplacementLevels(readiness.futureRosterGaps,waiverPool,replacementDiagnosticRows,{season,currentWeek:week});
   const covered=estimates.filter(x=>x.points!=null);
   console.error('FUTURE REPLACEMENT DIAGNOSTIC: '+covered.length+'/'+estimates.length+' slots estimated from target-week rows; hypothetical only, no transactions, no odds impact.');
   for(const estimate of estimates)console.error('FUTURE REPLACEMENT ESTIMATE: W'+estimate.week+' '+estimate.slot+' '+(estimate.points===null?'unavailable':estimate.points.toFixed(1)+' pts')+' ('+estimate.method+'); provisional, future availability unverified.');
