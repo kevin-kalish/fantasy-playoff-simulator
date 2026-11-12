@@ -17,4 +17,19 @@ assert.match(root.innerHTML,/Official playoff probabilities/);
 assert.match(root.innerHTML,/&lt;script&gt;/);
 assert.doesNotMatch(root.innerHTML,/<script>|playoffProbability|championshipProbability/);
 assert.throws(()=>renderProvisionalDashboardV1(root,{mode:'live',estimates}),/Unsupported/);
+
+const standings=[{id:'A',name:'Team A',wins:6,losses:4,ties:0,points:1100,rank:1},{id:'B',name:'Team B',wins:5,losses:5,ties:0,points:1000,rank:2}];
+const provisionalOdds={scenario:'no-replacement',simulations:5000,incompleteTeamWeeks:13,teams:[{id:'A',playoffProbability:.755,championshipProbability:.075,averageWins:8.1},{id:'B',playoffProbability:.26,championshipProbability:.02,averageWins:6.1}]};
+const withOdds=buildPrivateProvisionalPreview({week:10,season:2026,provider:'jerrygm',estimates,standings,provisionalOdds,accessToken:'SECRET'});
+assert.match(withOdds,/"scenario":"no-replacement"/);
+assert.match(withOdds,/"playoffProbability":0.755/);
+assert.doesNotMatch(withOdds,/SECRET|accessToken/);
+const oddsRoot={innerHTML:''};
+renderProvisionalDashboardV1(oddsRoot,{mode:'provisional-evidence',week:10,season:2026,provider:'jerrygm',estimates,standings,provisionalOdds});
+assert.match(oddsRoot.innerHTML,/75.5%|NO-REPLACEMENT SCENARIO/);
+assert.match(oddsRoot.innerHTML,/Team A/);
+assert.match(oddsRoot.innerHTML,/Simulation readiness: BLOCKED/);
+const invalid=buildPrivateProvisionalPreview({week:10,season:2026,estimates,standings,provisionalOdds:{...provisionalOdds,teams:[{...provisionalOdds.teams[0],playoffProbability:1.5},provisionalOdds.teams[1]]}});
+assert.match(invalid,/"provisionalOdds":null/);
+
 console.log('private-provisional-preview-tests: all checks passed');
