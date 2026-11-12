@@ -6,8 +6,15 @@ const team=x=>({'LA':'LAR','JAC':'JAX','WAS':'WSH','NEP':'NE','NWE':'NE'}[String
 const number=x=>x==null||x===''?null:Number.isFinite(Number(x))?Number(x):null;
 const eligible=(p,slot)=>(ELIGIBLE[norm(slot)]??[norm(slot)]).some(x=>[norm(p.position),...(p.positions??[]).map(norm)].includes(x));
 const unavailable=new Set(['OUT','O','IR','IR-R','PUP','PUP-R','SUSP','SUSPENDED','NA','INACTIVE']);
+function projectionMatches(p,rows,week,season){
+ const eligibleRows=rows.filter(r=>Number(r.week)===Number(week)&&Number(r.season)===Number(season)&&number(r.projection)!=null&&norm(r.position)===norm(p.position));
+ const sameTeam=eligibleRows.filter(r=>team(r.nflTeam)&&team(p.nflTeam)&&team(r.nflTeam)===team(p.nflTeam));
+ // DST names vary by provider. An unambiguous NFL-team defense is sufficient.
+ if(norm(p.position)==='DEF')return sameTeam;
+ return sameTeam.filter(r=>clean(r.name)&&clean(r.name)===clean(p.name));
+}
 function directProjection(p,rows,week,season){
- const same=rows.filter(r=>Number(r.week)===Number(week)&&Number(r.season)===Number(season)&&number(r.projection)!=null&&norm(r.position)===norm(p.position)&&clean(r.name)&&clean(r.name)===clean(p.name)&&team(r.nflTeam)&&team(r.nflTeam)===team(p.nflTeam));
+ const same=projectionMatches(p,rows,week,season);
  return same.length===1?number(same[0].projection):null;
 }
 export function estimateFutureReplacementLevels(gaps,candidates,projectionRows,{season,currentWeek,baselines={},minDirectCandidates=5}={}){
@@ -44,7 +51,7 @@ export function diagnoseFutureReplacementExclusions(gaps,candidates,projectionRo
  const pool=Array.isArray(candidates)?candidates:[],rows=Array.isArray(projectionRows)?projectionRows:[];
  return (gaps??[]).flatMap(gap=>(gap.slots??[]).map(slot=>{
   const week=Number(gap.week);
-  const counts={teamId:gap.teamId??null,teamName:gap.teamName??null,week,slot:slot.slot,positionCandidates:0,missingIdentity:0,missingBye:0,onBye:0,currentUnavailable:0,noWeeklyProjection:0,ambiguousWeeklyProjection:0,uniqueWeeklyProjection:0,provisional:true};
+  const counts={teamId:gap.teamId??null,teamName:gap.teamName??null,week,slot:slot.slot,positionCandidates:0,missingIdentity:0,missingBye:0,onBye:0,currentUnavailable:0,noWeeklyProjection:0,noPositionProjectionRows:0,identityMismatch:0,ambiguousWeeklyProjection:0,uniqueWeeklyProjection:0,provisional:true};
   if(!Number.isInteger(week)||!Number.isInteger(Number(season))||!Number.isInteger(Number(currentWeek))||week<=Number(currentWeek))return counts;
   for(const p of pool.filter(p=>eligible(p,slot.slot))){
    counts.positionCandidates++;
@@ -52,7 +59,10 @@ export function diagnoseFutureReplacementExclusions(gaps,candidates,projectionRo
    if(number(p.byeWeek)==null){counts.missingBye++;continue;}
    if(Number(p.byeWeek)===week){counts.onBye++;continue;}
    if(unavailable.has(String(p.status??'').toUpperCase())){counts.currentUnavailable++;continue;}
-   const matching=rows.filter(r=>Number(r.season)===Number(season)&&Number(r.week)===week&&number(r.projection)!=null&&norm(r.position)===norm(p.position)&&clean(r.name)===clean(p.name)&&team(r.nflTeam)===team(p.nflTeam));
+   const matching=projectionMatches(p,rows,week,season);
+   const samePosition=rows.filter(r=>Number(r.season)===Number(season)&&Number(r.week)===week&&number(r.projection)!=null&&norm(r.position)===norm(p.position));
+   if(!samePosition.length)counts.noPositionProjectionRows++;
+   else if(!matching.length)counts.identityMismatch++;
    if(!matching.length)counts.noWeeklyProjection++;
    else if(matching.length>1)counts.ambiguousWeeklyProjection++;
    else counts.uniqueWeeklyProjection++;
