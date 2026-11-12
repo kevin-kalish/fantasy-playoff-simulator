@@ -7,5 +7,5 @@ assert.match(html,/Unavailable/);
 assert.match(html,/Official playoff probabilities unavailable/);
 assert.match(html,/&lt;script&gt;/);
 assert.doesNotMatch(html,/<script>|playoffProbability|championshipProbability|<script src=/);
-assert.match(html,/connect-src \\'none\\'/);
+assert.ok(html.includes("connect-src 'none'"));
 console.log('private-provisional-preview-tests: all checks passed');
