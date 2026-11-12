@@ -16,4 +16,8 @@ assert.equal(estimateFutureReplacementLevels(gaps,candidates,[],{season:2026,cur
 assert.equal(estimateFutureReplacementLevels(gaps,candidates.slice(0,4),rows,{season:2026,currentWeek:11})[0].points,null);
 assert.equal(estimateFutureReplacementLevels(gaps,candidates.map(p=>({...p,byeWeek:14})),rows,{season:2026,currentWeek:11})[0].points,null);
 assert.equal(estimateFutureReplacementLevels(gaps,candidates,rows.map(r=>({...r,season:2025})),{season:2026,currentWeek:11})[0].points,null);
+const week15=rows.map(r=>({...r,week:15}));
+const repeated=estimateFutureReplacementLevels([{teamId:'a',week:14,slots:[{slot:'K'}]},{teamId:'a',week:15,slots:[{slot:'K'}]}],candidates,[...rows,...week15],{season:2026,currentWeek:11});
+assert.equal(repeated[0].points,7);
+assert.equal(repeated[1].points,7);
 console.log('future-replacement-level-tests: all checks passed');
