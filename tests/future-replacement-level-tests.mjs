@@ -36,4 +36,15 @@ const excluded=diagnoseFutureReplacementExclusions([{week:14,slots:[{slot:'K'}]}
 assert.equal(excluded.positionCandidates,7);
 for(const field of ['missingIdentity','missingBye','onBye','currentUnavailable','noWeeklyProjection','ambiguousWeeklyProjection','uniqueWeeklyProjection'])assert.equal(excluded[field],1,field);
 assert.equal(['missingIdentity','missingBye','onBye','currentUnavailable','noWeeklyProjection','ambiguousWeeklyProjection','uniqueWeeklyProjection'].reduce((n,k)=>n+excluded[k],0),excluded.positionCandidates);
+const defenseCandidates=Array.from({length:5},(_,i)=>({id:'dst'+i,name:'Yahoo Defense '+i,position:'DEF',nflTeam:['JAX','NE','WAS','LAR','BUF'][i],byeWeek:10}));
+const defenseRows=defenseCandidates.map((p,i)=>({season:2026,week:14,name:'Different provider defense name',position:'DST',nflTeam:['JAC','NWE','WSH','LA','BUF'][i],projection:10-i}));
+const defenseGap=[{week:14,slots:[{slot:'DEF'}]}];
+assert.equal(estimateFutureReplacementLevels(defenseGap,defenseCandidates,defenseRows,{season:2026,currentWeek:11})[0].points,7);
+assert.equal(diagnoseFutureReplacementExclusions(defenseGap,defenseCandidates,defenseRows,{season:2026,currentWeek:11})[0].uniqueWeeklyProjection,5);
+const ambiguousDefense=[...defenseRows, {...defenseRows[0],projection:99}];
+assert.equal(diagnoseFutureReplacementExclusions(defenseGap,defenseCandidates,ambiguousDefense,{season:2026,currentWeek:11})[0].ambiguousWeeklyProjection,1);
+const missingPosition=diagnoseFutureReplacementExclusions(defenseGap,defenseCandidates,[],{season:2026,currentWeek:11})[0];
+assert.equal(missingPosition.noPositionProjectionRows,5);
+const mismatchedPosition=diagnoseFutureReplacementExclusions(defenseGap,defenseCandidates,[{...defenseRows[0],nflTeam:'CHI'}],{season:2026,currentWeek:11})[0];
+assert.equal(mismatchedPosition.identityMismatch,5);
 console.log('future-replacement-level-tests: all checks passed');
