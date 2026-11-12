@@ -16,7 +16,7 @@ import {assessSimulationReadiness} from '../src/model/simulation-readiness.js';
 import {inventoryFutureRosterCandidates} from '../src/model/future-roster-candidate-inventory.js';
 import {estimateFutureReplacementLevels,diagnoseFutureReplacementExclusions} from '../src/model/future-replacement-level.js';
 import {auditWeeklyPositionCoverage} from '../src/data/weekly-position-coverage-audit.js';
-import {futureReplacementProjectionWeeks} from '../src/model/future-replacement-projection-horizon.js';
+import {futureReplacementProjectionWeeks,candidateTargetedProjectionWeeks} from '../src/model/future-replacement-projection-horizon.js';
 import {compareLineupScenarios} from '../src/model/lineup-scenario-comparison.js';
 import {buildLeagueIntelligenceReport} from '../src/model/league-intelligence-report.js';
 import {formatWeeklyIntelligence} from '../src/model/weekly-intelligence-format.js';
@@ -158,6 +158,25 @@ if(!readiness.ready){
  const waiverPool=spec.waivers?.replacementCandidates??spec.waivers?.candidates??[];
  const diagnosticPool=process.env.FUTURE_REPLACEMENT_DIAGNOSTIC==='true'&&process.env.FUTURE_BALANCED_WAIVERS==='true'&&Array.isArray(spec.futureReplacementDiagnosticCandidates)?spec.futureReplacementDiagnosticCandidates:waiverPool;
  let replacementDiagnosticRows=loaded.rows;
+ if(process.env.FUTURE_TARGETED_PROJECTION_FETCH==='true'&&process.env.FUTURE_REPLACEMENT_DIAGNOSTIC==='true'&&spec.sourceAudit?.passed===true&&!loaded.trust?.degraded){
+  const targetWeeks=candidateTargetedProjectionWeeks({currentWeek:week,loadedWeeks:loaded.weeks,gapWeeks:readiness.futureRosterGaps.map(g=>g.week),playoffWeeks:prepared.input.playoffWeeks,maxWeeks:1});
+  const names=[...new Set(diagnosticPool.map(p=>String(p.name??'').trim()).filter(Boolean))];
+  if(!targetWeeks.length||!names.length)console.error('FUTURE TARGETED PROJECTION FETCH: SKIPPED; no eligible loaded gap week or candidate names.');
+  else if(!process.env.FANTASYPROS_API_KEY&&!process.env.JERRYGM_API_KEY)console.error('FUTURE TARGETED PROJECTION FETCH: SKIPPED; no live projection API configured.');
+  else{
+   try{
+    const targeted=await loadWeeklyProjectionHorizon({season,weeks:targetWeeks,scoring:spec.scoring??'HALF',minimumRows:1,projectionNames:names,cachePath:null,fixturePath:null,preferCache:false});
+    if(targeted.trust?.degraded||!targeted.trust?.ready||!['fantasypros','jerrygm'].includes(targeted.provider))throw new Error('Targeted provider trust unavailable or degraded');
+    // Replace only diagnostic rows for the refreshed week: avoid duplicate
+    // provider rows being misclassified as ambiguous. Trusted rows are untouched.
+    const targetedWeeks=new Set(targetWeeks);
+    replacementDiagnosticRows=[...replacementDiagnosticRows.filter(r=>!targetedWeeks.has(Number(r.week))),...targeted.rows];
+    console.error('FUTURE TARGETED PROJECTION FETCH: diagnostic-only W'+targetWeeks.join(',W')+'; '+targeted.rows.length+' rows; provider '+targeted.provider+'; original provider observation provenance unverified; trusted projections unchanged.');
+    for(const c of auditWeeklyPositionCoverage(targeted.rows,{season,weeks:targetWeeks,weekResults:targeted.trust.weekResults}))console.error('FUTURE TARGETED PROJECTION COVERAGE: W'+c.week+' '+c.position+' '+c.rows+' rows / '+c.uniquePlayerIds+' distinct IDs.');
+   }catch(error){console.error('FUTURE TARGETED PROJECTION FETCH: unavailable; '+error.message+'; trusted projections unchanged.');}
+  }
+ }
+
  if(process.env.FUTURE_REPLACEMENT_FETCH==='true'&&spec.sourceAudit?.passed===true&&!loaded.trust?.degraded){
   const extraWeeks=futureReplacementProjectionWeeks({currentWeek:week,loadedWeeks:loaded.weeks,gapWeeks:readiness.futureRosterGaps.map(g=>g.week),playoffWeeks:prepared.input.playoffWeeks,maxExtraWeeks:2});
   if(!extraWeeks.length)console.error('FUTURE REPLACEMENT FETCH: SKIPPED; no eligible uncovered regular-season gap weeks.');
