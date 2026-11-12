@@ -1,7 +1,7 @@
 // Offline evidence-only dashboard using the shared live dashboard renderer.
 // Only allowlisted fields are embedded; no league snapshots, tokens, or official odds.
 import fs from 'node:fs';
-export function buildPrivateProvisionalPreview({estimates=[],standings=[],provisionalOdds=null,week,season,provider='unverified'}={}){
+export function buildPrivateProvisionalPreview({estimates=[],standings=[],provisionalOdds=null,replacementOdds=null,week,season,provider='unverified'}={}){
  const safe=(Array.isArray(estimates)?estimates:[]).map(e=>({
   week:Number.isInteger(Number(e.week))?Number(e.week):null,
   slot:String(e.slot??''),points:typeof e.points==='number'&&Number.isFinite(e.points)?e.points:null,
@@ -17,7 +17,11 @@ export function buildPrivateProvisionalPreview({estimates=[],standings=[],provis
   scenario:'no-replacement',simulations:provisionalOdds.simulations,incompleteTeamWeeks:provisionalOdds.incompleteTeamWeeks,
   teams:provisionalOdds.teams.map(t=>({id:String(t.id),playoffProbability:t.playoffProbability,championshipProbability:t.championshipProbability,averageWins:t.averageWins}))
  }:null;
- const payload={mode:'provisional-evidence',estimates:safe,standings:safeStandings,provisionalOdds:safeOdds,week:Number(week),season:Number(season),provider:String(provider)};
+ const safeReplacement=replacementOdds&&safeOdds&&replacementOdds.scenario==='aggregate-replacement-sensitivity'&&replacementOdds.simulations===safeOdds.simulations&&replacementOdds.incompleteTeamWeeks===safeOdds.incompleteTeamWeeks&&Array.isArray(replacementOdds.teams)&&replacementOdds.teams.length===safeStandings.length&&new Set(replacementOdds.teams.map(t=>String(t.id))).size===safeStandings.length&&replacementOdds.teams.every(t=>safeStandings.some(x=>x.id===String(t.id))&&validProbability(t.playoffProbability)&&validProbability(t.championshipProbability)&&typeof t.averageWins==='number'&&Number.isFinite(t.averageWins))?{
+  scenario:'aggregate-replacement-sensitivity',simulations:replacementOdds.simulations,
+  teams:replacementOdds.teams.map(t=>({id:String(t.id),playoffProbability:t.playoffProbability,championshipProbability:t.championshipProbability,averageWins:t.averageWins}))
+ }:null;
+ const payload={mode:'provisional-evidence',estimates:safe,standings:safeStandings,provisionalOdds:safeOdds,replacementOdds:safeReplacement,week:Number(week),season:Number(season),provider:String(provider)};
  const serialized=JSON.stringify(payload).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
  const renderer=fs.readFileSync(new URL('../src/ui/live-dashboard-v1.js',import.meta.url),'utf8')
   .replace(/^export\s+function\s+/gm,'function ');
