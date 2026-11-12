@@ -517,3 +517,9 @@ The provisional dashboard restores the read-only **Playoff probability by week**
 ### M2 provisional deterministic replay (diagnostic only)
 
 For an already source-audited private weekly run that is blocked **only** by incomplete optimized lineups, set `PROVISIONAL_ODDS=true` and `PROVISIONAL_REPLAY_VALIDATION=true` with `PROVISIONAL_SIMULATIONS=5000`. The existing blocked path logs a `PROVISIONAL REPLAY` record for the focus team, including input fingerprint, fixed-seed exact replay, three independent-seed sampling statistics, and an explicit `trusted:false` flag. This diagnostic does not publish an official report, recommendation, dashboard, or historical forecast. It does not validate Yahoo standings, forecast calibration, or future roster moves. Do not enable this for unrelated readiness/source failures. Test with `node tests/independent-seed-validation-tests.mjs` and `npm test`. Never commit private logs or snapshots.
+
+### M2 future candidate evidence consistency (diagnostic only)
+
+`src/model/future-candidate-evidence.js` now shares position aliases, NFL-team/name normalization, bye/status rules and week-specific projection identity matching between the future roster inventory and hypothetical replacement diagnostics. Name/position/team matches, even when unique, remain **unverified** without provider provenance and future availability; no waiver acquisition or replacement is assumed. The trusted readiness gate, Yahoo/ESPN normalized league contract and simulation engine are unchanged. A no-replacement odds run and an aggregate replacement sensitivity run intentionally model different assumptions; neither is a calibrated forecast while readiness is blocked.
+
+Run `node tests/future-candidate-evidence-tests.mjs`, `node tests/future-roster-candidate-inventory-tests.mjs`, `node tests/future-replacement-level-tests.mjs` (if present), and `npm test` before merging. Never commit private candidate lists, snapshots, or logs.
