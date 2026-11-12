@@ -12,7 +12,7 @@ import {buildPrivateProvisionalPreview} from './build-private-provisional-previe
 import path from 'node:path';
 import {buildProjectionArchive,saveProjectionArchive} from '../src/data/projection-archive.js';
 import {diagnoseStartSit} from '../src/model/start-sit-diagnostic.js';
-import {validateIndependentSeeds} from '../src/model/independent-seed-validation.js';
+import {validateIndependentSeeds,validateProvisionalReplay} from '../src/model/independent-seed-validation.js';
 import {prepareLeagueSimulation} from '../src/model/league-preparation.js';
 import {assessSimulationReadiness} from '../src/model/simulation-readiness.js';
 import {inventoryFutureRosterCandidates} from '../src/model/future-roster-candidate-inventory.js';
@@ -155,6 +155,12 @@ if(!readiness.ready){
    provisionalOdds={scenario:'no-replacement',simulations:n,incompleteTeamWeeks:readiness.incompleteLineups.length,teams:results.map(t=>({id:String(t.id),playoffProbability:t.playoffProbability,championshipProbability:t.championshipProbability,averageWins:t.averageWins}))};
    console.error(`PROVISIONAL ODDS: NO-REPLACEMENT SCENARIO ONLY; ${n} simulations; ${readiness.incompleteLineups.length} incomplete team-weeks; empty positions contribute no replacement points. NOT trusted, NOT archival, NOT calibrated live accuracy.`);
    for(const team of results.sort((a,b)=>b.playoffProbability-a.playoffProbability))console.error(`PROVISIONAL TEAM: ${team.name}: playoffs ${(100*team.playoffProbability).toFixed(1)}%; title ${(100*team.championshipProbability).toFixed(1)}%; average wins ${team.averageWins.toFixed(2)}.`);
+   if(process.env.PROVISIONAL_REPLAY_VALIDATION==='true'){
+    const replay=validateProvisionalReplay(prepared.input,{simulations:n,focusTeamId:spec.teamId});
+    const original=provisionalOdds.teams.find(t=>t.id===String(spec.teamId));
+    const matchesOriginal=original!=null&&original.playoffProbability===replay.baseline.playoffProbability&&original.championshipProbability===replay.baseline.championshipProbability&&original.averageWins===replay.baseline.averageWins;
+    console.error('PROVISIONAL REPLAY: '+JSON.stringify({status:'diagnostic-only',trusted:false,inputFingerprint:fingerprint,seed:replay.seed,simulations:n,deterministic:replay.deterministic,matchesOriginal,playoffProbability:replay.baseline.playoffProbability,playoffSampling:replay.playoffSampling,championshipSampling:replay.championshipSampling,samplingStability:replay.samplingStability}));
+   }
    console.error('PROVISIONAL ODDS: No report, dashboard, history, or recommendations written.');
   }
  }

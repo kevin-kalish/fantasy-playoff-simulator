@@ -29,3 +29,20 @@ export function validateIndependentSeeds(input,{runs=3,simulations=50000,seedSte
  });
  return {schemaVersion:1,method:'independent-seed-replication',scope:'Monte Carlo sampling consistency only; not historical calibration, injury reliability, or forecast accuracy',simulationsPerRun:simulations,runCount:runs,seeds,teams};
 }
+
+/**
+ * Diagnostic-only replay of a frozen, explicitly untrusted input. A passing
+ * result establishes deterministic sampling, never forecast accuracy.
+ */
+export function validateProvisionalReplay(input,{simulations=5000,focusTeamId,independentRuns=3}={}){
+ if(!Number.isInteger(simulations)||simulations<100||simulations>20000)throw new Error('provisional simulations must be an integer from 100 to 20000');
+ if(focusTeamId==null)throw new Error('focusTeamId is required');
+ const id=String(focusTeamId);
+ if(!(input?.teams??[]).some(team=>String(team.id)===id))throw new Error('Unknown focusTeamId');
+ const frozen={...input,simulations};
+ const read=()=>{const team=simulateLeague(frozen).find(team=>String(team.id)===id);if(!team)throw new Error('Missing focus team');return {playoffProbability:team.playoffProbability,championshipProbability:team.championshipProbability,averageWins:team.averageWins};};
+ const first=read(),second=read();
+ const deterministic=JSON.stringify(first)===JSON.stringify(second);
+ const independent=validateIndependentSeeds(frozen,{runs:independentRuns,simulations,focusTeamId:id});
+ return {schemaVersion:1,status:'diagnostic-only',trusted:false,deterministic,seed:frozen.seed,simulations,focusTeamId:id,baseline:first,independentSeeds:independent.seeds,playoffSampling:independent.teams[0].playoff,championshipSampling:independent.teams[0].championship,samplingStability:independent.teams[0].stability};
+}
