@@ -12,11 +12,12 @@ function directProjection(p,rows,week,season){
 }
 export function estimateFutureReplacementLevels(gaps,candidates,projectionRows,{season,currentWeek,baselines={},minDirectCandidates=5}={}){
  const pool=Array.isArray(candidates)?candidates:[],rows=Array.isArray(projectionRows)?projectionRows:[];
- const used=new Set();
+ const usedByWeek=new Map();
  return (gaps??[]).flatMap(gap=>(gap.slots??[]).map(slot=>{
   const week=Number(gap.week),position=norm(slot.slot);
   const result={teamId:gap.teamId??null,teamName:gap.teamName??null,week,slot:slot.slot,points:null,method:'unavailable',provisional:true,replacementAssumed:false,verifiedFutureAvailability:false,verifiedProjection:false};
   if(!Number.isInteger(week)||!Number.isInteger(Number(currentWeek))||week<=Number(currentWeek)||!Number.isInteger(Number(season)))return result;
+  const used=usedByWeek.get(week)??new Set();usedByWeek.set(week,used);
   const eligiblePool=pool.filter(p=>!used.has(String(p.id??''))&&p.id!=null&&eligible(p,position)&&number(p.byeWeek)!=null&&Number(p.byeWeek)!==week&&!unavailable.has(String(p.status??'').toUpperCase()));
   const ranked=eligiblePool.map(p=>({...p,points:directProjection(p,rows,week,season)})).filter(p=>p.points!=null).sort((a,b)=>b.points-a.points);
   if(ranked.length>=Math.max(5,Number(minDirectCandidates)||5)){
