@@ -1,6 +1,7 @@
 import {applyLineupManagementStress} from '../src/model/lineup-management-stress.js';
 import {assessLongRangeJump} from '../src/model/long-range-jump-diagnostic.js';
 import {simulateLeague} from '../src/simulator.js';
+import {buildProvisionalReplacementScenario} from '../src/model/provisional-replacement-scenario.js';
 import {assessPositionSourceCoverage} from '../src/data/position-source-coverage.js';
 import {assessTeamProjectionQuality} from '../src/model/team-projection-quality.js';
 import {assessProjectionFreshness} from '../src/data/projection-freshness.js';
@@ -201,6 +202,15 @@ if(!readiness.ready){
   const estimates=estimateFutureReplacementLevels(readiness.futureRosterGaps,diagnosticPool,replacementDiagnosticRows,{season,currentWeek:week});
   for(const d of diagnoseFutureReplacementExclusions(readiness.futureRosterGaps,diagnosticPool,replacementDiagnosticRows,{season,currentWeek:week}))console.error('FUTURE REPLACEMENT EXCLUSIONS: W'+d.week+' '+d.slot+' position candidates '+d.positionCandidates+'; missing identity '+d.missingIdentity+'; missing bye '+d.missingBye+'; on bye '+d.onBye+'; current unavailable '+d.currentUnavailable+'; no weekly projection '+d.noWeeklyProjection+' (no position rows '+d.noPositionProjectionRows+', identity mismatch '+d.identityMismatch+'); ambiguous identity '+d.ambiguousWeeklyProjection+'; unique projection '+d.uniqueWeeklyProjection+'; current status and future availability unverified.');
 
+  let replacementOdds=null;
+  if(provisionalOdds&&process.env.PROVISIONAL_REPLACEMENT_ODDS==='true'){
+   try{
+    const scenario=buildProvisionalReplacementScenario(prepared.input,estimates,{currentWeek:week});
+    const results=simulateLeague({...scenario,simulations:provisionalOdds.simulations});
+    replacementOdds={scenario:'aggregate-replacement-sensitivity',simulations:provisionalOdds.simulations,incompleteTeamWeeks:provisionalOdds.incompleteTeamWeeks,teams:results.map(t=>({id:String(t.id),playoffProbability:t.playoffProbability,championshipProbability:t.championshipProbability,averageWins:t.averageWins}))};
+    console.error('PROVISIONAL REPLACEMENT ODDS: aggregate scoring sensitivity computed; '+estimates.length+' hypothetical slots; no candidate allocation or future availability verified; NOT official.');
+   }catch(error){console.error('PROVISIONAL REPLACEMENT ODDS: BLOCKED; '+error.message);}
+  }
   if(process.env.FUTURE_PROVISIONAL_PREVIEW==='true'){
    if(spec.sourceAudit?.passed!==true||spec.sourceAudit?.week!==week||!spec.sourceAudit?.leagueKey||loaded.trust?.degraded){
     console.error('FUTURE PROVISIONAL PREVIEW: BLOCKED; source audit or projection trust failed.');
@@ -209,7 +219,7 @@ if(!readiness.ready){
      const previewRoot=path.resolve('data/private');
      fs.mkdirSync(previewRoot,{recursive:true});
      const standings=(snapshot.teams??[]).map(t=>({id:String(t.id),name:String(t.name),wins:t.wins,losses:t.losses,ties:t.ties,points:t.points,rank:t.rank}));
-     const html=buildPrivateProvisionalPreview({estimates,standings,provisionalOdds,week,season,provider:'Diagnostic-only; '+String(loaded.provider??'unverified')});
+     const html=buildPrivateProvisionalPreview({estimates,standings,provisionalOdds,replacementOdds,week,season,provider:'Diagnostic-only; '+String(loaded.provider??'unverified')});
      const previewPath=path.join(previewRoot,'future-provisional-preview.html');
      fs.writeFileSync(previewPath,html,{mode:0o600,flag:'w'});
      console.error('FUTURE PROVISIONAL PREVIEW: private offline HTML at '+previewPath+'; '+(provisionalOdds?'no-replacement provisional odds included':'odds unavailable')+'; no recommendations.');
