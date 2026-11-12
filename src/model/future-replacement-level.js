@@ -1,20 +1,7 @@
+import {normPosition as norm,normName as clean,normTeam as team,evidenceNumber as number,unavailableStatus,eligibleForSlot as eligible,matchingProjectionRows} from './future-candidate-evidence.js';
 // Read-only, opt-in replacement-level scenario estimates. Not a roster transaction or trusted forecast.
-const ELIGIBLE={QB:['QB'],RB:['RB'],WR:['WR'],TE:['TE'],K:['K'],DEF:['DEF'],FLEX:['RB','WR','TE'],'RB/WR':['RB','WR'],'WR/TE':['WR','TE'],'RB/WR/TE':['RB','WR','TE'],SUPERFLEX:['QB','RB','WR','TE']};
-const norm=x=>({'DST':'DEF','D/ST':'DEF','W/R/T':'FLEX'}[String(x??'').trim().toUpperCase()]??String(x??'').trim().toUpperCase());
-const clean=x=>String(x??'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\b(jr|sr|ii|iii|iv)\b\.?/g,'').replace(/[^a-z0-9]/g,'');
-const team=x=>({'LA':'LAR','JAC':'JAX','WAS':'WSH','NEP':'NE','NWE':'NE'}[String(x??'').trim().toUpperCase()]??String(x??'').trim().toUpperCase());
-const number=x=>x==null||x===''?null:Number.isFinite(Number(x))?Number(x):null;
-const eligible=(p,slot)=>(ELIGIBLE[norm(slot)]??[norm(slot)]).some(x=>[norm(p.position),...(p.positions??[]).map(norm)].includes(x));
-const unavailable=new Set(['OUT','O','IR','IR-R','PUP','PUP-R','SUSP','SUSPENDED','NA','INACTIVE']);
-function projectionMatches(p,rows,week,season){
- const eligibleRows=rows.filter(r=>Number(r.week)===Number(week)&&Number(r.season)===Number(season)&&number(r.projection)!=null&&norm(r.position)===norm(p.position));
- const sameTeam=eligibleRows.filter(r=>team(r.nflTeam)&&team(p.nflTeam)&&team(r.nflTeam)===team(p.nflTeam));
- // DST names vary by provider. An unambiguous NFL-team defense is sufficient.
- if(norm(p.position)==='DEF')return sameTeam;
- return sameTeam.filter(r=>clean(r.name)&&clean(r.name)===clean(p.name));
-}
 function directProjection(p,rows,week,season){
- const same=projectionMatches(p,rows,week,season);
+ const same=matchingProjectionRows(p,rows,week,{season});
  return same.length===1?number(same[0].projection):null;
 }
 export function estimateFutureReplacementLevels(gaps,candidates,projectionRows,{season,currentWeek,baselines={},minDirectCandidates=5}={}){
@@ -25,7 +12,7 @@ export function estimateFutureReplacementLevels(gaps,candidates,projectionRows,{
   const result={teamId:gap.teamId??null,teamName:gap.teamName??null,week,slot:slot.slot,points:null,method:'unavailable',provisional:true,replacementAssumed:false,verifiedFutureAvailability:false,verifiedProjection:false};
   if(!Number.isInteger(week)||!Number.isInteger(Number(currentWeek))||week<=Number(currentWeek)||!Number.isInteger(Number(season)))return result;
   const used=usedByWeek.get(week)??new Set();usedByWeek.set(week,used);
-  const eligiblePool=pool.filter(p=>!used.has(String(p.id??''))&&p.id!=null&&eligible(p,position)&&number(p.byeWeek)!=null&&Number(p.byeWeek)!==week&&!unavailable.has(String(p.status??'').toUpperCase()));
+  const eligiblePool=pool.filter(p=>!used.has(String(p.id??''))&&p.id!=null&&eligible(p,position)&&number(p.byeWeek)!=null&&Number(p.byeWeek)!==week&&!unavailableStatus(p.status));
   const ranked=eligiblePool.map(p=>({...p,points:directProjection(p,rows,week,season)})).filter(p=>p.points!=null).sort((a,b)=>b.points-a.points);
   if(ranked.length>=Math.max(5,Number(minDirectCandidates)||5)){
    const sample=ranked.slice(2,5);
@@ -58,8 +45,8 @@ export function diagnoseFutureReplacementExclusions(gaps,candidates,projectionRo
    if(!clean(p.name)||!norm(p.position)||!team(p.nflTeam)){counts.missingIdentity++;continue;}
    if(number(p.byeWeek)==null){counts.missingBye++;continue;}
    if(Number(p.byeWeek)===week){counts.onBye++;continue;}
-   if(unavailable.has(String(p.status??'').toUpperCase())){counts.currentUnavailable++;continue;}
-   const matching=projectionMatches(p,rows,week,season);
+   if(unavailableStatus(p.status)){counts.currentUnavailable++;continue;}
+   const matching=matchingProjectionRows(p,rows,week,{season});
    const samePosition=rows.filter(r=>Number(r.season)===Number(season)&&Number(r.week)===week&&number(r.projection)!=null&&norm(r.position)===norm(p.position));
    if(!samePosition.length)counts.noPositionProjectionRows++;
    else if(!matching.length)counts.identityMismatch++;
