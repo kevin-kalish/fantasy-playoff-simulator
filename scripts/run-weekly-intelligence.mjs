@@ -219,7 +219,15 @@ if(!readiness.ready){
      const previewRoot=path.resolve('data/private');
      fs.mkdirSync(previewRoot,{recursive:true});
      const standings=(snapshot.teams??[]).map(t=>({id:String(t.id),name:String(t.name),wins:t.wins,losses:t.losses,ties:t.ties,points:t.points,rank:t.rank}));
-     const html=buildPrivateProvisionalPreview({estimates,standings,provisionalOdds,replacementOdds,week,season,provider:'Diagnostic-only; '+String(loaded.provider??'unverified')});
+     const archivePath=path.join(previewRoot,'playoff-probability-history.json');
+     let playoffHistory=[];
+     if(fs.existsSync(archivePath)){
+      const archive=JSON.parse(fs.readFileSync(archivePath,'utf8'));
+      if(String(archive.leagueKey)!==String(spec.sourceAudit.leagueKey)||Number(archive.season)!==Number(season)||String(archive.teamId)!==String(spec.teamId))throw new Error('History archive identity mismatch; preview withheld');
+      if(!Array.isArray(archive.history))throw new Error('Invalid history archive');
+      playoffHistory=archive.history;
+     }
+     const html=buildPrivateProvisionalPreview({estimates,standings,provisionalOdds,replacementOdds,playoffHistory,focusTeamId:String(spec.teamId),week,season,provider:'Diagnostic-only; '+String(loaded.provider??'unverified')});
      const previewPath=path.join(previewRoot,'future-provisional-preview.html');
      fs.writeFileSync(previewPath,html,{mode:0o600,flag:'w'});
      console.error('FUTURE PROVISIONAL PREVIEW: private offline HTML at '+previewPath+'; '+(provisionalOdds?'no-replacement provisional odds included':'odds unavailable')+'; no recommendations.');
