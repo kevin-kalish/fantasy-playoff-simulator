@@ -1,13 +1,23 @@
 // Offline evidence-only dashboard using the shared live dashboard renderer.
 // Only allowlisted fields are embedded; no league snapshots, tokens, or official odds.
 import fs from 'node:fs';
-export function buildPrivateProvisionalPreview({estimates=[],week,season,provider='unverified'}={}){
+export function buildPrivateProvisionalPreview({estimates=[],standings=[],provisionalOdds=null,week,season,provider='unverified'}={}){
  const safe=(Array.isArray(estimates)?estimates:[]).map(e=>({
   week:Number.isInteger(Number(e.week))?Number(e.week):null,
   slot:String(e.slot??''),points:typeof e.points==='number'&&Number.isFinite(e.points)?e.points:null,
   method:String(e.method??'unavailable'),teamName:String(e.teamName??'Unknown team')
  }));
- const payload={mode:'provisional-evidence',estimates:safe,week:Number(week),season:Number(season),provider:String(provider)};
+ const safeStandings=(Array.isArray(standings)?standings:[]).map(t=>({
+  id:String(t.id??''),name:String(t.name??''),wins:Number(t.wins),losses:Number(t.losses),ties:Number(t.ties),
+  points:Number.isFinite(Number(t.points))?Number(t.points):null,
+  rank:Number.isInteger(Number(t.rank))&&Number(t.rank)>0?Number(t.rank):null
+ })).filter(t=>t.id&&t.name&&[t.wins,t.losses,t.ties].every(n=>Number.isInteger(n)&&n>=0));
+ const validProbability=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1;
+ const safeOdds=provisionalOdds&&provisionalOdds.scenario==='no-replacement'&&Number.isInteger(provisionalOdds.simulations)&&provisionalOdds.simulations>=1000&&Number.isInteger(provisionalOdds.incompleteTeamWeeks)&&provisionalOdds.incompleteTeamWeeks>0&&Array.isArray(provisionalOdds.teams)&&provisionalOdds.teams.length===safeStandings.length&&safeStandings.length>0&&provisionalOdds.teams.every(t=>safeStandings.some(s=>s.id===String(t.id))&&validProbability(t.playoffProbability)&&validProbability(t.championshipProbability)&&typeof t.averageWins==='number'&&Number.isFinite(t.averageWins))?{
+  scenario:'no-replacement',simulations:provisionalOdds.simulations,incompleteTeamWeeks:provisionalOdds.incompleteTeamWeeks,
+  teams:provisionalOdds.teams.map(t=>({id:String(t.id),playoffProbability:t.playoffProbability,championshipProbability:t.championshipProbability,averageWins:t.averageWins}))
+ }:null;
+ const payload={mode:'provisional-evidence',estimates:safe,standings:safeStandings,provisionalOdds:safeOdds,week:Number(week),season:Number(season),provider:String(provider)};
  const serialized=JSON.stringify(payload).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
  const renderer=fs.readFileSync(new URL('../src/ui/live-dashboard-v1.js',import.meta.url),'utf8')
   .replace(/^export\s+function\s+/gm,'function ');
