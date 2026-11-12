@@ -7,6 +7,7 @@ import {assessProjectionFreshness} from '../src/data/projection-freshness.js';
 import fs from 'node:fs';
 import {captureCompletedWeekProbability,reconcileCompletedWeekResult} from '../src/data/weekly-playoff-history.js';
 import {buildPrivatePreview} from './build-private-dashboard-preview.mjs';
+import {buildPrivateProvisionalPreview} from './build-private-provisional-preview.mjs';
 import path from 'node:path';
 import {buildProjectionArchive,saveProjectionArchive} from '../src/data/projection-archive.js';
 import {diagnoseStartSit} from '../src/model/start-sit-diagnostic.js';
@@ -184,7 +185,7 @@ if(!readiness.ready){
   else{
    try{
     const extra=await loadWeeklyProjectionHorizon({season,weeks:extraWeeks,scoring:spec.scoring??'HALF',minimumRows:1,projectionNames:[...new Set([...projectionNames,...diagnosticPool.map(p=>String(p.name??'').trim()).filter(Boolean)])],cachePath:null,fixturePath:null,preferCache:false});
-    replacementDiagnosticRows=[...loaded.rows,...extra.rows];
+    replacementDiagnosticRows=[...replacementDiagnosticRows,...extra.rows];
     console.error('FUTURE REPLACEMENT FETCH: diagnostic-only W'+extraWeeks.join(',W')+'; '+extra.rows.length+' rows; provider '+extra.provider+'; freshness and completeness unverified; no simulation or cache changes.');
     for(const c of auditWeeklyPositionCoverage(extra.rows,{season,weeks:extraWeeks,weekResults:extra.trust.weekResults}))console.error('FUTURE PROJECTION COVERAGE: W'+c.week+' '+c.position+' '+c.rows+' rows / '+c.uniquePlayerIds+' distinct IDs; provider '+c.provider+'; observation '+(c.observedAt??'unverified')+'; source provenance unverified.');
    }catch(error){console.error('FUTURE REPLACEMENT FETCH: unavailable; '+error.message+'; simulation unchanged.');}
@@ -198,6 +199,20 @@ if(!readiness.ready){
   const estimates=estimateFutureReplacementLevels(readiness.futureRosterGaps,diagnosticPool,replacementDiagnosticRows,{season,currentWeek:week});
   for(const d of diagnoseFutureReplacementExclusions(readiness.futureRosterGaps,diagnosticPool,replacementDiagnosticRows,{season,currentWeek:week}))console.error('FUTURE REPLACEMENT EXCLUSIONS: W'+d.week+' '+d.slot+' position candidates '+d.positionCandidates+'; missing identity '+d.missingIdentity+'; missing bye '+d.missingBye+'; on bye '+d.onBye+'; current unavailable '+d.currentUnavailable+'; no weekly projection '+d.noWeeklyProjection+' (no position rows '+d.noPositionProjectionRows+', identity mismatch '+d.identityMismatch+'); ambiguous identity '+d.ambiguousWeeklyProjection+'; unique projection '+d.uniqueWeeklyProjection+'; current status and future availability unverified.');
 
+  if(process.env.FUTURE_PROVISIONAL_PREVIEW==='true'){
+   if(spec.sourceAudit?.passed!==true||spec.sourceAudit?.week!==week||!spec.sourceAudit?.leagueKey||loaded.trust?.degraded){
+    console.error('FUTURE PROVISIONAL PREVIEW: BLOCKED; source audit or projection trust failed.');
+   }else{
+    try{
+     const previewRoot=path.resolve('data/private');
+     fs.mkdirSync(previewRoot,{recursive:true});
+     const html=buildPrivateProvisionalPreview({estimates,week,season,provider:'Diagnostic-only; '+String(loaded.provider??'unverified')});
+     const previewPath=path.join(previewRoot,'future-provisional-preview.html');
+     fs.writeFileSync(previewPath,html,{mode:0o600,flag:'w'});
+     console.error('FUTURE PROVISIONAL PREVIEW: private offline HTML at '+previewPath+'; no odds or recommendations.');
+    }catch(error){console.error('FUTURE PROVISIONAL PREVIEW: unavailable; '+error.message);}
+   }
+  }
   const covered=estimates.filter(x=>x.points!=null);
   console.error('FUTURE REPLACEMENT DIAGNOSTIC: '+covered.length+'/'+estimates.length+' slots estimated from target-week rows; hypothetical only, no transactions, no odds impact.');
   for(const estimate of estimates)console.error('FUTURE REPLACEMENT ESTIMATE: W'+estimate.week+' '+estimate.slot+' '+(estimate.points===null?'unavailable':estimate.points.toFixed(1)+' pts')+' ('+estimate.method+'); provisional, future availability unverified.');
