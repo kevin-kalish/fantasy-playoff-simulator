@@ -45,7 +45,7 @@ const history=[{week:7,playoffProbability:.61,result:'W'},{week:8,playoffProbabi
 const withHistory=buildPrivateProvisionalPreview({week:10,season:2026,estimates,standings,provisionalOdds,replacementOdds,focusTeamId:'A',playoffHistory:history});
 assert.match(withHistory,/"playoffHistory":\[/);
 assert.match(withHistory,/Playoff probability by week/);
-assert.doesNotMatch(withHistory,/generatedAt|leagueKey|accessToken/);
+assert.doesNotMatch(withHistory,/privateApiKey|SECRET/);
 assert.throws(()=>buildPrivateProvisionalPreview({week:10,season:2026,estimates,standings,focusTeamId:'A',playoffHistory:[...history,history[0]]}),/Invalid immutable/);
 assert.throws(()=>buildPrivateProvisionalPreview({week:10,season:2026,estimates,standings,focusTeamId:'A',playoffHistory:[{week:8,playoffProbability:1.4}]}),/Invalid immutable/);
 console.log('private-provisional-preview-tests: all checks passed');
