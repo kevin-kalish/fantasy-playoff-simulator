@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {loadYahooWaiverPool,candidateDropPlayerIds,prescreenWaiverScenarios} from '../src/data/yahoo-waivers.js';
+import {loadYahooWaiverPool,loadYahooBalancedFreeAgents,candidateDropPlayerIds,prescreenWaiverScenarios} from '../src/data/yahoo-waivers.js';
 
 const prop=(key,value)=>({[key]:value});
 const player=(id,name,pos,slot='BN')=>[prop('player_key',id),prop('name',{full:name}),prop('display_position',pos),prop('selected_position',{position:slot})];
@@ -17,4 +17,15 @@ const available=[{id:'free-qb',name:'Free QB',position:'QB',projection:12},{id:'
 const screen=prescreenWaiverScenarios(team,available,{candidateLimit:2,dropsPerCandidate:1,overallDropLimit:1});
 assert.equal(screen.screenedCandidates,2);assert.equal(screen.totalCandidates,3);assert.equal(screen.candidates[0].id,'free-qb');
 assert.ok(screen.dropMap['free-rb']?.includes('rb2')||screen.dropMap['free-qb']?.includes('wr2'));
+const balancedCalls=[];
+const balanced=await loadYahooBalancedFreeAgents(async path=>{
+ balancedCalls.push(path);
+ const position=decodeURIComponent(path.match(/position=([^;]+)/)?.[1]??'');
+ return payload([player('461.p.'+position,'Free '+position,position)]);
+},{leagueKey:'461.l.1',perPosition:5});
+assert.equal(balanced.players.length,6);
+assert.equal(balanced.coverage.length,6);
+assert.equal(balanced.complete,false);
+assert.ok(balancedCalls.every(x=>x.includes('status=A')&&x.includes('position=')));
+await assert.rejects(()=>loadYahooBalancedFreeAgents(get,{leagueKey:'461.l.1',perPosition:26}),/between 1 and 25/);
 console.log('yahoo-waivers-tests: all checks passed');
