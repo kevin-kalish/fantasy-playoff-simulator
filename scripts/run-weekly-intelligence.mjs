@@ -14,7 +14,7 @@ import {validateIndependentSeeds} from '../src/model/independent-seed-validation
 import {prepareLeagueSimulation} from '../src/model/league-preparation.js';
 import {assessSimulationReadiness} from '../src/model/simulation-readiness.js';
 import {inventoryFutureRosterCandidates} from '../src/model/future-roster-candidate-inventory.js';
-import {estimateFutureReplacementLevels} from '../src/model/future-replacement-level.js';
+import {estimateFutureReplacementLevels,diagnoseFutureReplacementExclusions} from '../src/model/future-replacement-level.js';
 import {auditWeeklyPositionCoverage} from '../src/data/weekly-position-coverage-audit.js';
 import {futureReplacementProjectionWeeks} from '../src/model/future-replacement-projection-horizon.js';
 import {compareLineupScenarios} from '../src/model/lineup-scenario-comparison.js';
@@ -176,6 +176,8 @@ if(!readiness.ready){
   for(const c of coverage)console.error('FUTURE PROJECTION COVERAGE: W'+c.week+' '+c.position+' '+c.rows+' rows / '+c.uniquePlayerIds+' distinct IDs; provider '+c.provider+'; original observation '+(c.observedAt??'unverified')+'; provider provenance unverified.');
 
   const estimates=estimateFutureReplacementLevels(readiness.futureRosterGaps,waiverPool,replacementDiagnosticRows,{season,currentWeek:week});
+  for(const d of diagnoseFutureReplacementExclusions(readiness.futureRosterGaps,waiverPool,replacementDiagnosticRows,{season,currentWeek:week}))console.error('FUTURE REPLACEMENT EXCLUSIONS: W'+d.week+' '+d.slot+' position candidates '+d.positionCandidates+'; missing identity '+d.missingIdentity+'; missing bye '+d.missingBye+'; on bye '+d.onBye+'; current unavailable '+d.currentUnavailable+'; no weekly projection '+d.noWeeklyProjection+'; ambiguous identity '+d.ambiguousWeeklyProjection+'; unique projection '+d.uniqueWeeklyProjection+'; current status and future availability unverified.');
+
   const covered=estimates.filter(x=>x.points!=null);
   console.error('FUTURE REPLACEMENT DIAGNOSTIC: '+covered.length+'/'+estimates.length+' slots estimated from target-week rows; hypothetical only, no transactions, no odds impact.');
   for(const estimate of estimates)console.error('FUTURE REPLACEMENT ESTIMATE: W'+estimate.week+' '+estimate.slot+' '+(estimate.points===null?'unavailable':estimate.points.toFixed(1)+' pts')+' ('+estimate.method+'); provisional, future availability unverified.');
