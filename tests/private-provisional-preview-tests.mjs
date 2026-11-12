@@ -32,4 +32,13 @@ assert.match(oddsRoot.innerHTML,/Simulation readiness: BLOCKED/);
 const invalid=buildPrivateProvisionalPreview({week:10,season:2026,estimates,standings,provisionalOdds:{...provisionalOdds,teams:[{...provisionalOdds.teams[0],playoffProbability:1.5},provisionalOdds.teams[1]]}});
 assert.match(invalid,/"provisionalOdds":null/);
 
+const replacementOdds={scenario:'aggregate-replacement-sensitivity',simulations:5000,incompleteTeamWeeks:13,teams:provisionalOdds.teams.map(t=>({...t,playoffProbability:Math.min(1,t.playoffProbability+.05)}))};
+const comparison=buildPrivateProvisionalPreview({week:10,season:2026,estimates,standings,provisionalOdds,replacementOdds});
+assert.match(comparison,/"aggregate-replacement-sensitivity"/);
+const comparisonRoot={innerHTML:''};
+renderProvisionalDashboardV1(comparisonRoot,{mode:'provisional-evidence',week:10,season:2026,estimates,standings,provisionalOdds,replacementOdds});
+assert.match(comparisonRoot.innerHTML,/Replacement playoffs/);
+assert.match(comparisonRoot.innerHTML,/80.5%/);
+const mismatched=buildPrivateProvisionalPreview({week:10,season:2026,estimates,standings,provisionalOdds,replacementOdds:{...replacementOdds,simulations:250}});
+assert.match(mismatched,/"replacementOdds":null/);
 console.log('private-provisional-preview-tests: all checks passed');
