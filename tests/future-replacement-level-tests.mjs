@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {estimateFutureReplacementLevels} from '../src/model/future-replacement-level.js';
+import {estimateFutureReplacementLevels,diagnoseFutureReplacementExclusions} from '../src/model/future-replacement-level.js';
 const candidates=Array.from({length:6},(_,i)=>({id:String(i+1),name:'Kicker '+(i+1),position:'K',nflTeam:'JAX',byeWeek:10}));
 const rows=candidates.map((p,i)=>({name:p.name,position:'K',nflTeam:'JAC',season:2026,week:14,projection:10-i}));
 const gaps=[{teamId:'a',teamName:'Alpha',week:14,slots:[{slot:'K'}]}];
@@ -20,4 +20,20 @@ const week15=rows.map(r=>({...r,week:15}));
 const repeated=estimateFutureReplacementLevels([{teamId:'a',week:14,slots:[{slot:'K'}]},{teamId:'a',week:15,slots:[{slot:'K'}]}],candidates,[...rows,...week15],{season:2026,currentWeek:11});
 assert.equal(repeated[0].points,7);
 assert.equal(repeated[1].points,7);
+const excluded=diagnoseFutureReplacementExclusions([{week:14,slots:[{slot:'K'}]}],[
+ {id:'a',name:'Missing Bye',position:'K',nflTeam:'JAX'},
+ {id:'b',name:'On Bye',position:'K',nflTeam:'JAX',byeWeek:14},
+ {id:'c',name:'Out Now',position:'K',nflTeam:'JAX',byeWeek:12,status:'OUT'},
+ {id:'d',name:'No Projection',position:'K',nflTeam:'JAX',byeWeek:12},
+ {id:'e',name:'Duplicate',position:'K',nflTeam:'JAX',byeWeek:12},
+ {id:'f',name:'Unique',position:'K',nflTeam:'JAX',byeWeek:12},
+ {id:'g',position:'K',nflTeam:'JAX',byeWeek:12}
+],[
+ {season:2026,week:14,name:'Duplicate',position:'K',nflTeam:'JAX',projection:8},
+ {season:2026,week:14,name:'Duplicate',position:'K',nflTeam:'JAX',projection:9},
+ {season:2026,week:14,name:'Unique',position:'K',nflTeam:'JAX',projection:7}
+],{season:2026,currentWeek:11})[0];
+assert.equal(excluded.positionCandidates,7);
+for(const field of ['missingIdentity','missingBye','onBye','currentUnavailable','noWeeklyProjection','ambiguousWeeklyProjection','uniqueWeeklyProjection'])assert.equal(excluded[field],1,field);
+assert.equal(['missingIdentity','missingBye','onBye','currentUnavailable','noWeeklyProjection','ambiguousWeeklyProjection','uniqueWeeklyProjection'].reduce((n,k)=>n+excluded[k],0),excluded.positionCandidates);
 console.log('future-replacement-level-tests: all checks passed');
