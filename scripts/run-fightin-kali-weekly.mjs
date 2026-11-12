@@ -4,7 +4,7 @@ import {createYahooClient,discoverYahooNflLeagues} from '../src/data/yahoo-clien
 import {loadYahooLeagueSnapshot} from '../src/data/yahoo-league.js';
 import {fetchYahooCurrentWeek} from '../src/data/yahoo-current-week.js';
 import {runYahooLeagueAudit} from '../src/data/yahoo-live-audit.js';
-import {loadYahooWaiverPool,prescreenWaiverScenarios} from '../src/data/yahoo-waivers.js';
+import {loadYahooWaiverPool,loadYahooBalancedFreeAgents,prescreenWaiverScenarios} from '../src/data/yahoo-waivers.js';
 import {buildWaiverCandidatePool} from '../src/data/waiver-candidate-source.js';
 import {resolveYahooAccessToken} from '../src/data/yahoo-auth-session.js';
 import {applyFightinKaliConfig} from '../src/data/fightin-kali-snapshot.js';
@@ -92,6 +92,15 @@ if(get&&leagueKey){
   if(screen.candidates.length&&dropPlayerIds.length)plan.waivers={source:pool.source,candidates:screen.candidates,replacementCandidates:pool.candidates,dropPlayerIds,dropMap:screen.dropMap,weeks:plan.weeks,prescreen:{...screen,sourceDiagnostics:pool.diagnostics}};
  }catch(error){plan.scanAvailability.waivers={status:'unavailable',reason:error.message};console.error(`WAIVERS: unavailable; ${error.message}`);}
 }else plan.scanAvailability.waivers={status:'unavailable',reason:yahooAuth.reason??'Yahoo live state unavailable.'};
+if(process.env.FUTURE_REPLACEMENT_DIAGNOSTIC==='true'&&process.env.FUTURE_BALANCED_WAIVERS==='true'){
+ try{
+  const balanced=await loadYahooBalancedFreeAgents(get,{leagueKey,perPosition:15});
+  const normalized=buildWaiverCandidatePool(balanced.players,{source:'yahoo-diagnostic',limit:150});
+  plan.futureReplacementDiagnosticCandidates=normalized.candidates;
+  console.error('FUTURE BALANCED WAIVERS: '+normalized.candidates.length+' distinct candidates; bounded 15 per position; diagnostic-only, future availability unverified.');
+  for(const row of balanced.coverage)console.error('FUTURE BALANCED WAIVERS: '+row.position+' returned '+row.returned+'; distinct added '+row.added+'; possibly truncated '+row.possiblyTruncated+'.');
+ }catch(error){console.error('FUTURE BALANCED WAIVERS: unavailable; '+error.message+'; original waiver scan unchanged.');}
+}
 fs.mkdirSync('data/private',{recursive:true});const specPath=focusTeamArg?`data/private/${slug(focusTeamArg)}-week-${plan.week}-spec.json`:`data/private/fightin-kali-week-${plan.week}-spec.json`;fs.writeFileSync(specPath,JSON.stringify(plan,null,2)+'\n');
 console.error(`WEEKLY REFRESH: season ${plan.season} week ${plan.week}; team ${plan.teamId}; modeled weeks ${plan.weeks.join(',')}.`);
 const originalArgv=process.argv;try{process.argv=[process.execPath,'scripts/run-weekly-intelligence.mjs',snapshotPath,specPath];await import('./run-weekly-intelligence.mjs');}catch(error){fail(error?.message??String(error))}finally{process.argv=originalArgv}
