@@ -145,3 +145,21 @@ export function renderDashboardV1(root, payload) {
   };
   root.onkeydown = event => { if (event.key !== "Enter" && event.key !== " ") return; const row = event.target?.closest?.("[data-team-id]"); if (row) { event.preventDefault(); row.click(); } };
 }
+
+/** Same private dashboard renderer, evidence-only mode for blocked readiness. */
+export function renderProvisionalDashboardV1(root,payload){
+ if(payload?.mode!=='provisional-evidence'||!Array.isArray(payload.estimates))throw new Error('Unsupported provisional dashboard data');
+ const estimates=payload.estimates;
+ const covered=estimates.filter(x=>typeof x.points==='number'&&Number.isFinite(x.points)).length;
+ const weeks=[...new Set(estimates.map(x=>Number(x.week)).filter(Number.isInteger))].sort((a,b)=>a-b);
+ const teams=[...new Set(estimates.map(x=>String(x.teamName??'Unknown team')))].sort();
+ const rows=estimates.map(x=>'<tr><td>W'+escapeHtml(x.week)+'</td><td>'+escapeHtml(x.teamName??'Unknown team')+'</td><td>'+escapeHtml(x.slot)+'</td><td>'+escapeHtml(typeof x.points==='number'&&Number.isFinite(x.points)?x.points.toFixed(1):'Unavailable')+'</td><td>'+escapeHtml(x.method)+'</td></tr>').join('');
+ const perWeek=weeks.map(week=>{const subset=estimates.filter(x=>Number(x.week)===week);return '<div class="detail-card"><strong>Week '+escapeHtml(week)+'</strong><p>'+subset.filter(x=>x.points!=null).length+'/'+subset.length+' positions estimated</p></div>';}).join('');
+ root.innerHTML='<div class="dash-head"><div><p class="eyebrow">PRIVATE · PROVISIONAL · READ ONLY</p><h1>Fantasy playoff dashboard</h1><p>Season '+escapeHtml(payload.season)+' · Current week '+escapeHtml(payload.week)+'</p></div></div>'+
+ '<div class="race-panel"><h2>Simulation readiness: BLOCKED</h2><p>Official playoff probabilities, projected wins, championship odds, matchup win probabilities, and GM recommendations are withheld. No replacement transactions or simulations are assumed.</p></div>'+
+ '<div class="metric-grid"><div><span>Replacement evidence</span><strong>'+covered+'/'+estimates.length+'</strong></div><div><span>Unresolved positions</span><strong>'+(estimates.length-covered)+'</strong></div><div><span>Teams with gaps</span><strong>'+teams.length+'</strong></div></div>'+
+ '<nav class="schedule-view-controls"><a href="#dashboard-provisional-weeks">Week coverage</a><a href="#dashboard-provisional-replacements">Replacement assumptions</a><a href="#dashboard-provisional-status">Trust status</a></nav>'+
+ '<section id="dashboard-provisional-weeks"><h2>Week-by-week projection coverage</h2><div class="metric-grid">'+perWeek+'</div></section>'+
+ '<section id="dashboard-provisional-replacements"><h2>Provisional replacement assumptions</h2><p class="demo-disclaimer">Target-week ranks 3–5 where at least five unique eligible projection matches exist. These are hypothetical points, not projected roster acquisitions.</p><div class="table-wrap"><table><thead><tr><th>Week</th><th>Team</th><th>Position</th><th>Points</th><th>Evidence</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>'+
+ '<section id="dashboard-provisional-status" class="race-panel"><h2>Trust status</h2><p>Source: '+escapeHtml(payload.provider??'unverified')+'. Future availability, original projection observation age, and cross-team hypothetical allocation are not verified. Official readiness remains blocked.</p><p class="demo-disclaimer">Private local-only evidence preview. Do not publish or commit this file.</p></section>';
+}
