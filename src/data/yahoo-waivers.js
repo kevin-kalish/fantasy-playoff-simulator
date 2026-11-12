@@ -16,12 +16,13 @@ function playersFrom(json){
  return yahooCollection(league?.players,'player').map(yahooPlayer);
 }
 
-export async function loadYahooWaiverPool(get,{leagueKey,limit=30,status='A',sort='AR'}={}){
+export async function loadYahooWaiverPool(get,{leagueKey,limit=30,status='A',sort='AR',position=null}={}){
  if(!leagueKey)throw new Error('Yahoo leagueKey is required.');
  const max=Math.max(1,Number(limit)||30),pageSize=Math.min(25,max),players=[];
  for(let start=0;start<max;start+=pageSize){
   const count=Math.min(pageSize,max-start);
-  const json=await get(`league/${leagueKey}/players;status=${status};sort=${sort};start=${start};count=${count}`);
+  const positionFilter=position?`;position=${encodeURIComponent(position)}`:'';
+  const json=await get(`league/${leagueKey}/players;status=${status}${positionFilter};sort=${sort};start=${start};count=${count}`);
   const rows=playersFrom(json);
   players.push(...rows);
   if(rows.length<count)break;
@@ -52,4 +53,19 @@ export function prescreenWaiverScenarios(team,candidates,{candidateLimit=12,drop
   const seen=new Set();dropMap[pid(c)]=pool.map(pid).filter(id=>id&&!seen.has(id)&&seen.add(id));
  }
  return {candidates:screened,dropMap,totalCandidates:candidates.length,screenedCandidates:screened.length,benchPlayers:bench.length};
+}
+
+const DIAGNOSTIC_POSITIONS=['QB','RB','WR','TE','K','DEF'];
+// Read-only position-balanced inventory. Yahoo may return fewer than requested.
+export async function loadYahooBalancedFreeAgents(get,{leagueKey,perPosition=15}={}){
+ const limit=Number(perPosition);
+ if(!Number.isInteger(limit)||limit<1||limit>25)throw new Error('Diagnostic perPosition must be between 1 and 25.');
+ const seen=new Set(),players=[],coverage=[];
+ for(const position of DIAGNOSTIC_POSITIONS){
+  const rows=await loadYahooWaiverPool(get,{leagueKey,limit,status:'A',position});
+  let added=0;
+  for(const player of rows){const id=pid(player);if(id&&!seen.has(id)){seen.add(id);players.push(player);added++;}}
+  coverage.push({position,returned:rows.length,added,possiblyTruncated:rows.length===limit});
+ }
+ return {players,coverage,diagnosticOnly:true,complete:false};
 }
