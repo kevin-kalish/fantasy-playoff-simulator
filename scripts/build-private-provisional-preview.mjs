@@ -1,12 +1,22 @@
-// Offline provisional evidence preview; never renders playoff probabilities.
-const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+// Offline evidence-only dashboard using the shared live dashboard renderer.
+// Only allowlisted fields are embedded; no league snapshots, tokens, or official odds.
+import fs from 'node:fs';
 export function buildPrivateProvisionalPreview({estimates=[],week,season,provider='unverified'}={}){
  const safe=(Array.isArray(estimates)?estimates:[]).map(e=>({
   week:Number.isInteger(Number(e.week))?Number(e.week):null,
   slot:String(e.slot??''),points:typeof e.points==='number'&&Number.isFinite(e.points)?e.points:null,
   method:String(e.method??'unavailable'),teamName:String(e.teamName??'Unknown team')
  }));
- const estimated=safe.filter(e=>e.points!==null).length;
- const rows=safe.map(e=>'<tr><td>'+esc(e.week==null?'—':'W'+e.week)+'</td><td>'+esc(e.teamName)+'</td><td>'+esc(e.slot)+'</td><td>'+esc(e.points===null?'Unavailable':e.points.toFixed(1))+'</td><td>'+esc(e.method)+'</td></tr>').join('');
- return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src \'none\'; connect-src \'none\'; form-action \'none\'"><title>Private provisional projection preview</title><style>body{font:16px system-ui;background:#f4f7fb;color:#182c43;max-width:1100px;margin:40px auto;padding:0 20px}header{background:#132d4c;color:white;padding:26px;border-radius:14px}header p{color:#d4e3f3}.stats{display:flex;gap:16px;flex-wrap:wrap;margin:22px 0}.stats div{background:white;padding:20px;border-radius:12px;flex:1;min-width:150px}.stats strong{display:block;font-size:30px}table{border-collapse:collapse;background:white;width:100%;border-radius:10px}th,td{text-align:left;padding:12px;border-bottom:1px solid #dce4ed}th{background:#e7eef6}.notice{padding:14px 18px;border-left:4px solid #ad751d;background:#fff7e8;margin:20px 0}main{overflow-x:auto}</style></head><body><header><h1>Future lineup projections</h1><p>PRIVATE · PROVISIONAL · READ-ONLY · '+esc(season)+' Week '+esc(week)+'</p></header><div class="notice"><strong>Official playoff probabilities unavailable.</strong> Lineup readiness failed. These hypothetical replacement estimates are not roster moves, verified future availability, calibrated live projections, or recommendations. No simulation was run for this preview.</div><div class="stats"><div><span>Estimated slots</span><strong>'+estimated+' / '+safe.length+'</strong></div><div><span>Unresolved slots</span><strong>'+(safe.length-estimated)+'</strong></div><div><span>Projection provider</span><strong style="font-size:19px">'+esc(provider)+'</strong></div></div><h2>Provisional replacement evidence</h2><main><table><thead><tr><th>Week</th><th>Team</th><th>Position</th><th>Points</th><th>Evidence method</th></tr></thead><tbody>'+rows+'</tbody></table></main><p>Values are target-week ranks 3–5 where sufficient unique evidence exists. Source observation age and future availability are unverified. This file is local-only; never publish or commit it.</p></body></html>';
+ const payload={mode:'provisional-evidence',estimates:safe,week:Number(week),season:Number(season),provider:String(provider)};
+ const serialized=JSON.stringify(payload).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
+ const renderer=fs.readFileSync(new URL('../src/ui/live-dashboard-v1.js',import.meta.url),'utf8')
+  .replace(/^export\\s+function\\s+/gm,'function ');
+ if(!renderer.includes('function renderProvisionalDashboardV1('))throw new Error('Shared provisional renderer missing');
+ return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>Private provisional fantasy dashboard</title>
+<style>body{font:16px system-ui;background:#f4f7fb;color:#182c43;max-width:1200px;margin:40px auto;padding:0 20px}h1,h2{margin:.4rem 0 1rem}.dash-head{background:#132d4c;color:white;padding:26px;border-radius:14px}.eyebrow{font-size:12px;letter-spacing:.05em}.metric-grid{display:flex;gap:16px;flex-wrap:wrap;margin:22px 0}.metric-grid>div{background:white;padding:20px;border-radius:12px;flex:1;min-width:150px}.metric-grid strong{display:block;font-size:28px}.race-panel,.detail-card{background:white;padding:20px;border-radius:12px;margin:20px 0}.table-wrap{overflow:auto}table{border-collapse:collapse;background:white;width:100%}th,td{text-align:left;padding:12px;border-bottom:1px solid #dce4ed}th{background:#e7eef6}.schedule-view-controls{display:flex;gap:20px;margin:20px 0;flex-wrap:wrap}.demo-disclaimer{color:#536476;font-size:14px}section{margin:28px 0}</style>
+</head><body><main id="dashboard"></main><script>${renderer}
+const payload=${serialized};renderProvisionalDashboardV1(document.getElementById('dashboard'),payload);
+</script></body></html>`;
 }
