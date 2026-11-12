@@ -10,7 +10,7 @@ export function buildPrivateProvisionalPreview({estimates=[],week,season,provide
  const payload={mode:'provisional-evidence',estimates:safe,week:Number(week),season:Number(season),provider:String(provider)};
  const serialized=JSON.stringify(payload).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
  const renderer=fs.readFileSync(new URL('../src/ui/live-dashboard-v1.js',import.meta.url),'utf8')
-  .replace(/^export\\s+function\\s+/gm,'function ');
+  .replace(/^export\s+function\s+/gm,'function ');
  if(!renderer.includes('function renderProvisionalDashboardV1('))throw new Error('Shared provisional renderer missing');
  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'">
