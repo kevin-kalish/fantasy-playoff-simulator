@@ -156,6 +156,7 @@ if(!readiness.ready){
  }
  console.error(`LINEUP BLOCKERS: ${readiness.blockingLineupGaps?.length??0} current-week or unresolved team-weeks; ${readiness.futureRosterGaps?.length??0} future roster-management team-weeks. No replacement projections assumed; trusted simulation remains blocked.`);
  const waiverPool=spec.waivers?.replacementCandidates??spec.waivers?.candidates??[];
+ const diagnosticPool=process.env.FUTURE_REPLACEMENT_DIAGNOSTIC==='true'&&process.env.FUTURE_BALANCED_WAIVERS==='true'&&Array.isArray(spec.futureReplacementDiagnosticCandidates)?spec.futureReplacementDiagnosticCandidates:waiverPool;
  let replacementDiagnosticRows=loaded.rows;
  if(process.env.FUTURE_REPLACEMENT_FETCH==='true'&&spec.sourceAudit?.passed===true&&!loaded.trust?.degraded){
   const extraWeeks=futureReplacementProjectionWeeks({currentWeek:week,loadedWeeks:loaded.weeks,gapWeeks:readiness.futureRosterGaps.map(g=>g.week),playoffWeeks:prepared.input.playoffWeeks,maxExtraWeeks:2});
@@ -163,7 +164,7 @@ if(!readiness.ready){
   else if(!process.env.FANTASYPROS_API_KEY&&!process.env.JERRYGM_API_KEY)console.error('FUTURE REPLACEMENT FETCH: SKIPPED; no live projection API configured (cache/fixture not accepted).');
   else{
    try{
-    const extra=await loadWeeklyProjectionHorizon({season,weeks:extraWeeks,scoring:spec.scoring??'HALF',minimumRows:1,projectionNames:[...new Set([...projectionNames,...waiverPool.map(p=>String(p.name??'').trim()).filter(Boolean)])],cachePath:null,fixturePath:null,preferCache:false});
+    const extra=await loadWeeklyProjectionHorizon({season,weeks:extraWeeks,scoring:spec.scoring??'HALF',minimumRows:1,projectionNames:[...new Set([...projectionNames,...diagnosticPool.map(p=>String(p.name??'').trim()).filter(Boolean)])],cachePath:null,fixturePath:null,preferCache:false});
     replacementDiagnosticRows=[...loaded.rows,...extra.rows];
     console.error('FUTURE REPLACEMENT FETCH: diagnostic-only W'+extraWeeks.join(',W')+'; '+extra.rows.length+' rows; provider '+extra.provider+'; freshness and completeness unverified; no simulation or cache changes.');
     for(const c of auditWeeklyPositionCoverage(extra.rows,{season,weeks:extraWeeks,weekResults:extra.trust.weekResults}))console.error('FUTURE PROJECTION COVERAGE: W'+c.week+' '+c.position+' '+c.rows+' rows / '+c.uniquePlayerIds+' distinct IDs; provider '+c.provider+'; observation '+(c.observedAt??'unverified')+'; source provenance unverified.');
@@ -175,8 +176,8 @@ if(!readiness.ready){
   const coverage=auditWeeklyPositionCoverage(loaded.rows,{season,weeks:loaded.weeks,weekResults:loaded.trust.weekResults});
   for(const c of coverage)console.error('FUTURE PROJECTION COVERAGE: W'+c.week+' '+c.position+' '+c.rows+' rows / '+c.uniquePlayerIds+' distinct IDs; provider '+c.provider+'; original observation '+(c.observedAt??'unverified')+'; provider provenance unverified.');
 
-  const estimates=estimateFutureReplacementLevels(readiness.futureRosterGaps,waiverPool,replacementDiagnosticRows,{season,currentWeek:week});
-  for(const d of diagnoseFutureReplacementExclusions(readiness.futureRosterGaps,waiverPool,replacementDiagnosticRows,{season,currentWeek:week}))console.error('FUTURE REPLACEMENT EXCLUSIONS: W'+d.week+' '+d.slot+' position candidates '+d.positionCandidates+'; missing identity '+d.missingIdentity+'; missing bye '+d.missingBye+'; on bye '+d.onBye+'; current unavailable '+d.currentUnavailable+'; no weekly projection '+d.noWeeklyProjection+'; ambiguous identity '+d.ambiguousWeeklyProjection+'; unique projection '+d.uniqueWeeklyProjection+'; current status and future availability unverified.');
+  const estimates=estimateFutureReplacementLevels(readiness.futureRosterGaps,diagnosticPool,replacementDiagnosticRows,{season,currentWeek:week});
+  for(const d of diagnoseFutureReplacementExclusions(readiness.futureRosterGaps,diagnosticPool,replacementDiagnosticRows,{season,currentWeek:week}))console.error('FUTURE REPLACEMENT EXCLUSIONS: W'+d.week+' '+d.slot+' position candidates '+d.positionCandidates+'; missing identity '+d.missingIdentity+'; missing bye '+d.missingBye+'; on bye '+d.onBye+'; current unavailable '+d.currentUnavailable+'; no weekly projection '+d.noWeeklyProjection+'; ambiguous identity '+d.ambiguousWeeklyProjection+'; unique projection '+d.uniqueWeeklyProjection+'; current status and future availability unverified.');
 
   const covered=estimates.filter(x=>x.points!=null);
   console.error('FUTURE REPLACEMENT DIAGNOSTIC: '+covered.length+'/'+estimates.length+' slots estimated from target-week rows; hypothetical only, no transactions, no odds impact.');
