@@ -15,6 +15,7 @@ import {prepareLeagueSimulation} from '../src/model/league-preparation.js';
 import {assessSimulationReadiness} from '../src/model/simulation-readiness.js';
 import {inventoryFutureRosterCandidates} from '../src/model/future-roster-candidate-inventory.js';
 import {estimateFutureReplacementLevels} from '../src/model/future-replacement-level.js';
+import {auditWeeklyPositionCoverage} from '../src/data/weekly-position-coverage-audit.js';
 import {compareLineupScenarios} from '../src/model/lineup-scenario-comparison.js';
 import {buildLeagueIntelligenceReport} from '../src/model/league-intelligence-report.js';
 import {formatWeeklyIntelligence} from '../src/model/weekly-intelligence-format.js';
@@ -156,6 +157,9 @@ if(!readiness.ready){
  const waiverPool=spec.waivers?.replacementCandidates??spec.waivers?.candidates??[];
  const inventory=inventoryFutureRosterCandidates(readiness.futureRosterGaps,waiverPool,loaded.rows);
  if(process.env.FUTURE_REPLACEMENT_DIAGNOSTIC==='true'){
+  const coverage=auditWeeklyPositionCoverage(loaded.rows,{season,weeks:loaded.weeks,weekResults:loaded.trust.weekResults});
+  for(const c of coverage)console.error('FUTURE PROJECTION COVERAGE: W'+c.week+' '+c.position+' '+c.rows+' rows / '+c.uniquePlayerIds+' distinct IDs; provider '+c.provider+'; original observation '+(c.observedAt??'unverified')+'; provider provenance unverified.');
+
   const estimates=estimateFutureReplacementLevels(readiness.futureRosterGaps,waiverPool,loaded.rows,{season,currentWeek:week});
   const covered=estimates.filter(x=>x.points!=null);
   console.error('FUTURE REPLACEMENT DIAGNOSTIC: '+covered.length+'/'+estimates.length+' slots estimated from target-week rows; hypothetical only, no transactions, no odds impact.');
