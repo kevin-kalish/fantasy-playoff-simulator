@@ -157,7 +157,7 @@ if(!readiness.ready){
  console.error(`LINEUP BLOCKERS: ${readiness.blockingLineupGaps?.length??0} current-week or unresolved team-weeks; ${readiness.futureRosterGaps?.length??0} future roster-management team-weeks. No replacement projections assumed; trusted simulation remains blocked.`);
  const waiverPool=spec.waivers?.replacementCandidates??spec.waivers?.candidates??[];
  let replacementDiagnosticRows=loaded.rows;
- if(process.env.FUTURE_REPLACEMENT_FETCH==='true'){
+ if(process.env.FUTURE_REPLACEMENT_FETCH==='true'&&spec.sourceAudit?.passed===true&&!loaded.trust?.degraded){
   const extraWeeks=futureReplacementProjectionWeeks({currentWeek:week,loadedWeeks:loaded.weeks,gapWeeks:readiness.futureRosterGaps.map(g=>g.week),playoffWeeks:prepared.input.playoffWeeks,maxExtraWeeks:2});
   if(!extraWeeks.length)console.error('FUTURE REPLACEMENT FETCH: SKIPPED; no eligible uncovered regular-season gap weeks.');
   else if(!process.env.FANTASYPROS_API_KEY&&!process.env.JERRYGM_API_KEY)console.error('FUTURE REPLACEMENT FETCH: SKIPPED; no live projection API configured (cache/fixture not accepted).');
