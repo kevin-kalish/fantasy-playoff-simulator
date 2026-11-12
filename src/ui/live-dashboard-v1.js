@@ -205,5 +205,5 @@ export function renderProvisionalDashboardV1(root,payload){
  };
  root.onclick=event=>{const row=event.target?.closest?.('[data-provisional-team]');if(row)showTeam(row.getAttribute('data-provisional-team'));};
  root.onkeydown=event=>{if(event.key!=='Enter'&&event.key!==' ')return;const row=event.target?.closest?.('[data-provisional-team]');if(row){event.preventDefault();showTeam(row.getAttribute('data-provisional-team'));}};
- if(standings.length)showTeam(standings[0].id);
+ if(standings.length)showTeam(standings.some(t=>t.id===String(payload.focusTeamId))?String(payload.focusTeamId):standings[0].id);
 }
