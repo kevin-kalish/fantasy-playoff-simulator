@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {buildProvisionalReplacementScenario} from '../src/model/provisional-replacement-scenario.js';
+const input={teams:[{id:'a',weeklyLineups:{10:[{id:'real',position:'K',projection:4,status:'ACTIVE'}],11:[{id:'EMPTY-0',position:'K',lineupSlot:'K',projection:0,status:'EMPTY'}]}}]};
+const estimates=[{teamId:'a',week:11,slot:'K',points:9.5,method:'direct-week-ranks-3-to-5'}];
+const out=buildProvisionalReplacementScenario(input,estimates,{currentWeek:10});
+assert.equal(out.teams[0].weeklyLineups[11][0].projection,9.5);
+assert.equal(out.teams[0].weeklyLineups[11][0].position,'K');
+assert.equal(out.teams[0].weeklyLineups[10][0].projection,4);
+assert.equal(input.teams[0].weeklyLineups[11][0].projection,0);
+assert.throws(()=>buildProvisionalReplacementScenario(input,[],{currentWeek:10}),/Missing or ambiguous/);
+assert.throws(()=>buildProvisionalReplacementScenario(input,[...estimates,...estimates],{currentWeek:10}),/unique/);
+assert.throws(()=>buildProvisionalReplacementScenario(input,[{...estimates[0],points:null}],{currentWeek:10}),/unique/);
+assert.throws(()=>buildProvisionalReplacementScenario(input,[{...estimates[0],method:'assumed-position-baseline'}],{currentWeek:10}),/unique/);
+assert.throws(()=>buildProvisionalReplacementScenario(input,[{...estimates[0],week:12}],{currentWeek:10}),/Missing or ambiguous/);
+console.log('provisional-replacement-scenario-tests: all checks passed');
