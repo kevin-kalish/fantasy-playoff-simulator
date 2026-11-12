@@ -14,6 +14,7 @@ import {validateIndependentSeeds} from '../src/model/independent-seed-validation
 import {prepareLeagueSimulation} from '../src/model/league-preparation.js';
 import {assessSimulationReadiness} from '../src/model/simulation-readiness.js';
 import {inventoryFutureRosterCandidates} from '../src/model/future-roster-candidate-inventory.js';
+import {estimateFutureReplacementLevels} from '../src/model/future-replacement-level.js';
 import {compareLineupScenarios} from '../src/model/lineup-scenario-comparison.js';
 import {buildLeagueIntelligenceReport} from '../src/model/league-intelligence-report.js';
 import {formatWeeklyIntelligence} from '../src/model/weekly-intelligence-format.js';
@@ -154,6 +155,13 @@ if(!readiness.ready){
  console.error(`LINEUP BLOCKERS: ${readiness.blockingLineupGaps?.length??0} current-week or unresolved team-weeks; ${readiness.futureRosterGaps?.length??0} future roster-management team-weeks. No replacement projections assumed; trusted simulation remains blocked.`);
  const waiverPool=spec.waivers?.replacementCandidates??spec.waivers?.candidates??[];
  const inventory=inventoryFutureRosterCandidates(readiness.futureRosterGaps,waiverPool,loaded.rows);
+ if(process.env.FUTURE_REPLACEMENT_DIAGNOSTIC==='true'){
+  const estimates=estimateFutureReplacementLevels(readiness.futureRosterGaps,waiverPool,loaded.rows,{season,currentWeek:week});
+  const covered=estimates.filter(x=>x.points!=null);
+  console.error('FUTURE REPLACEMENT DIAGNOSTIC: '+covered.length+'/'+estimates.length+' slots estimated from target-week rows; hypothetical only, no transactions, no odds impact.');
+  for(const estimate of estimates)console.error('FUTURE REPLACEMENT ESTIMATE: W'+estimate.week+' '+estimate.slot+' '+(estimate.points===null?'unavailable':estimate.points.toFixed(1)+' pts')+' ('+estimate.method+'); provisional, future availability unverified.');
+ }
+
  console.error(`FUTURE ROSTER CANDIDATES: ${inventory.length} future team-weeks; ${waiverPool.length} Yahoo candidate records from focus-team waiver scan; position matches only, no verified weekly projection evidence, no transactions assumed.`);
  for(const row of inventory)for(const slot of row.slots)console.error(`FUTURE ROSTER GAP: ${row.teamName} W${row.week} ${slot.slot}: ${slot.positionMatches} candidate position matches; known bye ${slot.knownByeWeek}, on bye ${slot.onBye}, off bye ${slot.offBye}, unknown bye ${slot.unknownByeWeek}; current unavailable ${slot.currentStatusUnavailable}/${slot.currentStatusKnown} known statuses, unknown status ${slot.currentStatusUnknown}; exact-ID weekly projection overlap ${slot.exactIdWeekProjectionCandidates}; unique name-position-team weekly overlap ${slot.uniqueNamePositionTeamWeekCandidates} (identity unverified); future availability and weekly projections unverified; provisional only.`);
  for(const row of readiness.blockingLineupGaps??[])console.error(`UNRESOLVED LINEUP: ${row.teamName??row.teamId} W${row.week}; ${row.slots.map(slot=>`${slot.slot}=${slot.reason}`).join(', ')||'details unavailable'}.`);
