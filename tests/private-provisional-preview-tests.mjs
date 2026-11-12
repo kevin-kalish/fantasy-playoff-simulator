@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {buildPrivateProvisionalPreview} from '../scripts/build-private-provisional-preview.mjs';
+const html=buildPrivateProvisionalPreview({week:11,season:2026,provider:'jerrygm',estimates:[{week:11,teamName:'<script>alert(1)</script>',slot:'RB',points:7.25,method:'direct-week-ranks-3-to-5'},{week:11,teamName:'Team B',slot:'DEF',points:null,method:'unavailable'}]});
+assert.match(html,/1 \/ 2/);
+assert.match(html,/7\.3/);
+assert.match(html,/Unavailable/);
+assert.match(html,/Official playoff probabilities unavailable/);
+assert.match(html,/&lt;script&gt;/);
+assert.doesNotMatch(html,/<script>|playoffProbability|championshipProbability|<script src=/);
+assert.match(html,/connect-src \\'none\\'/);
+console.log('private-provisional-preview-tests: all checks passed');
