@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {auditWeeklyPositionCoverage} from '../src/data/weekly-position-coverage-audit.js';
+const rows=[{season:2026,week:11,position:'K',playerId:'a',projection:0},{season:2026,week:11,position:'K',playerId:'a',projection:4},{season:2026,week:11,position:'DEF',playerId:'b',projection:6},{season:2025,week:11,position:'K',projection:8},{season:2026,week:14,position:'K',projection:null}];
+const audit=auditWeeklyPositionCoverage(rows,{season:2026,weeks:[14,11],weekResults:[{week:11,provider:'cache'}]});
+assert.equal(audit.length,12);
+assert.deepEqual(audit.filter(x=>x.position==='K').map(x=>[x.week,x.rows,x.uniquePlayerIds]),[[11,2,1],[14,0,0]]);
+assert.equal(audit.find(x=>x.week===11&&x.position==='DEF').rows,1);
+assert.equal(audit.find(x=>x.week===14&&x.position==='K').provider,'unknown');
+assert.equal(audit.every(x=>x.sourceProvenanceVerified===false),true);
+console.log('weekly-position-coverage-audit-tests: all checks passed');
